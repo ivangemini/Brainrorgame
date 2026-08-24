@@ -109,7 +109,7 @@ export class GameScene extends Phaser.Scene {
       this.baseHp = Math.max(0, this.baseHp - this.encounter.damage);
       this.syncUi();
       if (this.baseHp > 0) this.persistSoon();
-      const isBoss = this.encounter.kind === 'boss';
+      const isBoss = this.encounterStep === BOSS_STEP;
       this.cameras.main.shake(isBoss ? 145 : 95, isBoss ? 0.0042 : 0.0028);
       this.fx.flashScreen(this.encounter.projectileColor, isBoss ? 0.16 : 0.1, isBoss ? 180 : 130);
       this.fx.burst(540, 1050, this.encounter.projectileColor, isBoss ? 12 : 8, isBoss ? 220 : 150);
@@ -222,7 +222,7 @@ export class GameScene extends Phaser.Scene {
     this.syncUi();
 
     const point = this.targetPoint();
-    const isBoss = this.encounter.kind === 'boss';
+    const isBoss = this.encounterStep === BOSS_STEP;
     this.cameras.main.shake(isBoss ? 260 : 150, isBoss ? 0.008 : 0.0048);
     this.fx.flashScreen(this.encounter.accentColor, isBoss ? 0.2 : 0.12, isBoss ? 260 : 180);
     this.fx.burst(point.x, point.y, this.encounter.accentColor, isBoss ? 30 : 16, isBoss ? 310 : 190);
