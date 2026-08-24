@@ -1,5 +1,9 @@
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import type { BoardState, BoardUnit } from '../systems/board';
+import {
+  createDefaultDailyState,
+  type DailyRetentionState
+} from '../systems/dailyRetention';
 import type { EncounterStep } from '../systems/encounters';
 import {
   createDefaultMetaUpgradeLevels,
@@ -7,7 +11,7 @@ import {
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
 
-export const SAVE_VERSION = 3 as const;
+export const SAVE_VERSION = 4 as const;
 
 export interface GameSaveV1 {
   readonly version: 1;
@@ -35,7 +39,7 @@ export interface GameSaveV2 {
 }
 
 export interface GameSaveV3 {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 3;
   readonly updatedAt: number;
   readonly coins: number;
   readonly coreShards: number;
@@ -49,12 +53,13 @@ export interface GameSaveV3 {
   readonly board: BoardState;
 }
 
-export type GameSave = GameSaveV3;
-
-export interface GameSaveSnapshot {
+export interface GameSaveV4 {
+  readonly version: typeof SAVE_VERSION;
+  readonly updatedAt: number;
   readonly coins: number;
   readonly coreShards: number;
   readonly upgrades: MetaUpgradeLevels;
+  readonly daily: DailyRetentionState;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -64,13 +69,30 @@ export interface GameSaveSnapshot {
   readonly board: BoardState;
 }
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV3 {
+export type GameSave = GameSaveV4;
+
+export interface GameSaveSnapshot {
+  readonly coins: number;
+  readonly coreShards: number;
+  readonly upgrades: MetaUpgradeLevels;
+  readonly daily: DailyRetentionState;
+  readonly baseHp: number;
+  readonly chapter: number;
+  readonly encounterStep: EncounterStep;
+  readonly targetHpMax: number;
+  readonly targetHp: number;
+  readonly recruitSerial: number;
+  readonly board: BoardState;
+}
+
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV4 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
     coins: snapshot.coins,
     coreShards: snapshot.coreShards,
     upgrades: { ...snapshot.upgrades },
+    daily: cloneDaily(snapshot.daily),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -94,11 +116,30 @@ export function parseGameSave(value: unknown): GameSave | null {
   if (!isRecord(value)) return null;
   if (value.version === 1) {
     const v2 = migrateV1ToV2(value);
-    return v2 ? migrateV2ToV3(v2) : null;
+    const v3 = v2 ? migrateV2ToV3(v2) : null;
+    return v3 ? migrateV3ToV4(v3) : null;
   }
-  if (value.version === 2) return migrateV2ToV3(value);
+  if (value.version === 2) {
+    const v3 = migrateV2ToV3(value);
+    return v3 ? migrateV3ToV4(v3) : null;
+  }
+  if (value.version === 3) return migrateV3ToV4(value);
   if (value.version !== SAVE_VERSION) return null;
 
+  const common = parseV2Fields(value);
+  const upgrades = parseUpgrades(value.upgrades);
+  const daily = parseDaily(value.daily);
+  if (!common || !upgrades || !daily || !isFiniteNumber(value.coreShards)) return null;
+  return {
+    version: SAVE_VERSION,
+    ...common,
+    coreShards: clamp(Math.floor(value.coreShards), 0, 1_000_000),
+    upgrades,
+    daily
+  };
+}
+
+function migrateV3ToV4(value: Record<string, unknown>): GameSaveV4 | null {
   const common = parseV2Fields(value);
   const upgrades = parseUpgrades(value.upgrades);
   if (!common || !upgrades || !isFiniteNumber(value.coreShards)) return null;
@@ -106,7 +147,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     version: SAVE_VERSION,
     ...common,
     coreShards: clamp(Math.floor(value.coreShards), 0, 1_000_000),
-    upgrades
+    upgrades,
+    daily: createDefaultDailyState(common.updatedAt)
   };
 }
 
@@ -114,7 +156,7 @@ function migrateV2ToV3(value: Record<string, unknown>): GameSaveV3 | null {
   const common = parseV2Fields(value);
   if (!common) return null;
   return {
-    version: SAVE_VERSION,
+    version: 3,
     ...common,
     coreShards: Math.max(0, common.chapter - 1),
     upgrades: createDefaultMetaUpgradeLevels()
@@ -174,6 +216,37 @@ function parseUpgrades(value: unknown): MetaUpgradeLevels | null {
   };
 }
 
+function parseDaily(value: unknown): DailyRetentionState | null {
+  if (!isRecord(value) || !isDayKey(value.dayKey) || !isFiniteNumber(value.streak)) return null;
+  if (value.lastRewardClaimDayKey !== null && !isDayKey(value.lastRewardClaimDayKey)) return null;
+  if (!isRecord(value.counters) || !isRecord(value.claimed)) return null;
+  if (!isFiniteNumber(value.counters.merge) || !isFiniteNumber(value.counters.defeat) || !isFiniteNumber(value.counters.recruit)) return null;
+  if (typeof value.claimed.merge !== 'boolean' || typeof value.claimed.defeat !== 'boolean' || typeof value.claimed.recruit !== 'boolean') return null;
+  return {
+    dayKey: value.dayKey,
+    streak: clamp(Math.floor(value.streak), 0, 7),
+    lastRewardClaimDayKey: value.lastRewardClaimDayKey,
+    counters: {
+      merge: clamp(Math.floor(value.counters.merge), 0, 10_000),
+      defeat: clamp(Math.floor(value.counters.defeat), 0, 10_000),
+      recruit: clamp(Math.floor(value.counters.recruit), 0, 10_000)
+    },
+    claimed: {
+      merge: value.claimed.merge,
+      defeat: value.claimed.defeat,
+      recruit: value.claimed.recruit
+    }
+  };
+}
+
+function cloneDaily(daily: DailyRetentionState): DailyRetentionState {
+  return {
+    ...daily,
+    counters: { ...daily.counters },
+    claimed: { ...daily.claimed }
+  };
+}
+
 function parseBoard(value: unknown): BoardState | null {
   if (!Array.isArray(value) || value.length !== 12) return null;
   const board: Array<BoardUnit | null> = [];
@@ -200,6 +273,10 @@ function isBoardUnit(value: unknown): value is BoardUnit {
 
 function isEncounterStep(value: unknown): value is EncounterStep {
   return value === 0 || value === 1 || value === 2 || value === 3;
+}
+
+function isDayKey(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00.000Z`));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
