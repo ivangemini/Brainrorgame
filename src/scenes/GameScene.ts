@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { GameAudio } from '../audio/GameAudio';
 import { getCreature, type CreatureFamily } from '../content/creatures';
 import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
@@ -28,6 +29,7 @@ const RECRUIT_COST = 20;
 export class GameScene extends Phaser.Scene {
   private board: BoardState = createStarterBoard();
   private readonly attackClocks = new Map<string, number>();
+  private audio!: GameAudio;
   private fx!: GameFx;
   private platform!: PlatformAdapter;
   private hud!: GameHud;
@@ -59,6 +61,7 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#11172d');
     this.add.image(540, 960, 'bg-candy-crater').setDisplaySize(1080, 1920);
 
+    this.audio = new GameAudio(this);
     this.fx = new GameFx(this);
     this.hud = new GameHud(this, () => this.recruitUnit());
     this.boardView = new BoardView(
@@ -104,12 +107,13 @@ export class GameScene extends Phaser.Scene {
     this.targetAttackClock += delta;
     if (this.targetAttackClock < this.encounter.attackMs) return;
     this.targetAttackClock = 0;
+    const isBoss = this.encounterStep === BOSS_STEP;
+    if (isBoss) this.audio.bossTelegraph();
     this.telegraphTarget(() => {
       if (!this.targetAlive) return;
       this.baseHp = Math.max(0, this.baseHp - this.encounter.damage);
       this.syncUi();
       if (this.baseHp > 0) this.persistSoon();
-      const isBoss = this.encounterStep === BOSS_STEP;
       this.cameras.main.shake(isBoss ? 145 : 95, isBoss ? 0.0042 : 0.0028);
       this.fx.flashScreen(this.encounter.projectileColor, isBoss ? 0.16 : 0.1, isBoss ? 180 : 130);
       this.fx.burst(540, 1050, this.encounter.projectileColor, isBoss ? 12 : 8, isBoss ? 220 : 150);
@@ -139,6 +143,7 @@ export class GameScene extends Phaser.Scene {
         },
         () => {
           this.resolvingBoard = false;
+          this.audio.merge(result.upgraded?.level ?? 1);
           this.persistSoon();
         }
       );
@@ -161,6 +166,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.audio.button();
     this.coins -= RECRUIT_COST;
     const family = Phaser.Math.RND.pick<CreatureFamily>(['pinguino', 'toastodilo']);
     this.recruitSerial += 1;
@@ -182,6 +188,7 @@ export class GameScene extends Phaser.Scene {
     if (!origin) return;
     const creature = getCreature(unit.family, unit.level);
     const target = this.targetPoint();
+    this.audio.shot();
     const projectile = this.add.circle(origin.x, origin.y - 72, 13 + unit.level * 3, creature.projectileColor, 1)
       .setStrokeStyle(5, 0xffffff, 0.65)
       .setDepth(800);
@@ -207,6 +214,7 @@ export class GameScene extends Phaser.Scene {
     this.targetHp = Math.max(0, this.targetHp - amount);
     this.setTargetHealth();
     const point = this.targetPoint();
+    this.audio.hit();
     this.fx.floatingDamage(point.x, point.y - 80, amount, color);
     this.hitTarget(color);
     if (this.targetHp <= 0) this.defeatTarget();
@@ -223,6 +231,9 @@ export class GameScene extends Phaser.Scene {
 
     const point = this.targetPoint();
     const isBoss = this.encounterStep === BOSS_STEP;
+    if (isBoss) this.audio.bossDefeat();
+    else this.audio.enemyDefeat();
+    this.time.delayedCall(isBoss ? 250 : 120, () => this.audio.reward());
     this.cameras.main.shake(isBoss ? 260 : 150, isBoss ? 0.008 : 0.0048);
     this.fx.flashScreen(this.encounter.accentColor, isBoss ? 0.2 : 0.12, isBoss ? 260 : 180);
     this.fx.burst(point.x, point.y, this.encounter.accentColor, isBoss ? 30 : 16, isBoss ? 310 : 190);
