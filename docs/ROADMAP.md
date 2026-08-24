@@ -78,7 +78,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Seven-day login reward streak
 - [x] Three daily gameplay missions with claimable rewards
 - [x] Daily Chaos drawer + notification state
+- [x] Typed privacy-safe analytics event contract and gameplay funnel instrumentation
+- [x] Analytics agent skill and vendor-independent PlatformAdapter sink
 - [ ] Collection / achievements
 - [ ] Platform SDK adapters beyond web
-- [ ] Analytics / retention events
 - [ ] First external playtest and balance pass
