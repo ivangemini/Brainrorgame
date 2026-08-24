@@ -4,6 +4,9 @@ import { formatOfflineDuration, type OfflineReward } from '../systems/offlinePro
 export class OfflineRewardPanel {
   private overlay!: Phaser.GameObjects.Rectangle;
   private panel!: Phaser.GameObjects.Container;
+  private durationLabel!: Phaser.GameObjects.Text;
+  private rewardLabel!: Phaser.GameObjects.Text;
+  private noteLabel!: Phaser.GameObjects.Text;
   private opened = false;
 
   public constructor(
@@ -12,7 +15,7 @@ export class OfflineRewardPanel {
   ) {}
 
   public create(): void {
-    this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x040714, 0.54)
+    this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x040714, 0.58)
       .setOrigin(0)
       .setDepth(2300)
       .setInteractive()
@@ -24,13 +27,13 @@ export class OfflineRewardPanel {
 
     const card = this.scene.add.graphics();
     card.fillStyle(0x0b1330, 0.99);
-    card.fillRoundedRect(-390, -430, 780, 860, 64);
+    card.fillRoundedRect(-390, -455, 780, 910, 64);
     card.lineStyle(5, 0xa7efff, 0.28);
-    card.strokeRoundedRect(-390, -430, 780, 860, 64);
+    card.strokeRoundedRect(-390, -455, 780, 910, 64);
     card.fillStyle(0x725ee8, 0.15);
-    card.fillRoundedRect(-360, -398, 720, 168, 44);
+    card.fillRoundedRect(-360, -423, 720, 168, 44);
 
-    const title = this.scene.add.text(0, -355, 'WELCOME BACK!', {
+    const title = this.scene.add.text(0, -380, 'WELCOME BACK!', {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '52px',
       color: '#f3fbff',
@@ -38,22 +41,25 @@ export class OfflineRewardPanel {
       strokeThickness: 9,
       align: 'center'
     }).setOrigin(0.5);
-    const subtitle = this.scene.add.text(0, -292, 'THE CREW KEPT SCAVENGING', {
+    const subtitle = this.scene.add.text(0, -317, 'THE CREW KEPT SCAVENGING', {
       fontFamily: 'system-ui, sans-serif',
       fontStyle: '900',
       fontSize: '20px',
       color: '#a9bce9'
     }).setOrigin(0.5);
-    const icon = this.scene.add.image(0, -90, 'ui-offline-cache').setDisplaySize(260, 260);
+    const icon = this.scene.add.image(0, -115, 'ui-offline-cache').setDisplaySize(270, 270);
 
-    const durationLabel = this.scene.add.text(0, 72, '', {
+    this.durationLabel = this.scene.add.text(0, 48, '', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '24px', color: '#9eb5e9'
-    }).setOrigin(0.5).setName('duration');
-    const rewardLabel = this.scene.add.text(0, 145, '', {
-      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '58px', color: '#fff0a0', stroke: '#61401c', strokeThickness: 8
-    }).setOrigin(0.5).setName('reward');
-    const rewardSub = this.scene.add.text(0, 209, 'OFFLINE COINS', {
+    }).setOrigin(0.5);
+    this.rewardLabel = this.scene.add.text(0, 128, '', {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '62px', color: '#fff0a0', stroke: '#61401c', strokeThickness: 8
+    }).setOrigin(0.5);
+    const rewardSub = this.scene.add.text(0, 194, 'OFFLINE COINS', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '21px', color: '#bdcaf0'
+    }).setOrigin(0.5);
+    this.noteLabel = this.scene.add.text(0, 252, '', {
+      fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '18px', color: '#899dcc', align: 'center', wordWrap: { width: 620 }
     }).setOrigin(0.5);
 
     const buttonBg = this.scene.add.graphics();
@@ -64,36 +70,38 @@ export class OfflineRewardPanel {
     const buttonText = this.scene.add.text(0, -2, 'COLLECT', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '36px', color: '#4d2b1b'
     }).setOrigin(0.5);
-    const button = this.scene.add.container(0, 338, [buttonBg, buttonText]);
+    const button = this.scene.add.container(0, 374, [buttonBg, buttonText]);
     button.setSize(460, 116).setInteractive({ useHandCursor: true });
     button.on('pointerdown', () => {
       this.scene.tweens.add({ targets: button, scaleX: 0.96, scaleY: 0.94, duration: 75, yoyo: true, ease: 'Quad.Out' });
       this.hide();
     });
 
-    this.panel = this.scene.add.container(540, 960, [glow, card, title, subtitle, icon, durationLabel, rewardLabel, rewardSub, button])
-      .setDepth(2301)
-      .setVisible(false);
+    this.panel = this.scene.add.container(540, 960, [
+      glow, card, title, subtitle, icon, this.durationLabel, this.rewardLabel, rewardSub, this.noteLabel, button
+    ]).setDepth(2301).setVisible(false);
   }
 
   public show(reward: OfflineReward): void {
     if (reward.coins <= 0) return;
-    const duration = this.panel.getByName('duration') as Phaser.GameObjects.Text;
-    const rewardText = this.panel.getByName('reward') as Phaser.GameObjects.Text;
-    duration.setText(`AWAY FOR ${formatOfflineDuration(reward.rewardedSeconds).toUpperCase()}`);
-    rewardText.setText(`+${reward.coins}`);
+    this.durationLabel.setText(`AWAY FOR ${formatOfflineDuration(reward.elapsedSeconds).toUpperCase()}`);
+    this.rewardLabel.setText(`+${reward.coins}`);
+    const capped = reward.elapsedSeconds > reward.rewardedSeconds;
+    this.noteLabel.setText(capped
+      ? `Earnings capped at ${formatOfflineDuration(reward.rewardedSeconds)}. Core Shards still require boss wins.`
+      : 'Core Shards still require boss wins — offline time only earns coins.');
     this.opened = true;
     this.overlay.setVisible(true).setAlpha(0);
-    this.panel.setVisible(true).setAlpha(0).setScale(0.68);
+    this.panel.setVisible(true).setAlpha(0).setScale(0.68).setY(1010);
     this.scene.tweens.add({ targets: this.overlay, alpha: 1, duration: 180, ease: 'Quad.Out' });
-    this.scene.tweens.add({ targets: this.panel, alpha: 1, scaleX: 1, scaleY: 1, duration: 360, ease: 'Back.Out' });
+    this.scene.tweens.add({ targets: this.panel, alpha: 1, scaleX: 1, scaleY: 1, y: 960, duration: 360, ease: 'Back.Out' });
   }
 
   public hide(): void {
     if (!this.opened) return;
     this.opened = false;
     this.scene.tweens.add({
-      targets: this.panel, alpha: 0, scaleX: 0.86, scaleY: 0.86, duration: 180, ease: 'Quad.In', onComplete: () => {
+      targets: this.panel, alpha: 0, scaleX: 0.86, scaleY: 0.86, y: 990, duration: 180, ease: 'Quad.In', onComplete: () => {
         this.panel.setVisible(false);
         this.overlay.setVisible(false);
         this.onClose();
