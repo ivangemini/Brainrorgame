@@ -1,7 +1,7 @@
 import { coinRewardMultiplier, type MetaUpgradeLevels } from './metaProgression';
 
-export const OFFLINE_MIN_SECONDS = 60;
-export const OFFLINE_CAP_SECONDS = 8 * 60 * 60;
+export const OFFLINE_MIN_SECONDS = 2 * 60;
+export const OFFLINE_CAP_SECONDS = 6 * 60 * 60;
 
 export interface OfflineReward {
   readonly elapsedSeconds: number;
@@ -21,7 +21,8 @@ export function calculateOfflineReward(
   }
 
   const rewardedSeconds = Math.min(elapsedSeconds, OFFLINE_CAP_SECONDS);
-  const baseCoinsPerMinute = 4 + Math.min(36, Math.max(1, chapter) * 1.35);
+  const safeChapter = Math.min(25, Math.max(1, Math.floor(chapter)));
+  const baseCoinsPerMinute = 0.91 + safeChapter * 0.12;
   const rawCoins = (rewardedSeconds / 60) * baseCoinsPerMinute * coinRewardMultiplier(levels);
   const coins = Math.max(1, Math.floor(rawCoins));
   return { elapsedSeconds, rewardedSeconds, coins };
