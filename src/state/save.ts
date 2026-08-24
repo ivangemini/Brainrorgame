@@ -4,7 +4,7 @@ import type { EncounterStep } from '../systems/encounters';
 
 export const SAVE_VERSION = 2 as const;
 
-interface GameSaveV1 {
+export interface GameSaveV1 {
   readonly version: 1;
   readonly updatedAt: number;
   readonly coins: number;
