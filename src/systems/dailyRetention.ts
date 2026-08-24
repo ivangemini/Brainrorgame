@@ -51,8 +51,9 @@ export const DAILY_MISSIONS: readonly DailyMissionDefinition[] = [
   { id: 'recruit', name: 'Recruit 3 weirdos', target: 3, rewardCoins: 60 }
 ] as const;
 
+const DEFAULT_DAILY_REWARD: DailyReward = { day: 1, coins: 80, coreShards: 0 };
 const DAILY_REWARDS: readonly DailyReward[] = [
-  { day: 1, coins: 80, coreShards: 0 },
+  DEFAULT_DAILY_REWARD,
   { day: 2, coins: 100, coreShards: 0 },
   { day: 3, coins: 120, coreShards: 0 },
   { day: 4, coins: 160, coreShards: 0 },
@@ -105,8 +106,7 @@ export function claimDailyReward(state: DailyRetentionState, now = Date.now()): 
 
   const consecutive = current.lastRewardClaimDayKey !== null && dayDistance(current.lastRewardClaimDayKey, today) === 1;
   const streak = consecutive ? (current.streak % 7) + 1 : 1;
-  const reward = DAILY_REWARDS[streak - 1];
-  if (!reward) return { claimed: false, reward: null, state: current };
+  const reward = rewardForStreak(streak);
 
   return {
     claimed: true,
@@ -144,17 +144,22 @@ export function getDailyRewardPreview(state: DailyRetentionState, now = Date.now
   const current = rollDailyState(state, now);
   const today = utcDayKey(now);
   if (current.lastRewardClaimDayKey === today && current.streak > 0) {
-    return DAILY_REWARDS[current.streak - 1] ?? DAILY_REWARDS[0];
+    return rewardForStreak(current.streak);
   }
   const consecutive = current.lastRewardClaimDayKey !== null && dayDistance(current.lastRewardClaimDayKey, today) === 1;
   const nextStreak = consecutive ? (current.streak % 7) + 1 : 1;
-  return DAILY_REWARDS[nextStreak - 1] ?? DAILY_REWARDS[0];
+  return rewardForStreak(nextStreak);
 }
 
 export function getDailyMission(id: DailyMissionId): DailyMissionDefinition {
   const definition = DAILY_MISSIONS.find((mission) => mission.id === id);
   if (!definition) throw new Error(`Unknown daily mission: ${id}`);
   return definition;
+}
+
+function rewardForStreak(streak: number): DailyReward {
+  const index = Math.max(0, Math.min(6, Math.floor(streak) - 1));
+  return DAILY_REWARDS[index] ?? DEFAULT_DAILY_REWARD;
 }
 
 function dayDistance(fromKey: string, toKey: string): number {
