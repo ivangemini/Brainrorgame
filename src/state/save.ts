@@ -152,7 +152,7 @@ function migrateV3ToV4(value: Record<string, unknown>): GameSaveV4 | null {
   };
 }
 
-function migrateV2ToV3(value: Record<string, unknown>): GameSaveV3 | null {
+function migrateV2ToV3(value: Record<string, unknown>): Record<string, unknown> | null {
   const common = parseV2Fields(value);
   if (!common) return null;
   return {
