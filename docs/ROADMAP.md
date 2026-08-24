@@ -69,8 +69,9 @@ Implemented in the first playable slice:
 - [x] Boss telegraph / fortress pressure / boss defeat loop
 - [x] Recruit currency sink and boss reward loop
 - [x] Merge / combat / reward VFX hierarchy
+- [x] Versioned persistent save through PlatformAdapter
 - [ ] Production audio pack
-- [ ] Save / offline progression
+- [ ] Offline progression
 - [ ] Daily layer / collection / achievements
 - [ ] Platform SDK adapters beyond web
 - [ ] Analytics / retention events
