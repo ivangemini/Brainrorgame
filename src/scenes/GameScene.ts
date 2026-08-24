@@ -29,8 +29,10 @@ import {
   type MetaUpgradeId,
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
+import { calculateOfflineReward, type OfflineReward } from '../systems/offlineProgression';
 import { GameHud } from '../ui/GameHud';
 import { MetaUpgradePanel } from '../ui/MetaUpgradePanel';
+import { OfflineRewardPanel } from '../ui/OfflineRewardPanel';
 import { BoardView } from '../views/BoardView';
 import { BossView } from '../views/BossView';
 import { EnemyView } from '../views/EnemyView';
@@ -45,6 +47,7 @@ export class GameScene extends Phaser.Scene {
   private platform!: PlatformAdapter;
   private hud!: GameHud;
   private metaPanel!: MetaUpgradePanel;
+  private offlinePanel!: OfflineRewardPanel;
   private boardView!: BoardView;
   private bossView!: BossView;
   private enemyView!: EnemyView;
@@ -62,6 +65,19 @@ export class GameScene extends Phaser.Scene {
   private resolvingBoard = false;
   private recruitSerial = 0;
   private savePending = false;
+  private lastForegroundAt = Date.now();
+
+  private readonly visibilityHandler = (): void => {
+    if (document.visibilityState === 'hidden') {
+      this.lastForegroundAt = Date.now();
+      this.persistNow();
+      return;
+    }
+    const now = Date.now();
+    const reward = calculateOfflineReward(this.lastForegroundAt, now, this.chapter, this.upgrades);
+    this.lastForegroundAt = now;
+    this.applyOfflineReward(reward);
+  };
 
   public constructor() {
     super('game');
@@ -70,7 +86,11 @@ export class GameScene extends Phaser.Scene {
   public create(): void {
     this.platform = this.registry.get('platform') as PlatformAdapter;
     const initialSave = this.registry.get('initialSave') as GameSave | null;
-    if (initialSave) this.restoreSave(initialSave);
+    let initialOfflineReward: OfflineReward | null = null;
+    if (initialSave) {
+      this.restoreSave(initialSave);
+      initialOfflineReward = calculateOfflineReward(initialSave.updatedAt, Date.now(), this.chapter, this.upgrades);
+    }
 
     this.cameras.main.setBackgroundColor('#11172d');
     this.add.image(540, 960, 'bg-candy-crater').setDisplaySize(1080, 1920);
@@ -79,28 +99,40 @@ export class GameScene extends Phaser.Scene {
     this.fx = new GameFx(this);
     this.hud = new GameHud(this, () => this.recruitUnit(), () => this.toggleMetaPanel());
     this.metaPanel = new MetaUpgradePanel(this, (id) => this.buyMetaUpgrade(id));
+    this.offlinePanel = new OfflineRewardPanel(this, () => this.audio.reward());
     this.boardView = new BoardView(
       this,
       this.fx,
       (view, from, to) => this.handleDrop(view, from, to),
-      () => this.resolvingBoard || this.metaPanel.isOpen()
+      () => this.resolvingBoard || this.metaPanel.isOpen() || this.offlinePanel.isOpen()
     );
     this.bossView = new BossView(this, this.fx);
     this.enemyView = new EnemyView(this, this.fx);
 
     this.hud.create();
     this.metaPanel.create();
+    this.offlinePanel.create();
     this.bossView.create();
     this.enemyView.create();
     this.boardView.createFrame();
     this.boardView.render(this.board);
     this.presentEncounter(true);
     this.metaPanel.update(this.coreShards, this.upgrades);
-    this.time.delayedCall(550, () => this.fx.showHint('DRAG TWINS TO MERGE', 1355));
+    this.lastForegroundAt = Date.now();
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    });
+
+    if (initialOfflineReward && initialOfflineReward.coins > 0) {
+      this.applyOfflineReward(initialOfflineReward);
+    } else {
+      this.time.delayedCall(550, () => this.fx.showHint('DRAG TWINS TO MERGE', 1355));
+    }
   }
 
   public override update(_time: number, delta: number): void {
-    if (!this.targetAlive || this.resolvingBoard) return;
+    if (!this.targetAlive || this.resolvingBoard || this.offlinePanel.isOpen()) return;
     this.updateUnitAttacks(delta);
     this.updateTargetAttack(delta);
   }
@@ -140,7 +172,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDrop(view: Phaser.GameObjects.Container, from: number, to: number): void {
-    if (this.resolvingBoard || this.metaPanel.isOpen()) {
+    if (this.resolvingBoard || this.metaPanel.isOpen() || this.offlinePanel.isOpen()) {
       this.boardView.snapHome(view, from);
       return;
     }
@@ -173,7 +205,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private recruitUnit(): void {
-    if (this.resolvingBoard || !this.targetAlive || this.metaPanel.isOpen()) return;
+    if (this.resolvingBoard || !this.targetAlive || this.metaPanel.isOpen() || this.offlinePanel.isOpen()) return;
     const empty = firstEmptySlot(this.board);
     if (empty < 0) {
       this.fx.showHint('BOARD FULL — MERGE!', 1732, '#ffdda0');
@@ -309,6 +341,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleMetaPanel(): void {
+    if (this.offlinePanel.isOpen()) return;
     this.audio.button();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     else this.metaPanel.show(this.coreShards, this.upgrades);
@@ -327,6 +360,15 @@ export class GameScene extends Phaser.Scene {
     this.metaPanel.update(this.coreShards, this.upgrades);
     this.syncUi();
     this.persistNow();
+  }
+
+  private applyOfflineReward(reward: OfflineReward): void {
+    if (reward.coins <= 0) return;
+    this.coins += reward.coins;
+    this.syncUi();
+    this.persistNow();
+    if (this.metaPanel.isOpen()) this.metaPanel.hide();
+    this.offlinePanel.show(reward);
   }
 
   private presentEncounter(initial: boolean): void {
