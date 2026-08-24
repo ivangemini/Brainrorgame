@@ -25,7 +25,7 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(550, () => this.fx.showHint('DRAG TWINS TO MERGE', 1355));
   }
 
-  public update(_time: number, delta: number): void { if (!this.bossAlive || this.resolvingBoard) return; this.updateUnitAttacks(delta); this.updateBossAttack(delta); }
+  public override update(_time: number, delta: number): void { if (!this.bossAlive || this.resolvingBoard) return; this.updateUnitAttacks(delta); this.updateBossAttack(delta); }
 
   private updateUnitAttacks(delta: number): void {
     for (let slot = 0; slot < this.board.length; slot += 1) { const unit = this.board[slot]; if (!unit) continue; const creature = getCreature(unit.family, unit.level); const elapsed = (this.attackClocks.get(unit.id) ?? 0) + delta; if (elapsed >= creature.attackMs) { this.attackClocks.set(unit.id, elapsed - creature.attackMs); this.fireUnitAttack(slot, unit); } else this.attackClocks.set(unit.id, elapsed); }
