@@ -73,7 +73,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Save migrations v1 -> v2 -> v3
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
-- [ ] Offline progression
+- [x] Capped offline coin progression on reload/background resume
+- [x] Animated Welcome Back reward popup with project-owned art
 - [ ] Daily layer / collection / achievements
 - [ ] Platform SDK adapters beyond web
 - [ ] Analytics / retention events
