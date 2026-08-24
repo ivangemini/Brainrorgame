@@ -11,6 +11,8 @@ Production-oriented HTML5 **merge + wave + boss-rush** game built with Phaser 4,
 - session coin economy with recruiting and encounter rewards;
 - **Core Shard permanent progression** earned from bosses only;
 - Core Lab with Crew Reactor, Fortress Plate and Bounty Coil upgrade tracks;
+- capped **coin-only offline progression** on reload and background resume;
+- polished Welcome Back reward flow with project-owned vector art;
 - authored merge/combat/reward VFX and procedural Web Audio SFX;
 - versioned persistent save through `PlatformAdapter`, including migrations through save v3;
 - original scalable SVG arena/character/enemy/boss/UI art with provenance manifest;
