@@ -56,9 +56,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - Economy/retention iteration from analytics.
 - Optional mobile-store packaging after web metrics justify it.
 
-## Vertical slice status — 2026-08-25
-
-Implemented in the first playable slice:
+## Vertical slice / retention status — 2026-08-25
 
 - [x] Immediate merge board with two starter pairs
 - [x] Drag / move / swap / merge interaction
@@ -70,11 +68,12 @@ Implemented in the first playable slice:
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop
 - [x] Recruit currency sink and encounter reward loop
 - [x] Merge / combat / reward VFX hierarchy
-- [x] Versioned persistent save through PlatformAdapter
-- [x] Save migration v1 -> v2 for wave encounters
 - [x] Authored procedural SFX palette with browser-safe audio unlock
+- [x] Versioned persistent save through PlatformAdapter
+- [x] Save migrations v1 -> v2 -> v3
+- [x] Boss-only Core Shard permanent currency
+- [x] Three permanent upgrade tracks and Core Lab UI
 - [ ] Offline progression
-- [ ] Permanent progression / meta upgrades
 - [ ] Daily layer / collection / achievements
 - [ ] Platform SDK adapters beyond web
 - [ ] Analytics / retention events

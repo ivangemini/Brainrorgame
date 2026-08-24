@@ -19,7 +19,18 @@ import {
   type BoardState,
   type BoardUnit
 } from '../systems/board';
+import {
+  bossCoreReward,
+  coinRewardMultiplier,
+  createDefaultMetaUpgradeLevels,
+  incomingDamageMultiplier,
+  purchaseMetaUpgrade,
+  squadDamageMultiplier,
+  type MetaUpgradeId,
+  type MetaUpgradeLevels
+} from '../systems/metaProgression';
 import { GameHud } from '../ui/GameHud';
+import { MetaUpgradePanel } from '../ui/MetaUpgradePanel';
 import { BoardView } from '../views/BoardView';
 import { BossView } from '../views/BossView';
 import { EnemyView } from '../views/EnemyView';
@@ -33,10 +44,13 @@ export class GameScene extends Phaser.Scene {
   private fx!: GameFx;
   private platform!: PlatformAdapter;
   private hud!: GameHud;
+  private metaPanel!: MetaUpgradePanel;
   private boardView!: BoardView;
   private bossView!: BossView;
   private enemyView!: EnemyView;
   private coins = 120;
+  private coreShards = 0;
+  private upgrades: MetaUpgradeLevels = createDefaultMetaUpgradeLevels();
   private baseHp = 100;
   private chapter = 1;
   private encounterStep: EncounterStep = 0;
@@ -63,22 +77,25 @@ export class GameScene extends Phaser.Scene {
 
     this.audio = new GameAudio(this);
     this.fx = new GameFx(this);
-    this.hud = new GameHud(this, () => this.recruitUnit());
+    this.hud = new GameHud(this, () => this.recruitUnit(), () => this.toggleMetaPanel());
+    this.metaPanel = new MetaUpgradePanel(this, (id) => this.buyMetaUpgrade(id));
     this.boardView = new BoardView(
       this,
       this.fx,
       (view, from, to) => this.handleDrop(view, from, to),
-      () => this.resolvingBoard
+      () => this.resolvingBoard || this.metaPanel.isOpen()
     );
     this.bossView = new BossView(this, this.fx);
     this.enemyView = new EnemyView(this, this.fx);
 
     this.hud.create();
+    this.metaPanel.create();
     this.bossView.create();
     this.enemyView.create();
     this.boardView.createFrame();
     this.boardView.render(this.board);
     this.presentEncounter(true);
+    this.metaPanel.update(this.coreShards, this.upgrades);
     this.time.delayedCall(550, () => this.fx.showHint('DRAG TWINS TO MERGE', 1355));
   }
 
@@ -111,7 +128,8 @@ export class GameScene extends Phaser.Scene {
     if (isBoss) this.audio.bossTelegraph();
     this.telegraphTarget(() => {
       if (!this.targetAlive) return;
-      this.baseHp = Math.max(0, this.baseHp - this.encounter.damage);
+      const damage = Math.max(1, Math.round(this.encounter.damage * incomingDamageMultiplier(this.upgrades)));
+      this.baseHp = Math.max(0, this.baseHp - damage);
       this.syncUi();
       if (this.baseHp > 0) this.persistSoon();
       this.cameras.main.shake(isBoss ? 145 : 95, isBoss ? 0.0042 : 0.0028);
@@ -122,7 +140,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDrop(view: Phaser.GameObjects.Container, from: number, to: number): void {
-    if (this.resolvingBoard) {
+    if (this.resolvingBoard || this.metaPanel.isOpen()) {
       this.boardView.snapHome(view, from);
       return;
     }
@@ -155,7 +173,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private recruitUnit(): void {
-    if (this.resolvingBoard || !this.targetAlive) return;
+    if (this.resolvingBoard || !this.targetAlive || this.metaPanel.isOpen()) return;
     const empty = firstEmptySlot(this.board);
     if (empty < 0) {
       this.fx.showHint('BOARD FULL — MERGE!', 1732, '#ffdda0');
@@ -188,23 +206,18 @@ export class GameScene extends Phaser.Scene {
     if (!origin) return;
     const creature = getCreature(unit.family, unit.level);
     const target = this.targetPoint();
+    const damage = Math.max(1, Math.round(creature.damage * squadDamageMultiplier(this.upgrades)));
     this.audio.shot();
     const projectile = this.add.circle(origin.x, origin.y - 72, 13 + unit.level * 3, creature.projectileColor, 1)
       .setStrokeStyle(5, 0xffffff, 0.65)
       .setDepth(800);
     const trail = this.add.circle(origin.x, origin.y - 72, 28 + unit.level * 4, creature.projectileColor, 0.16).setDepth(799);
     this.tweens.add({
-      targets: [projectile, trail],
-      x: target.x,
-      y: target.y,
-      scaleX: 0.6,
-      scaleY: 0.6,
-      duration: 245,
-      ease: 'Cubic.In',
+      targets: [projectile, trail], x: target.x, y: target.y, scaleX: 0.6, scaleY: 0.6, duration: 245, ease: 'Cubic.In',
       onComplete: () => {
         projectile.destroy();
         trail.destroy();
-        this.damageTarget(creature.damage, creature.projectileColor);
+        this.damageTarget(damage, creature.projectileColor);
       }
     });
   }
@@ -226,24 +239,31 @@ export class GameScene extends Phaser.Scene {
     this.targetAlive = false;
     this.resolvingBoard = true;
     this.targetAttackClock = 0;
-    this.coins += this.encounter.reward;
+    const isBoss = this.encounterStep === BOSS_STEP;
+    const coinReward = Math.max(1, Math.round(this.encounter.reward * coinRewardMultiplier(this.upgrades)));
+    this.coins += coinReward;
+    let coreReward = 0;
+    if (isBoss) {
+      coreReward = bossCoreReward(this.chapter);
+      this.coreShards += coreReward;
+    }
     this.syncUi();
+    this.metaPanel.update(this.coreShards, this.upgrades);
 
     const point = this.targetPoint();
-    const isBoss = this.encounterStep === BOSS_STEP;
     if (isBoss) this.audio.bossDefeat();
     else this.audio.enemyDefeat();
     this.time.delayedCall(isBoss ? 250 : 120, () => this.audio.reward());
+    if (coreReward > 0) {
+      this.time.delayedCall(420, () => this.fx.showHint(`CORE SHARD +${coreReward}`, 1010, '#bffaff'));
+    }
     this.cameras.main.shake(isBoss ? 260 : 150, isBoss ? 0.008 : 0.0048);
     this.fx.flashScreen(this.encounter.accentColor, isBoss ? 0.2 : 0.12, isBoss ? 260 : 180);
     this.fx.burst(point.x, point.y, this.encounter.accentColor, isBoss ? 30 : 16, isBoss ? 310 : 190);
     this.fx.burst(point.x, point.y, 0xffdd6b, isBoss ? 24 : 10, isBoss ? 370 : 220);
 
-    if (isBoss) {
-      this.bossView.defeat(this.encounter.reward, () => this.advanceEncounter(true));
-    } else {
-      this.enemyView.defeat(this.encounter.reward, () => this.advanceEncounter(false));
-    }
+    if (isBoss) this.bossView.defeat(coinReward, () => this.advanceEncounter(true));
+    else this.enemyView.defeat(coinReward, () => this.advanceEncounter(false));
   }
 
   private advanceEncounter(wasBoss: boolean): void {
@@ -271,11 +291,7 @@ export class GameScene extends Phaser.Scene {
     this.targetAlive = false;
     this.resolvingBoard = true;
     const banner = this.add.text(540, 920, 'FORTRESS CRACKED!', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '62px',
-      color: '#dff9ff',
-      stroke: '#30446f',
-      strokeThickness: 12
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '62px', color: '#dff9ff', stroke: '#30446f', strokeThickness: 12
     }).setOrigin(0.5).setDepth(1400).setScale(0.5);
     this.tweens.add({ targets: banner, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.Out' });
     this.fx.flashScreen(0x74dfff, 0.22, 420);
@@ -290,6 +306,27 @@ export class GameScene extends Phaser.Scene {
       this.presentEncounter(true);
       this.persistNow();
     });
+  }
+
+  private toggleMetaPanel(): void {
+    this.audio.button();
+    if (this.metaPanel.isOpen()) this.metaPanel.hide();
+    else this.metaPanel.show(this.coreShards, this.upgrades);
+  }
+
+  private buyMetaUpgrade(id: MetaUpgradeId): void {
+    const result = purchaseMetaUpgrade(this.coreShards, this.upgrades, id);
+    if (!result.purchased) {
+      this.audio.button();
+      this.fx.showHint('NEED MORE CORE SHARDS', 1020, '#ffb2d7');
+      return;
+    }
+    this.coreShards = result.shards;
+    this.upgrades = result.levels;
+    this.audio.reward();
+    this.metaPanel.update(this.coreShards, this.upgrades);
+    this.syncUi();
+    this.persistNow();
   }
 
   private presentEncounter(initial: boolean): void {
@@ -326,6 +363,8 @@ export class GameScene extends Phaser.Scene {
   private restoreSave(save: GameSave): void {
     this.board = save.board;
     this.coins = save.coins;
+    this.coreShards = save.coreShards;
+    this.upgrades = save.upgrades;
     this.baseHp = save.baseHp;
     this.chapter = save.chapter;
     this.encounterStep = save.encounterStep;
@@ -347,6 +386,8 @@ export class GameScene extends Phaser.Scene {
   private persistNow(): void {
     const save = createGameSave({
       coins: this.coins,
+      coreShards: this.coreShards,
+      upgrades: this.upgrades,
       baseHp: this.baseHp,
       chapter: this.chapter,
       encounterStep: this.encounterStep,
@@ -359,7 +400,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private syncUi(): void {
-    this.hud.update(this.coins, this.baseHp, this.chapter, this.encounterStep);
+    this.hud.update(this.coins, this.coreShards, this.baseHp, this.chapter, this.encounterStep);
     this.setTargetHealth();
   }
 }
