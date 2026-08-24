@@ -1,4 +1,6 @@
 import type { BoardState } from './board';
+import type { EncounterStep } from './encounters';
+import type { MetaUpgradeLevels } from './metaProgression';
 
 export const COLLECTION_KEYS = [
   'pinguino-1',
@@ -69,6 +71,33 @@ export function createDefaultCollectionProgress(board?: BoardState): CollectionP
     claimedAchievements: []
   };
   return board ? discoverFromBoard(progress, board) : progress;
+}
+
+export function backfillCollectionProgress(
+  board: BoardState,
+  chapter: number,
+  encounterStep: EncounterStep,
+  recruitSerial: number,
+  upgrades: MetaUpgradeLevels
+): CollectionProgress {
+  const minimumMergeCount = board.reduce((total, unit) => {
+    if (!unit) return total;
+    return total + (unit.level === 3 ? 3 : unit.level === 2 ? 1 : 0);
+  }, 0);
+  const completedChapters = Math.max(0, Math.floor(chapter) - 1);
+  const completedTargets = completedChapters * 4 + Math.max(0, Math.min(3, encounterStep));
+  const progress: CollectionProgress = {
+    discovered: [],
+    stats: {
+      merges: minimumMergeCount,
+      recruits: Math.max(0, Math.floor(recruitSerial)),
+      defeats: completedTargets,
+      bosses: completedChapters,
+      upgrades: upgrades.power + upgrades.armor + upgrades.bounty
+    },
+    claimedAchievements: []
+  };
+  return discoverFromBoard(progress, board);
 }
 
 export function discoverFromBoard(progress: CollectionProgress, board: BoardState): CollectionProgress {
