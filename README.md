@@ -1,18 +1,21 @@
 # Brainror Game
 
-Production-oriented HTML5 **merge + boss-rush** game built with Phaser 4, TypeScript and Vite.
+Production-oriented HTML5 **merge + wave + boss-rush** game built with Phaser 4, TypeScript and Vite.
 
 ## Current vertical slice
 
 - immediate first-session merge setup (two ready pairs);
 - drag/drop board with move, swap and 3-tier merges;
 - two original creature families with six distinct vector designs;
+- three original normal enemies with chapter-based wave rotation;
+- encounter loop: **wave 1 -> wave 2 -> wave 3 -> boss -> next chapter**;
 - real-time auto combat with family/tier-specific damage and cadence;
-- animated boss telegraph, fortress damage, boss defeat and next-round scaling;
-- recruit economy and boss coin rewards;
+- distinct wave/boss telegraphs, fortress damage and reward choreography;
+- recruit economy plus wave and boss coin rewards;
 - authored merge, hit, projectile, screen-flash, camera and reward feedback;
-- original scalable SVG arena/character/boss art with asset provenance manifest;
-- portrait-first 1080×1920 composition with high-DPI-friendly vector runtime art.
+- versioned persistent save through `PlatformAdapter`, including v1 -> v2 migration;
+- original scalable SVG arena/character/enemy/boss art with asset provenance manifest;
+- portrait-first 1080x1920 composition with high-DPI-friendly vector runtime art.
 
 ## Controls
 

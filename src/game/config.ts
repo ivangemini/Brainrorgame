@@ -2,14 +2,14 @@ import * as Phaser from 'phaser';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { BootScene } from '../scenes/BootScene';
 import { GameScene } from '../scenes/GameScene';
-import type { GameSaveV1 } from '../state/save';
+import type { GameSave } from '../state/save';
 
 const DESIGN_WIDTH = 1080;
 const DESIGN_HEIGHT = 1920;
 
 export interface GameBootstrapData {
   readonly platform: PlatformAdapter;
-  readonly initialSave: GameSaveV1 | null;
+  readonly initialSave: GameSave | null;
 }
 
 export function createGameConfig(parent: string, bootstrap: GameBootstrapData): Phaser.Types.Core.GameConfig {

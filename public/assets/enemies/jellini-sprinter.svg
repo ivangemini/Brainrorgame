@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2048" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#9affea"/>
+      <stop offset="0.48" stop-color="#4ee5cf"/>
+      <stop offset="1" stop-color="#2095a7"/>
+    </linearGradient>
+    <linearGradient id="shoe" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ff89cf"/>
+      <stop offset="1" stop-color="#9c55ff"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#fff8ad"/>
+      <stop offset="0.45" stop-color="#ff8bd9"/>
+      <stop offset="1" stop-color="#72e9ff"/>
+    </linearGradient>
+    <radialGradient id="shine"><stop stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <ellipse cx="512" cy="866" rx="270" ry="60" fill="#07162a" opacity=".28"/>
+  <path d="M278 642c-50-151 16-334 176-397 132-52 286-7 356 111 88 149 19 352-109 438-121 82-355 50-423-152Z" fill="url(#body)" stroke="#d7fff8" stroke-width="20"/>
+  <path d="M337 580c-40-98-6-234 84-293 37-24 76-37 121-37-78 49-117 139-112 232 5 94 43 171 107 235-91-9-163-51-200-137Z" fill="#d9fff8" opacity=".2"/>
+  <path d="M334 451c75-70 275-89 373 9l-44 93c-78-54-201-54-286 3Z" fill="#17334c" stroke="#d8ffff" stroke-width="16"/>
+  <path d="M375 460c66-44 209-55 289 3l-29 59c-65-38-166-37-235 1Z" fill="url(#visor)" filter="url(#glow)"/>
+  <circle cx="434" cy="488" r="18" fill="#102038"/><circle cx="591" cy="488" r="18" fill="#102038"/>
+  <circle cx="427" cy="481" r="5" fill="#fff"/><circle cx="584" cy="481" r="5" fill="#fff"/>
+  <path d="M442 609c54 45 110 45 160 0-7 72-145 76-160 0Z" fill="#20344c"/>
+  <path d="M483 626c29 15 57 15 84 0" stroke="#ffb7e5" stroke-width="17" stroke-linecap="round"/>
+  <path d="M291 613c-82 1-139 36-170 105 75-32 145-29 205 8Z" fill="#74f1dc" stroke="#d7fff8" stroke-width="15"/>
+  <path d="M730 610c86 2 145 41 173 111-77-35-149-28-207 12Z" fill="#56d7c8" stroke="#d7fff8" stroke-width="15"/>
+  <g transform="translate(225 730) rotate(-7)">
+    <path d="M0 62c55-48 151-59 229-19l17 79H16Z" fill="url(#shoe)" stroke="#ffe2f5" stroke-width="15"/>
+    <path d="M31 88h160" stroke="#fff5b4" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="55" cy="132" r="28" fill="#28314f"/><circle cx="191" cy="132" r="28" fill="#28314f"/>
+    <circle cx="55" cy="132" r="12" fill="#7cf4ff"/><circle cx="191" cy="132" r="12" fill="#7cf4ff"/>
+  </g>
+  <g transform="translate(573 727) rotate(7)">
+    <path d="M0 43c80-40 176-29 229 19l-16 60H-17Z" fill="url(#shoe)" stroke="#ffe2f5" stroke-width="15"/>
+    <path d="M34 88h160" stroke="#fff5b4" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="39" cy="132" r="28" fill="#28314f"/><circle cx="175" cy="132" r="28" fill="#28314f"/>
+    <circle cx="39" cy="132" r="12" fill="#7cf4ff"/><circle cx="175" cy="132" r="12" fill="#7cf4ff"/>
+  </g>
+  <ellipse cx="414" cy="323" rx="52" ry="85" fill="url(#shine)" opacity=".52"/>
+  <path d="M237 773c-55 17-95 43-128 79M816 758c58 12 103 35 142 68" stroke="#8ff8ed" stroke-width="17" stroke-linecap="round" opacity=".62"/>
+  <path d="M196 806c-33 12-60 31-83 54M852 794c34 7 66 23 93 46" stroke="#ff8bd9" stroke-width="12" stroke-linecap="round" opacity=".7"/>
+</svg>
