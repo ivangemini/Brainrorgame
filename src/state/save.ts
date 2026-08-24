@@ -1,6 +1,14 @@
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import type { BoardState, BoardUnit } from '../systems/board';
 import {
+  backfillCollectionProgress,
+  isAchievementId,
+  isCollectionKey,
+  type AchievementId,
+  type CollectionKey,
+  type CollectionProgress
+} from '../systems/collectionProgression';
+import {
   createDefaultDailyState,
   type DailyRetentionState
 } from '../systems/dailyRetention';
@@ -11,7 +19,7 @@ import {
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
 
-export const SAVE_VERSION = 4 as const;
+export const SAVE_VERSION = 5 as const;
 
 export interface GameSaveV1 {
   readonly version: 1;
@@ -38,44 +46,30 @@ export interface GameSaveV2 {
   readonly board: BoardState;
 }
 
-export interface GameSaveV3 {
+export interface GameSaveV3 extends GameSaveV2 {
   readonly version: 3;
-  readonly updatedAt: number;
-  readonly coins: number;
   readonly coreShards: number;
   readonly upgrades: MetaUpgradeLevels;
-  readonly baseHp: number;
-  readonly chapter: number;
-  readonly encounterStep: EncounterStep;
-  readonly targetHpMax: number;
-  readonly targetHp: number;
-  readonly recruitSerial: number;
-  readonly board: BoardState;
 }
 
-export interface GameSaveV4 {
-  readonly version: typeof SAVE_VERSION;
-  readonly updatedAt: number;
-  readonly coins: number;
-  readonly coreShards: number;
-  readonly upgrades: MetaUpgradeLevels;
+export interface GameSaveV4 extends GameSaveV3 {
+  readonly version: 4;
   readonly daily: DailyRetentionState;
-  readonly baseHp: number;
-  readonly chapter: number;
-  readonly encounterStep: EncounterStep;
-  readonly targetHpMax: number;
-  readonly targetHp: number;
-  readonly recruitSerial: number;
-  readonly board: BoardState;
 }
 
-export type GameSave = GameSaveV4;
+export interface GameSaveV5 extends Omit<GameSaveV4, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly collection: CollectionProgress;
+}
+
+export type GameSave = GameSaveV5;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
   readonly coreShards: number;
   readonly upgrades: MetaUpgradeLevels;
   readonly daily: DailyRetentionState;
+  readonly collection: CollectionProgress;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -85,7 +79,25 @@ export interface GameSaveSnapshot {
   readonly board: BoardState;
 }
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV4 {
+interface CommonProgressFields {
+  readonly updatedAt: number;
+  readonly coins: number;
+  readonly baseHp: number;
+  readonly chapter: number;
+  readonly encounterStep: EncounterStep;
+  readonly targetHpMax: number;
+  readonly targetHp: number;
+  readonly recruitSerial: number;
+  readonly board: BoardState;
+}
+
+interface V4ProgressFields extends CommonProgressFields {
+  readonly coreShards: number;
+  readonly upgrades: MetaUpgradeLevels;
+  readonly daily: DailyRetentionState;
+}
+
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV5 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -93,6 +105,7 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     coreShards: snapshot.coreShards,
     upgrades: { ...snapshot.upgrades },
     daily: cloneDaily(snapshot.daily),
+    collection: cloneCollection(snapshot.collection),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -117,34 +130,48 @@ export function parseGameSave(value: unknown): GameSave | null {
   if (value.version === 1) {
     const v2 = migrateV1ToV2(value);
     const v3 = v2 ? migrateV2ToV3(v2) : null;
-    return v3 ? migrateV3ToV4(v3) : null;
+    const v4 = v3 ? migrateV3ToV4(v3) : null;
+    return v4 ? migrateV4ToV5(v4) : null;
   }
   if (value.version === 2) {
     const v3 = migrateV2ToV3(value);
-    return v3 ? migrateV3ToV4(v3) : null;
+    const v4 = v3 ? migrateV3ToV4(v3) : null;
+    return v4 ? migrateV4ToV5(v4) : null;
   }
-  if (value.version === 3) return migrateV3ToV4(value);
+  if (value.version === 3) {
+    const v4 = migrateV3ToV4(value);
+    return v4 ? migrateV4ToV5(v4) : null;
+  }
+  if (value.version === 4) return migrateV4ToV5(value);
   if (value.version !== SAVE_VERSION) return null;
 
-  const common = parseV2Fields(value);
-  const upgrades = parseUpgrades(value.upgrades);
-  const daily = parseDaily(value.daily);
-  if (!common || !upgrades || !daily || !isFiniteNumber(value.coreShards)) return null;
-  return {
-    version: SAVE_VERSION,
-    ...common,
-    coreShards: clamp(Math.floor(value.coreShards), 0, 1_000_000),
-    upgrades,
-    daily
-  };
+  const v4 = parseV4Fields(value);
+  const collection = parseCollection(value.collection);
+  if (!v4 || !collection) return null;
+  return { version: SAVE_VERSION, ...v4, collection };
 }
 
-function migrateV3ToV4(value: Record<string, unknown>): GameSaveV4 | null {
-  const common = parseV2Fields(value);
+function migrateV4ToV5(value: unknown): GameSaveV5 | null {
+  if (!isRecord(value)) return null;
+  const v4 = parseV4Fields(value);
+  if (!v4) return null;
+  const collection = backfillCollectionProgress(
+    v4.board,
+    v4.chapter,
+    v4.encounterStep,
+    v4.recruitSerial,
+    v4.upgrades
+  );
+  return { version: SAVE_VERSION, ...v4, collection };
+}
+
+function migrateV3ToV4(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  const common = parseCommonFields(value);
   const upgrades = parseUpgrades(value.upgrades);
   if (!common || !upgrades || !isFiniteNumber(value.coreShards)) return null;
   return {
-    version: SAVE_VERSION,
+    version: 4,
     ...common,
     coreShards: clamp(Math.floor(value.coreShards), 0, 1_000_000),
     upgrades,
@@ -152,8 +179,9 @@ function migrateV3ToV4(value: Record<string, unknown>): GameSaveV4 | null {
   };
 }
 
-function migrateV2ToV3(value: Record<string, unknown>): Record<string, unknown> | null {
-  const common = parseV2Fields(value);
+function migrateV2ToV3(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  const common = parseCommonFields(value);
   if (!common) return null;
   return {
     version: 3,
@@ -163,7 +191,8 @@ function migrateV2ToV3(value: Record<string, unknown>): Record<string, unknown> 
   };
 }
 
-function migrateV1ToV2(value: Record<string, unknown>): Record<string, unknown> | null {
+function migrateV1ToV2(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
   const board = parseBoard(value.board);
   if (!board) return null;
   if (!isFiniteNumber(value.updatedAt) || !isFiniteNumber(value.coins) || !isFiniteNumber(value.baseHp)) return null;
@@ -185,7 +214,20 @@ function migrateV1ToV2(value: Record<string, unknown>): Record<string, unknown> 
   };
 }
 
-function parseV2Fields(value: Record<string, unknown>): Omit<GameSaveV3, 'version' | 'coreShards' | 'upgrades'> | null {
+function parseV4Fields(value: Record<string, unknown>): V4ProgressFields | null {
+  const common = parseCommonFields(value);
+  const upgrades = parseUpgrades(value.upgrades);
+  const daily = parseDaily(value.daily);
+  if (!common || !upgrades || !daily || !isFiniteNumber(value.coreShards)) return null;
+  return {
+    ...common,
+    coreShards: clamp(Math.floor(value.coreShards), 0, 1_000_000),
+    upgrades,
+    daily
+  };
+}
+
+function parseCommonFields(value: Record<string, unknown>): CommonProgressFields | null {
   const board = parseBoard(value.board);
   if (!board) return null;
   if (!isFiniteNumber(value.updatedAt) || !isFiniteNumber(value.coins) || !isFiniteNumber(value.baseHp)) return null;
@@ -203,6 +245,33 @@ function parseV2Fields(value: Record<string, unknown>): Omit<GameSaveV3, 'versio
     targetHp: clamp(Math.floor(value.targetHp), 0, targetHpMax),
     recruitSerial: Math.max(0, Math.floor(value.recruitSerial)),
     board
+  };
+}
+
+function parseCollection(value: unknown): CollectionProgress | null {
+  if (!isRecord(value) || !Array.isArray(value.discovered) || !isRecord(value.stats) || !Array.isArray(value.claimedAchievements)) return null;
+  const discovered: CollectionKey[] = [];
+  for (const key of value.discovered) {
+    if (!isCollectionKey(key)) return null;
+    if (!discovered.includes(key)) discovered.push(key);
+  }
+  const claimedAchievements: AchievementId[] = [];
+  for (const id of value.claimedAchievements) {
+    if (!isAchievementId(id)) return null;
+    if (!claimedAchievements.includes(id)) claimedAchievements.push(id);
+  }
+  const { merges, recruits, defeats, bosses, upgrades } = value.stats;
+  if (!isFiniteNumber(merges) || !isFiniteNumber(recruits) || !isFiniteNumber(defeats) || !isFiniteNumber(bosses) || !isFiniteNumber(upgrades)) return null;
+  return {
+    discovered,
+    stats: {
+      merges: clamp(Math.floor(merges), 0, 1_000_000_000),
+      recruits: clamp(Math.floor(recruits), 0, 1_000_000_000),
+      defeats: clamp(Math.floor(defeats), 0, 1_000_000_000),
+      bosses: clamp(Math.floor(bosses), 0, 1_000_000_000),
+      upgrades: clamp(Math.floor(upgrades), 0, 1_000_000_000)
+    },
+    claimedAchievements
   };
 }
 
@@ -236,6 +305,14 @@ function parseDaily(value: unknown): DailyRetentionState | null {
       defeat: value.claimed.defeat,
       recruit: value.claimed.recruit
     }
+  };
+}
+
+function cloneCollection(collection: CollectionProgress): CollectionProgress {
+  return {
+    discovered: [...collection.discovered],
+    stats: { ...collection.stats },
+    claimedAchievements: [...collection.claimedAchievements]
   };
 }
 
