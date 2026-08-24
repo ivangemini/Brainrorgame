@@ -1,8 +1,10 @@
+import type { AnalyticsSink } from '../analytics/events';
+
 export interface RewardResult {
   readonly rewarded: boolean;
 }
 
-export interface PlatformAdapter {
+export interface PlatformAdapter extends AnalyticsSink {
   readonly id: 'web' | 'yandex' | 'crazygames' | 'poki' | 'playgama' | 'gamedistribution';
   initialize(): Promise<void>;
   gameplayStart(): void;
