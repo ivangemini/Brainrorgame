@@ -1,5 +1,30 @@
-# Brainror Game
+# Brainrot Merge Boss
 
-Production-oriented HTML5 merge + boss-rush game foundation.
+Working repository codename for a polished cartoon **merge + boss-rush + collection** HTML5 game.
 
-This repository is initialized with strict quality gates for art direction, animation, VFX, UI/UX, asset provenance, performance and multi-platform distribution.
+## Stack
+
+- Phaser 4
+- TypeScript
+- Vite
+- Vitest
+- Portal integrations through `PlatformAdapter`
+
+## Setup
+
+```bash
+npm install
+npm run dev
+```
+
+Before merging production work:
+
+```bash
+npm run verify
+```
+
+## Production rules
+
+Start with `AGENTS.md`. Visual work is governed by `docs/ART_DIRECTION.md`, `docs/ANIMATION_BIBLE.md`, `docs/QUALITY_GATES.md`, and the task-specific files under `skills/`.
+
+The repository intentionally forbids placeholder-grade player-facing output in release paths. High-resolution source art and optimized runtime art are treated as separate pipeline stages.

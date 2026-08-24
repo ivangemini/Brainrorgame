@@ -1,0 +1,18 @@
+name: Bug report
+description: Report a reproducible game defect
+body:
+  - type: textarea
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected vs actual
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Device / browser / platform
+    validations:
+      required: true
