@@ -1,80 +1,66 @@
 import { describe, expect, it } from 'vitest';
 import { createStarterBoard } from '../systems/board';
+import { createDefaultMetaUpgradeLevels } from '../systems/metaProgression';
 import { createGameSave, parseGameSave } from './save';
 
-describe('game save', () => {
-  it('round-trips a valid v2 snapshot', () => {
-    const save = createGameSave({
-      coins: 140,
-      baseHp: 77,
-      chapter: 3,
-      encounterStep: 1,
-      targetHpMax: 260,
-      targetHp: 180,
-      recruitSerial: 4,
-      board: createStarterBoard()
-    }, 12345);
+function makeSnapshot() {
+  return {
+    coins: 140,
+    coreShards: 3,
+    upgrades: { power: 2, armor: 1, bounty: 0 },
+    baseHp: 77,
+    chapter: 3,
+    encounterStep: 2 as const,
+    targetHpMax: 800,
+    targetHp: 520,
+    recruitSerial: 4,
+    board: createStarterBoard()
+  };
+}
 
+describe('game save', () => {
+  it('round-trips a valid v3 snapshot', () => {
+    const save = createGameSave(makeSnapshot(), 12345);
     expect(parseGameSave(save)).toEqual(save);
   });
 
-  it('clamps target HP to the saved maximum', () => {
-    const save = createGameSave({
-      coins: 10,
-      baseHp: 100,
-      chapter: 2,
-      encounterStep: 2,
-      targetHpMax: 600,
-      targetHp: 9999,
-      recruitSerial: 0,
-      board: createStarterBoard()
-    }, 12345);
-
-    expect(parseGameSave(save)?.targetHp).toBe(600);
-  });
-
-  it('migrates v1 boss progress into the boss step of the same chapter', () => {
-    const legacy = {
-      version: 1,
-      updatedAt: 12345,
+  it('migrates v2 saves and backfills one unspent shard per completed chapter', () => {
+    const oldSave = {
+      version: 2,
+      updatedAt: 123,
       coins: 90,
-      baseHp: 64,
-      bossRound: 4,
-      bossHpMax: 900,
-      bossHp: 321,
-      recruitSerial: 7,
+      baseHp: 88,
+      chapter: 4,
+      encounterStep: 1,
+      targetHpMax: 500,
+      targetHp: 300,
+      recruitSerial: 2,
       board: createStarterBoard()
     };
-
-    expect(parseGameSave(legacy)).toEqual({
-      version: 2,
-      updatedAt: 12345,
-      coins: 90,
-      baseHp: 64,
-      chapter: 4,
-      encounterStep: 3,
-      targetHpMax: 900,
-      targetHp: 321,
-      recruitSerial: 7,
-      board: createStarterBoard()
-    });
+    const migrated = parseGameSave(oldSave);
+    expect(migrated?.version).toBe(3);
+    expect(migrated?.coreShards).toBe(3);
+    expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
   });
 
-  it('rejects unsupported versions', () => {
-    expect(parseGameSave({ version: 999 })).toBeNull();
+  it('clamps upgrade levels and target HP to supported maximums', () => {
+    const save = createGameSave(makeSnapshot(), 12345);
+    const parsed = parseGameSave({
+      ...save,
+      targetHp: 9999,
+      upgrades: { power: 999, armor: 999, bounty: 999 }
+    });
+    expect(parsed?.targetHp).toBe(800);
+    expect(parsed?.upgrades).toEqual({ power: 10, armor: 8, bounty: 10 });
+  });
+
+  it('rejects malformed upgrade data', () => {
+    const save = createGameSave(makeSnapshot());
+    expect(parseGameSave({ ...save, upgrades: { power: 'max', armor: 0, bounty: 0 } })).toBeNull();
   });
 
   it('rejects malformed board data', () => {
-    const save = createGameSave({
-      coins: 1,
-      baseHp: 100,
-      chapter: 1,
-      encounterStep: 0,
-      targetHpMax: 145,
-      targetHp: 145,
-      recruitSerial: 0,
-      board: createStarterBoard()
-    });
+    const save = createGameSave(makeSnapshot());
     const broken = { ...save, board: [{ id: 'x', family: 'copycat', level: 1 }] };
     expect(parseGameSave(broken)).toBeNull();
   });

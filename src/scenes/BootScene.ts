@@ -35,6 +35,10 @@ export class BootScene extends Phaser.Scene {
       this.load.svg(enemy.texture, enemy.assetPath, { width: 512, height: 512 });
     }
     this.load.svg('boss-fridgino', 'assets/bosses/fridgino-maximo.svg', { width: 720, height: 720 });
+    this.load.svg('ui-core-shard', 'assets/ui/core-shard.svg', { width: 128, height: 128 });
+    this.load.svg('upgrade-power-core', 'assets/ui/power-core.svg', { width: 160, height: 160 });
+    this.load.svg('upgrade-fortress-plate', 'assets/ui/fortress-plate.svg', { width: 160, height: 160 });
+    this.load.svg('upgrade-bounty-coil', 'assets/ui/bounty-coil.svg', { width: 160, height: 160 });
   }
 
   public create(): void {
