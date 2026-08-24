@@ -11,11 +11,14 @@ export class GameHud {
   private chapterText!: Phaser.GameObjects.Text;
   private recruitButton!: Phaser.GameObjects.Container;
   private upgradeButton!: Phaser.GameObjects.Container;
+  private dailyButton!: Phaser.GameObjects.Container;
+  private dailyDot!: Phaser.GameObjects.Arc;
 
   public constructor(
     private readonly scene: Phaser.Scene,
     private readonly onRecruit: () => void,
-    private readonly onUpgrades: () => void
+    private readonly onUpgrades: () => void,
+    private readonly onDaily: () => void
   ) {}
 
   public create(): void {
@@ -43,11 +46,19 @@ export class GameHud {
     this.coreText = this.scene.add.text(716, 172, '0', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '28px', color: '#bffaff', stroke: '#25375a', strokeThickness: 5
     });
+    this.createDailyButton();
     this.createUpgradeButton();
     this.createRecruitButton();
   }
 
-  public update(coins: number, coreShards: number, baseHp: number, chapter: number, step: EncounterStep): void {
+  public update(
+    coins: number,
+    coreShards: number,
+    baseHp: number,
+    chapter: number,
+    step: EncounterStep,
+    dailyReady: boolean
+  ): void {
     this.coinsText.setText(`${coins}`);
     this.coreText.setText(`${coreShards}`);
     this.baseText.setText(`FORTRESS ${baseHp}`);
@@ -55,6 +66,19 @@ export class GameHud {
     this.chapterText.setText(`CHAPTER ${chapter}`);
     this.encounterText.setText(step === BOSS_STEP ? `BOSS ${chapter}` : `WAVE ${step + 1} / 3`);
     this.encounterText.setColor(step === BOSS_STEP ? '#fff0a6' : '#f7fbff');
+    this.dailyDot.setVisible(dailyReady);
+  }
+
+  private createDailyButton(): void {
+    const halo = this.scene.add.circle(0, 0, 38, 0x402d70, 0.94).setStrokeStyle(3, 0xffdc92, 0.42);
+    const icon = this.scene.add.image(0, 0, 'ui-daily-orbit').setDisplaySize(62, 62);
+    this.dailyDot = this.scene.add.circle(25, -25, 10, 0xff557f).setStrokeStyle(3, 0xffffff, 0.9);
+    this.dailyButton = this.scene.add.container(970, 112, [halo, icon, this.dailyDot]);
+    this.dailyButton.setSize(82, 82).setInteractive({ useHandCursor: true });
+    this.dailyButton.on('pointerdown', () => {
+      this.scene.tweens.add({ targets: this.dailyButton, scaleX: 0.92, scaleY: 0.92, duration: 75, yoyo: true, ease: 'Quad.Out' });
+      this.onDaily();
+    });
   }
 
   private createUpgradeButton(): void {
