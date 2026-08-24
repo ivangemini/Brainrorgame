@@ -5,6 +5,16 @@ import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { createGameSave, type GameSave } from '../state/save';
 import {
+  claimDailyMission,
+  claimDailyReward,
+  createDefaultDailyState,
+  hasDailyClaimAvailable,
+  recordDailyAction,
+  rollDailyState,
+  type DailyMissionId,
+  type DailyRetentionState
+} from '../systems/dailyRetention';
+import {
   BOSS_STEP,
   getEncounterSpec,
   nextEncounter,
@@ -30,6 +40,7 @@ import {
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
 import { calculateOfflineReward, type OfflineReward } from '../systems/offlineProgression';
+import { DailyPanel } from '../ui/DailyPanel';
 import { GameHud } from '../ui/GameHud';
 import { MetaUpgradePanel } from '../ui/MetaUpgradePanel';
 import { OfflineRewardPanel } from '../ui/OfflineRewardPanel';
@@ -48,12 +59,14 @@ export class GameScene extends Phaser.Scene {
   private hud!: GameHud;
   private metaPanel!: MetaUpgradePanel;
   private offlinePanel!: OfflineRewardPanel;
+  private dailyPanel!: DailyPanel;
   private boardView!: BoardView;
   private bossView!: BossView;
   private enemyView!: EnemyView;
   private coins = 120;
   private coreShards = 0;
   private upgrades: MetaUpgradeLevels = createDefaultMetaUpgradeLevels();
+  private daily: DailyRetentionState = createDefaultDailyState();
   private baseHp = 100;
   private chapter = 1;
   private encounterStep: EncounterStep = 0;
@@ -73,9 +86,13 @@ export class GameScene extends Phaser.Scene {
       this.persistNow();
       return;
     }
+
     const now = Date.now();
     const reward = calculateOfflineReward(this.lastForegroundAt, now, this.chapter, this.upgrades);
     this.lastForegroundAt = now;
+    this.daily = rollDailyState(this.daily, now);
+    this.dailyPanel.update(this.daily);
+    this.syncUi();
     this.applyOfflineReward(reward);
   };
 
@@ -97,14 +114,24 @@ export class GameScene extends Phaser.Scene {
 
     this.audio = new GameAudio(this);
     this.fx = new GameFx(this);
-    this.hud = new GameHud(this, () => this.recruitUnit(), () => this.toggleMetaPanel());
+    this.hud = new GameHud(
+      this,
+      () => this.recruitUnit(),
+      () => this.toggleMetaPanel(),
+      () => this.toggleDailyPanel()
+    );
     this.metaPanel = new MetaUpgradePanel(this, (id) => this.buyMetaUpgrade(id));
     this.offlinePanel = new OfflineRewardPanel(this, () => this.audio.reward());
+    this.dailyPanel = new DailyPanel(
+      this,
+      () => this.claimDailyCalendarReward(),
+      (id) => this.claimDailyMissionReward(id)
+    );
     this.boardView = new BoardView(
       this,
       this.fx,
       (view, from, to) => this.handleDrop(view, from, to),
-      () => this.resolvingBoard || this.metaPanel.isOpen() || this.offlinePanel.isOpen()
+      () => this.resolvingBoard || this.isBlockingPanelOpen()
     );
     this.bossView = new BossView(this, this.fx);
     this.enemyView = new EnemyView(this, this.fx);
@@ -112,12 +139,15 @@ export class GameScene extends Phaser.Scene {
     this.hud.create();
     this.metaPanel.create();
     this.offlinePanel.create();
+    this.dailyPanel.create();
     this.bossView.create();
     this.enemyView.create();
     this.boardView.createFrame();
     this.boardView.render(this.board);
+    this.daily = rollDailyState(this.daily);
     this.presentEncounter(true);
     this.metaPanel.update(this.coreShards, this.upgrades);
+    this.dailyPanel.update(this.daily);
     this.lastForegroundAt = Date.now();
     document.addEventListener('visibilitychange', this.visibilityHandler);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -132,7 +162,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   public override update(_time: number, delta: number): void {
-    if (!this.targetAlive || this.resolvingBoard || this.offlinePanel.isOpen()) return;
+    if (!this.targetAlive || this.resolvingBoard || this.isBlockingPanelOpen()) return;
     this.updateUnitAttacks(delta);
     this.updateTargetAttack(delta);
   }
@@ -159,7 +189,7 @@ export class GameScene extends Phaser.Scene {
     const isBoss = this.encounterStep === BOSS_STEP;
     if (isBoss) this.audio.bossTelegraph();
     this.telegraphTarget(() => {
-      if (!this.targetAlive) return;
+      if (!this.targetAlive || this.isBlockingPanelOpen()) return;
       const damage = Math.max(1, Math.round(this.encounter.damage * incomingDamageMultiplier(this.upgrades)));
       this.baseHp = Math.max(0, this.baseHp - damage);
       this.syncUi();
@@ -172,7 +202,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDrop(view: Phaser.GameObjects.Container, from: number, to: number): void {
-    if (this.resolvingBoard || this.metaPanel.isOpen() || this.offlinePanel.isOpen()) {
+    if (this.resolvingBoard || this.isBlockingPanelOpen()) {
       this.boardView.snapHome(view, from);
       return;
     }
@@ -194,6 +224,7 @@ export class GameScene extends Phaser.Scene {
         () => {
           this.resolvingBoard = false;
           this.audio.merge(result.upgraded?.level ?? 1);
+          this.recordDailyProgress('merge');
           this.persistSoon();
         }
       );
@@ -205,7 +236,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private recruitUnit(): void {
-    if (this.resolvingBoard || !this.targetAlive || this.metaPanel.isOpen() || this.offlinePanel.isOpen()) return;
+    if (this.resolvingBoard || !this.targetAlive || this.isBlockingPanelOpen()) return;
     const empty = firstEmptySlot(this.board);
     if (empty < 0) {
       this.fx.showHint('BOARD FULL — MERGE!', 1732, '#ffdda0');
@@ -225,6 +256,7 @@ export class GameScene extends Phaser.Scene {
       family,
       level: 1
     });
+    this.recordDailyProgress('recruit');
     this.syncUi();
     this.boardView.render(this.board, empty);
     const position = this.boardView.slotPosition(empty);
@@ -233,7 +265,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private fireUnitAttack(slot: number, unit: BoardUnit): void {
-    if (!this.targetAlive) return;
+    if (!this.targetAlive || this.isBlockingPanelOpen()) return;
     const origin = this.boardView.attackKick(slot);
     if (!origin) return;
     const creature = getCreature(unit.family, unit.level);
@@ -274,6 +306,7 @@ export class GameScene extends Phaser.Scene {
     const isBoss = this.encounterStep === BOSS_STEP;
     const coinReward = Math.max(1, Math.round(this.encounter.reward * coinRewardMultiplier(this.upgrades)));
     this.coins += coinReward;
+    this.recordDailyProgress('defeat');
     let coreReward = 0;
     if (isBoss) {
       coreReward = bossCoreReward(this.chapter);
@@ -343,8 +376,20 @@ export class GameScene extends Phaser.Scene {
   private toggleMetaPanel(): void {
     if (this.offlinePanel.isOpen()) return;
     this.audio.button();
+    if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     else this.metaPanel.show(this.coreShards, this.upgrades);
+  }
+
+  private toggleDailyPanel(): void {
+    if (this.offlinePanel.isOpen()) return;
+    this.audio.button();
+    this.daily = rollDailyState(this.daily);
+    this.dailyPanel.update(this.daily);
+    if (this.metaPanel.isOpen()) this.metaPanel.hide();
+    if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
+    else this.dailyPanel.show(this.daily);
+    this.syncUi();
   }
 
   private buyMetaUpgrade(id: MetaUpgradeId): void {
@@ -362,12 +407,58 @@ export class GameScene extends Phaser.Scene {
     this.persistNow();
   }
 
+  private claimDailyCalendarReward(): void {
+    const result = claimDailyReward(this.daily);
+    this.daily = result.state;
+    if (!result.claimed || !result.reward) {
+      this.audio.button();
+      this.dailyPanel.update(this.daily);
+      this.syncUi();
+      return;
+    }
+    this.coins += result.reward.coins;
+    this.coreShards += result.reward.coreShards;
+    this.audio.reward();
+    this.fx.showHint(`DAILY +${result.reward.coins} COINS`, 1010, '#fff0a6');
+    if (result.reward.coreShards > 0) {
+      this.time.delayedCall(260, () => this.fx.showHint(`CORE SHARD +${result.reward?.coreShards ?? 0}`, 1070, '#bffaff'));
+    }
+    this.dailyPanel.update(this.daily);
+    this.metaPanel.update(this.coreShards, this.upgrades);
+    this.syncUi();
+    this.persistNow();
+  }
+
+  private claimDailyMissionReward(id: DailyMissionId): void {
+    const result = claimDailyMission(this.daily, id);
+    this.daily = result.state;
+    if (!result.claimed) {
+      this.audio.button();
+      this.dailyPanel.update(this.daily);
+      this.syncUi();
+      return;
+    }
+    this.coins += result.coins;
+    this.audio.reward();
+    this.fx.showHint(`MISSION +${result.coins} COINS`, 1010, '#ffe59a');
+    this.dailyPanel.update(this.daily);
+    this.syncUi();
+    this.persistNow();
+  }
+
+  private recordDailyProgress(id: DailyMissionId): void {
+    this.daily = recordDailyAction(this.daily, id);
+    this.dailyPanel.update(this.daily);
+    this.syncUi();
+  }
+
   private applyOfflineReward(reward: OfflineReward): void {
     if (reward.coins <= 0) return;
     this.coins += reward.coins;
     this.syncUi();
     this.persistNow();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
+    if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     this.offlinePanel.show(reward);
   }
 
@@ -407,6 +498,7 @@ export class GameScene extends Phaser.Scene {
     this.coins = save.coins;
     this.coreShards = save.coreShards;
     this.upgrades = save.upgrades;
+    this.daily = rollDailyState(save.daily);
     this.baseHp = save.baseHp;
     this.chapter = save.chapter;
     this.encounterStep = save.encounterStep;
@@ -430,6 +522,7 @@ export class GameScene extends Phaser.Scene {
       coins: this.coins,
       coreShards: this.coreShards,
       upgrades: this.upgrades,
+      daily: this.daily,
       baseHp: this.baseHp,
       chapter: this.chapter,
       encounterStep: this.encounterStep,
@@ -442,7 +535,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private syncUi(): void {
-    this.hud.update(this.coins, this.coreShards, this.baseHp, this.chapter, this.encounterStep);
+    this.hud.update(
+      this.coins,
+      this.coreShards,
+      this.baseHp,
+      this.chapter,
+      this.encounterStep,
+      hasDailyClaimAvailable(this.daily)
+    );
     this.setTargetHealth();
+  }
+
+  private isBlockingPanelOpen(): boolean {
+    return this.metaPanel.isOpen() || this.offlinePanel.isOpen() || this.dailyPanel.isOpen();
   }
 }

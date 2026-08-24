@@ -70,12 +70,15 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
-- [x] Save migrations v1 -> v2 -> v3
+- [x] Save migrations v1 -> v2 -> v3 -> v4
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
 - [x] Capped offline coin progression on reload/background resume
 - [x] Animated Welcome Back reward popup with project-owned art
-- [ ] Daily layer / collection / achievements
+- [x] Seven-day login reward streak
+- [x] Three daily gameplay missions with claimable rewards
+- [x] Daily Chaos drawer + notification state
+- [ ] Collection / achievements
 - [ ] Platform SDK adapters beyond web
 - [ ] Analytics / retention events
 - [ ] First external playtest and balance pass
