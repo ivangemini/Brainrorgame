@@ -22,7 +22,7 @@ export interface PurchaseResult {
 }
 
 const COST_BY_CURRENT_LEVEL = [1, 2, 3, 5, 7, 10, 14, 19, 25, 32] as const;
-const FALLBACK_UPGRADE_COST = 32;
+const FALLBACK_UPGRADE_COST: number = 32;
 
 export const META_UPGRADES: readonly MetaUpgradeDefinition[] = [
   {
@@ -65,7 +65,8 @@ export function getUpgradeCost(id: MetaUpgradeId, levels: MetaUpgradeLevels): nu
   const definition = getMetaUpgradeDefinition(id);
   const level = levels[id];
   if (level >= definition.maxLevel) return null;
-  return COST_BY_CURRENT_LEVEL[level] ?? FALLBACK_UPGRADE_COST;
+  const configuredCost = COST_BY_CURRENT_LEVEL[level];
+  return configuredCost === undefined ? FALLBACK_UPGRADE_COST : configuredCost;
 }
 
 export function purchaseMetaUpgrade(shards: number, levels: MetaUpgradeLevels, id: MetaUpgradeId): PurchaseResult {
