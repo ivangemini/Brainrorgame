@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GameFx } from '../presentation/GameFx';
+import type { GameFx } from '../presentation/GameFx';
 
 export class BossView {
   private boss!: Phaser.GameObjects.Image;
