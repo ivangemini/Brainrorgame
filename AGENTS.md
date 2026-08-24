@@ -21,6 +21,7 @@ Before changing files, read the skills relevant to the task:
 - Any image/audio export, atlas, compression, source asset: `skills/asset-pipeline/SKILL.md`
 - Any gameplay/system code: `skills/gameplay-engineering/SKILL.md`
 - Any economy/progression/reward/ad placement: `skills/economy-balance/SKILL.md`
+- Any analytics/KPI/retention event/A-B experiment work: `skills/analytics-experimentation/SKILL.md`
 - Any platform SDK/save/ad/leaderboard integration: `skills/platform-integrations/SKILL.md`
 - Any load-time/FPS/memory work: `skills/performance-web/SKILL.md`
 - Any release/QA/moderation submission: `skills/qa-release/SKILL.md`
@@ -65,6 +66,7 @@ If a task touches multiple areas, read all applicable skills. Do not silently sk
 - Save schemas are versioned and migrated.
 - Randomness used in gameplay/economy must be injectable/seedable where practical.
 - No direct Yandex/CrazyGames/Poki SDK calls outside the platform adapter layer.
+- Analytics events use the typed contract in `src/analytics/` and must not contain PII or raw save/device fingerprints.
 - Never commit secrets.
 
 ## Performance targets
