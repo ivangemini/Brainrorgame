@@ -56,7 +56,6 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - Economy/retention iteration from analytics.
 - Optional mobile-store packaging after web metrics justify it.
 
-
 ## Vertical slice status — 2026-08-24
 
 Implemented in the first playable slice:
@@ -65,11 +64,14 @@ Implemented in the first playable slice:
 - [x] Drag / move / swap / merge interaction
 - [x] Six original creature designs across two three-tier families
 - [x] Original boss and arena art
-- [x] Real-time auto combat
-- [x] Boss telegraph / fortress pressure / boss defeat loop
-- [x] Recruit currency sink and boss reward loop
+- [x] Three original normal-wave enemies with rotating chapter order
+- [x] Three-wave -> boss encounter loop
+- [x] Real-time auto combat for waves and boss
+- [x] Enemy/boss telegraphs, fortress pressure and defeat loop
+- [x] Recruit currency sink and encounter reward loop
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Versioned persistent save through PlatformAdapter
+- [x] Save migration v1 -> v2 for wave encounters
 - [ ] Production audio pack
 - [ ] Offline progression
 - [ ] Daily layer / collection / achievements

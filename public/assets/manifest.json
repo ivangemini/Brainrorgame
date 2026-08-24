@@ -8,6 +8,9 @@
     {"id":"creature-toastodilo-1","status":"final","path":"assets/characters/toastodilo-1.svg","provenance":"Original vector character authored for Brainror Game","license":"Project-owned original","masterWidth":2048,"masterHeight":2048,"runtimeWidth":512,"runtimeHeight":512},
     {"id":"creature-toastodilo-2","status":"final","path":"assets/characters/toastodilo-2.svg","provenance":"Original vector character authored for Brainror Game","license":"Project-owned original","masterWidth":2048,"masterHeight":2048,"runtimeWidth":512,"runtimeHeight":512},
     {"id":"creature-toastodilo-3","status":"final","path":"assets/characters/toastodilo-3.svg","provenance":"Original vector character authored for Brainror Game","license":"Project-owned original","masterWidth":2048,"masterHeight":2048,"runtimeWidth":512,"runtimeHeight":512},
+    {"id":"enemy-jellini-sprinter","status":"final","path":"assets/enemies/jellini-sprinter.svg","provenance":"Original vector enemy artwork authored for Brainror Game","license":"Project-owned original","masterWidth":2048,"masterHeight":2048,"runtimeWidth":512,"runtimeHeight":512},
+    {"id":"enemy-sock-gobblino","status":"final","path":"assets/enemies/sock-gobblino.svg","provenance":"Original vector enemy artwork authored for Brainror Game","license":"Project-owned original","masterWidth":2048,"masterHeight":2048,"runtimeWidth":512,"runtimeHeight":512},
+    {"id":"enemy-wifino-mole","status":"final","path":"assets/enemies/wifino-mole.svg","provenance":"Original vector enemy artwork authored for Brainror Game","license":"Project-owned original","masterWidth":2048,"masterHeight":2048,"runtimeWidth":512,"runtimeHeight":512},
     {"id":"boss-fridgino","status":"final","path":"assets/bosses/fridgino-maximo.svg","provenance":"Original vector boss artwork authored for Brainror Game","license":"Project-owned original","masterWidth":4096,"masterHeight":4096,"runtimeWidth":720,"runtimeHeight":720}
   ]
 }
