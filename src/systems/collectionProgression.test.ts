@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createStarterBoard } from './board';
 import {
   achievementProgress,
+  backfillCollectionProgress,
   claimAchievement,
   createDefaultCollectionProgress,
   discoverCreature,
@@ -15,11 +16,17 @@ describe('collection progression', () => {
     expect(progress.discovered).toEqual(['pinguino-1', 'toastodilo-1']);
   });
 
-  it('backfills lower tiers when a higher tier is present', () => {
-    const board = createStarterBoard().map(() => null);
+  it('backfills lower tiers and minimum legacy stats', () => {
+    const board = [...createStarterBoard()];
     board[0] = { id: 'legacy', family: 'pinguino', level: 3 };
-    const progress = discoverFromBoard(createDefaultCollectionProgress(), board);
-    expect(progress.discovered).toEqual(['pinguino-1', 'pinguino-2', 'pinguino-3']);
+    board[1] = null;
+    const progress = backfillCollectionProgress(board, 4, 2, 7, { power: 1, armor: 2, bounty: 0 });
+    expect(progress.discovered).toContain('pinguino-3');
+    expect(progress.discovered).toContain('pinguino-1');
+    expect(progress.stats.bosses).toBe(3);
+    expect(progress.stats.defeats).toBe(14);
+    expect(progress.stats.recruits).toBe(7);
+    expect(progress.stats.upgrades).toBe(3);
   });
 
   it('rejects unknown collection keys', () => {
