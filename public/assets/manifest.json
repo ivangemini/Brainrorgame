@@ -15,6 +15,7 @@
     {"id":"ui-core-shard","status":"final","path":"assets/ui/core-shard.svg","provenance":"Original vector currency icon authored for Brainror Game","license":"Project-owned original","masterWidth":1024,"masterHeight":1024,"runtimeWidth":128,"runtimeHeight":128},
     {"id":"upgrade-power-core","status":"final","path":"assets/ui/power-core.svg","provenance":"Original vector upgrade icon authored for Brainror Game","license":"Project-owned original","masterWidth":1024,"masterHeight":1024,"runtimeWidth":160,"runtimeHeight":160},
     {"id":"upgrade-fortress-plate","status":"final","path":"assets/ui/fortress-plate.svg","provenance":"Original vector upgrade icon authored for Brainror Game","license":"Project-owned original","masterWidth":1024,"masterHeight":1024,"runtimeWidth":160,"runtimeHeight":160},
-    {"id":"upgrade-bounty-coil","status":"final","path":"assets/ui/bounty-coil.svg","provenance":"Original vector upgrade icon authored for Brainror Game","license":"Project-owned original","masterWidth":1024,"masterHeight":1024,"runtimeWidth":160,"runtimeHeight":160}
+    {"id":"upgrade-bounty-coil","status":"final","path":"assets/ui/bounty-coil.svg","provenance":"Original vector upgrade icon authored for Brainror Game","license":"Project-owned original","masterWidth":1024,"masterHeight":1024,"runtimeWidth":160,"runtimeHeight":160},
+    {"id":"ui-offline-cache","status":"final","path":"assets/ui/offline-cache.svg","provenance":"Original vector offline reward icon authored for Brainror Game","license":"Project-owned original","masterWidth":1024,"masterHeight":1024,"runtimeWidth":260,"runtimeHeight":260}
   ]
 }
