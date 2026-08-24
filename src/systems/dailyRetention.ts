@@ -92,6 +92,12 @@ export function canClaimDailyReward(state: DailyRetentionState, now = Date.now()
   return state.lastRewardClaimDayKey !== utcDayKey(now);
 }
 
+export function hasDailyClaimAvailable(state: DailyRetentionState, now = Date.now()): boolean {
+  const current = rollDailyState(state, now);
+  if (canClaimDailyReward(current, now)) return true;
+  return DAILY_MISSIONS.some((mission) => current.counters[mission.id] >= mission.target && !current.claimed[mission.id]);
+}
+
 export function claimDailyReward(state: DailyRetentionState, now = Date.now()): DailyClaimResult {
   const current = rollDailyState(state, now);
   const today = utcDayKey(now);
