@@ -16,6 +16,7 @@ Before changing files, read the skills relevant to the task:
 - Any new character/boss/skin: `skills/character-design/SKILL.md` + `docs/IP_POLICY.md`
 - Any animation/tween/transition: `skills/2d-animation/SKILL.md`
 - Any combat feedback, particles, camera, hit impact: `skills/game-feel-vfx/SKILL.md`
+- Any SFX/music/ambience/mix/Web Audio work: `skills/audio-design/SKILL.md`
 - Any HUD/menu/shop/onboarding: `skills/ui-ux/SKILL.md`
 - Any image/audio export, atlas, compression, source asset: `skills/asset-pipeline/SKILL.md`
 - Any gameplay/system code: `skills/gameplay-engineering/SKILL.md`
@@ -24,7 +25,7 @@ Before changing files, read the skills relevant to the task:
 - Any load-time/FPS/memory work: `skills/performance-web/SKILL.md`
 - Any release/QA/moderation submission: `skills/qa-release/SKILL.md`
 
-If a task touches multiple areas, read all applicable skills. Do not silently skip visual skills because the requested change sounds "small".
+If a task touches multiple areas, read all applicable skills. Do not silently skip visual or audio skills because the requested change sounds "small".
 
 ## Non-negotiable visual quality bar
 
@@ -36,6 +37,14 @@ If a task touches multiple areas, read all applicable skills. Do not silently sk
 6. Every merge, reward, boss hit, boss defeat, rarity reveal and purchase must have an authored feedback hierarchy.
 7. Character silhouettes must remain readable at small mobile sizes. Detail that disappears at 80–120 px is secondary.
 8. Visual consistency beats asset count. Ten coherent characters are better than fifty unrelated generations.
+
+## Audio quality bar
+
+- Core interactions need authored cues or an intentional reason to remain silent.
+- Repeated combat cues are throttled and mixed by priority; unit count must not make volume scale linearly.
+- Boss telegraphs and defeat cues must remain audible over regular combat.
+- Browser autoplay restrictions are handled gracefully; the game never blocks waiting for audio unlock.
+- No recognizable meme clips, commercial music, streamer audio or scraped SFX ship without documented rights.
 
 ## Gameplay quality bar
 
@@ -65,7 +74,7 @@ See `docs/PERFORMANCE_BUDGETS.md`. In short:
 - 60 FPS target on representative mid-range mobile hardware.
 - 30 FPS is a fallback floor, not a design target.
 - Keep first-play payload aggressively bounded.
-- Lazy-load later worlds, cosmetics, and large audio.
+- Lazy-load later worlds, cosmetics, music and large audio.
 - Avoid runtime allocation spikes in combat loops.
 
 ## IP / legal rules
@@ -74,7 +83,7 @@ See `docs/IP_POLICY.md`.
 
 - Brainrot is an aesthetic language, not permission to clone known characters.
 - Do not use copyrighted/trademarked meme characters, celebrity likenesses, brand logos, music, voice clips, or scraped artwork without documented rights.
-- Every production asset needs provenance in `public/assets/manifest.json` or the relevant source manifest.
+- Every imported production asset needs provenance in `public/assets/manifest.json` or the relevant source manifest.
 
 ## Definition of done
 
@@ -83,6 +92,7 @@ A task is not done because it compiles. It is done when:
 - behavior is correct;
 - visuals meet the art direction;
 - animation/feedback is appropriate;
+- core audio feedback is appropriate when relevant;
 - mobile and desktop layouts are checked when relevant;
 - performance impact is acceptable;
 - tests/verification pass;

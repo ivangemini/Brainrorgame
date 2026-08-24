@@ -14,7 +14,7 @@
 - 6–8 original creatures across 3–4 merge tiers.
 - One normal enemy wave set.
 - One highly polished boss.
-- Full merge/combat/reward animation and VFX pass.
+- Full merge/combat/reward animation, VFX and SFX pass.
 - Basic persistent save.
 - Mobile + desktop responsive presentation.
 
@@ -56,7 +56,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - Economy/retention iteration from analytics.
 - Optional mobile-store packaging after web metrics justify it.
 
-## Vertical slice status — 2026-08-24
+## Vertical slice status — 2026-08-25
 
 Implemented in the first playable slice:
 
@@ -72,8 +72,9 @@ Implemented in the first playable slice:
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Versioned persistent save through PlatformAdapter
 - [x] Save migration v1 -> v2 for wave encounters
-- [ ] Production audio pack
+- [x] Authored procedural SFX palette with browser-safe audio unlock
 - [ ] Offline progression
+- [ ] Permanent progression / meta upgrades
 - [ ] Daily layer / collection / achievements
 - [ ] Platform SDK adapters beyond web
 - [ ] Analytics / retention events

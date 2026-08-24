@@ -13,6 +13,7 @@ Production-oriented HTML5 **merge + wave + boss-rush** game built with Phaser 4,
 - distinct wave/boss telegraphs, fortress damage and reward choreography;
 - recruit economy plus wave and boss coin rewards;
 - authored merge, hit, projectile, screen-flash, camera and reward feedback;
+- authored procedural SFX for merge, shot/hit, enemy defeat, boss telegraph/defeat, reward and UI feedback;
 - versioned persistent save through `PlatformAdapter`, including v1 -> v2 migration;
 - original scalable SVG arena/character/enemy/boss art with asset provenance manifest;
 - portrait-first 1080x1920 composition with high-DPI-friendly vector runtime art.
