@@ -55,3 +55,23 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - Trend-reactive original content.
 - Economy/retention iteration from analytics.
 - Optional mobile-store packaging after web metrics justify it.
+
+
+## Vertical slice status — 2026-08-24
+
+Implemented in the first playable slice:
+
+- [x] Immediate merge board with two starter pairs
+- [x] Drag / move / swap / merge interaction
+- [x] Six original creature designs across two three-tier families
+- [x] Original boss and arena art
+- [x] Real-time auto combat
+- [x] Boss telegraph / fortress pressure / boss defeat loop
+- [x] Recruit currency sink and boss reward loop
+- [x] Merge / combat / reward VFX hierarchy
+- [ ] Production audio pack
+- [ ] Save / offline progression
+- [ ] Daily layer / collection / achievements
+- [ ] Platform SDK adapters beyond web
+- [ ] Analytics / retention events
+- [ ] First external playtest and balance pass

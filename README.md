@@ -1,30 +1,29 @@
-# Brainrot Merge Boss
+# Brainror Game
 
-Working repository codename for a polished cartoon **merge + boss-rush + collection** HTML5 game.
+Production-oriented HTML5 **merge + boss-rush** game built with Phaser 4, TypeScript and Vite.
 
-## Stack
+## Current vertical slice
 
-- Phaser 4
-- TypeScript
-- Vite
-- Vitest
-- Portal integrations through `PlatformAdapter`
+- immediate first-session merge setup (two ready pairs);
+- drag/drop board with move, swap and 3-tier merges;
+- two original creature families with six distinct vector designs;
+- real-time auto combat with family/tier-specific damage and cadence;
+- animated boss telegraph, fortress damage, boss defeat and next-round scaling;
+- recruit economy and boss coin rewards;
+- authored merge, hit, projectile, screen-flash, camera and reward feedback;
+- original scalable SVG arena/character/boss art with asset provenance manifest;
+- portrait-first 1080×1920 composition with high-DPI-friendly vector runtime art.
 
-## Setup
+## Controls
+
+Drag a creature onto an identical family + tier to merge it. Drag onto an empty slot to move it. Drag onto a non-matching occupied slot to swap. Tap **Recruit** to buy a new tier-1 creature.
+
+## Commands
 
 ```bash
 npm install
 npm run dev
-```
-
-Before merging production work:
-
-```bash
 npm run verify
 ```
 
-## Production rules
-
-Start with `AGENTS.md`. Visual work is governed by `docs/ART_DIRECTION.md`, `docs/ANIMATION_BIBLE.md`, `docs/QUALITY_GATES.md`, and the task-specific files under `skills/`.
-
-The repository intentionally forbids placeholder-grade player-facing output in release paths. High-resolution source art and optimized runtime art are treated as separate pipeline stages.
+All contributors and agents must read `AGENTS.md` and the task-specific files under `skills/` before changing the project.

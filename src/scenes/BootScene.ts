@@ -1,19 +1,20 @@
 import * as Phaser from 'phaser';
+import { getAllCreatures } from '../content/creatures';
 
 export class BootScene extends Phaser.Scene {
-  public constructor() {
-    super('boot');
+  public constructor() { super('boot'); }
+
+  public preload(): void {
+    this.cameras.main.setBackgroundColor('#11172d');
+    const title = this.add.text(540, 830, 'BRAINROR MERGE', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '60px', color: '#eafaff', stroke: '#3d2b6d', strokeThickness: 12 }).setOrigin(0.5);
+    const track = this.add.graphics();
+    const fill = this.add.graphics();
+    track.fillStyle(0x253157, 1); track.fillRoundedRect(190, 960, 700, 42, 21);
+    this.load.on('progress', (progress: number) => { fill.clear(); fill.fillStyle(0x72eaff, 1); fill.fillRoundedRect(198, 968, 684 * progress, 26, 13); title.setScale(1 + progress * 0.025); });
+    this.load.svg('bg-candy-crater', 'assets/backgrounds/candy-crater.svg', { width: 1080, height: 1920 });
+    for (const creature of getAllCreatures()) this.load.svg(creature.texture, creature.assetPath, { width: 512, height: 512 });
+    this.load.svg('boss-fridgino', 'assets/bosses/fridgino-maximo.svg', { width: 720, height: 720 });
   }
 
-  public create(): void {
-    this.cameras.main.setBackgroundColor('#11131a');
-    this.add
-      .text(540, 960, 'Production scaffold ready', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '52px',
-        fontStyle: '700',
-        color: '#f4f7ff'
-      })
-      .setOrigin(0.5);
-  }
+  public create(): void { this.scene.start('game'); }
 }
