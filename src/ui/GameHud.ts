@@ -1,4 +1,5 @@
 import type * as Phaser from 'phaser';
+import { getChapterMutator } from '../content/chapterMutators';
 import { BOSS_STEP, GAUNTLET_STEP, WAVES_PER_CHAPTER, type EncounterStep } from '../systems/encounters';
 
 const RECRUIT_COST = 20;
@@ -68,7 +69,14 @@ export class GameHud {
     this.coreText.setText(`${coreShards}`);
     this.baseText.setText(`FORTRESS ${baseHp}`);
     this.baseText.setColor(baseHp > 35 ? '#9ff4ff' : '#ff9bab');
-    this.chapterText.setText(`CHAPTER ${chapter}`);
+    const mutator = getChapterMutator(chapter);
+    if (mutator) {
+      this.chapterText
+        .setText(`CHAPTER ${chapter}  •  ${mutator.name.toUpperCase()}`)
+        .setColor(`#${mutator.accentColor.toString(16).padStart(6, '0')}`);
+    } else {
+      this.chapterText.setText(`CHAPTER ${chapter}`).setColor('#b9c9ff');
+    }
     if (step === BOSS_STEP) {
       this.encounterText.setText(`BOSS ${chapter}`).setColor('#fff0a6');
     } else if (step === GAUNTLET_STEP) {
