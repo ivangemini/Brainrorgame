@@ -71,6 +71,9 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Wave 4 pressure ramp + guaranteed Wave 5 Chaos Gate before every boss
 - [x] Three-world progression: Candy Crater -> Neon Sewer -> Appliance Wasteland
 - [x] Five authored chapters per world with endless Appliance Wasteland after Chapter 15
+- [x] Endless Rift progression after Chapter 15 with six rotating chapter identities instead of the original three-mutator loop
+- [x] Rift Tier rises every five endless chapters, increasing HP/damage/tempo pressure together with coin payout
+- [x] Endless HUD exposes the active Rift Tier and mutator without adding save-state or reroll exploits
 - [x] Distinct biome combat/economy/Chaos Energy rules and original background art
 - [x] World-finale coin/Core Shard rewards and animated world transition HUD
 - [x] Serverino Stormzilla routed to Neon Sewer finale at Chapter 10
