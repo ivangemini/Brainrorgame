@@ -1,5 +1,10 @@
 import * as Phaser from 'phaser';
 import type { GameFx } from '../presentation/GameFx';
+import {
+  clearBossPhaseRuntime,
+  syncBossPhaseRuntime,
+  type BossPhaseState
+} from '../systems/bossPhases';
 import type { BossEncounterSpec } from '../systems/encounters';
 
 const BOSS_X = 540;
@@ -7,6 +12,8 @@ const BOSS_Y = 565;
 
 export class BossView {
   private title!: Phaser.GameObjects.Text;
+  private phaseText!: Phaser.GameObjects.Text;
+  private phaseAura!: Phaser.GameObjects.Graphics;
   private shadow!: Phaser.GameObjects.Ellipse;
   private boss!: Phaser.GameObjects.Image;
   private hpBar!: Phaser.GameObjects.Graphics;
@@ -15,27 +22,35 @@ export class BossView {
   private baseScaleX = 1;
   private baseScaleY = 1;
   private motionEpoch = 0;
+  private phaseSignature = '';
 
   public constructor(private readonly scene: Phaser.Scene, private readonly fx: GameFx) {}
 
   public create(): void {
     this.title = this.scene.add.text(BOSS_X, 282, '', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '42px', color: '#dffaff', stroke: '#19234b', strokeThickness: 9
-    }).setOrigin(0.5);
-    this.shadow = this.scene.add.ellipse(BOSS_X, 834, 520, 94, 0x071020, 0.34);
-    this.boss = this.scene.add.image(BOSS_X, BOSS_Y, 'boss-fridgino').setDisplaySize(570, 570);
-    this.hpBar = this.scene.add.graphics();
+    }).setOrigin(0.5).setDepth(610);
+    this.phaseText = this.scene.add.text(BOSS_X, 335, '', {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '19px', color: '#bfeeff', stroke: '#11182f', strokeThickness: 5
+    }).setOrigin(0.5).setDepth(612);
+    this.shadow = this.scene.add.ellipse(BOSS_X, 834, 520, 94, 0x071020, 0.34).setDepth(300);
+    this.phaseAura = this.scene.add.graphics().setDepth(420);
+    this.boss = this.scene.add.image(BOSS_X, BOSS_Y, 'boss-fridgino').setDisplaySize(570, 570).setDepth(500);
+    this.hpBar = this.scene.add.graphics().setDepth(605);
     this.hpText = this.scene.add.text(BOSS_X, 906, '', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '25px', color: '#fff7fb', stroke: '#481d49', strokeThickness: 5
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(610);
     this.hide();
   }
 
   public show(spec: BossEncounterSpec): void {
     this.spec = spec;
+    this.phaseSignature = '';
     this.motionEpoch += 1;
     this.scene.tweens.killTweensOf(this.boss);
     this.title.setText(spec.name.toUpperCase()).setColor(this.cssColor(spec.accentColor)).setVisible(true).setAlpha(1);
+    this.phaseText.setVisible(true).setAlpha(1);
+    this.phaseAura.setVisible(true).setAlpha(1);
     this.shadow.setVisible(true).setAlpha(1).setScale(1);
     this.hpBar.setVisible(true).setAlpha(1);
     this.hpText.setVisible(true).setAlpha(1);
@@ -49,9 +64,13 @@ export class BossView {
   }
 
   public hide(): void {
+    clearBossPhaseRuntime();
+    this.phaseSignature = '';
     this.motionEpoch += 1;
     if (this.boss) this.scene.tweens.killTweensOf(this.boss);
     this.title?.setVisible(false);
+    this.phaseText?.setVisible(false);
+    this.phaseAura?.clear().setVisible(false);
     this.shadow?.setVisible(false);
     this.boss?.setVisible(false);
     this.hpBar?.setVisible(false);
@@ -68,7 +87,13 @@ export class BossView {
     this.hpBar.fillRoundedRect(178, 874, 724 * ratio, 50, 25);
     this.hpBar.lineStyle(4, 0xdaf9ff, 0.5);
     this.hpBar.strokeRoundedRect(170, 866, 740, 66, 33);
+    this.drawPhaseMarker(0.70, 0x9ee9ff);
+    this.drawPhaseMarker(0.40, 0xff8fa8);
     this.hpText.setText(`${current} / ${max}`);
+
+    if (!this.spec) return;
+    const phase = syncBossPhaseRuntime(this.spec.phases, current, max);
+    this.renderPhase(phase, current > 0);
   }
 
   public targetPoint(): Phaser.Math.Vector2 {
@@ -113,6 +138,63 @@ export class BossView {
     this.scene.tweens.killTweensOf(this.boss);
     const displaySize = this.spec?.displaySize ?? 570;
     this.boss.setPosition(BOSS_X, BOSS_Y).setAngle(0).setAlpha(1).setDisplaySize(displaySize, displaySize);
+  }
+
+  private renderPhase(state: BossPhaseState, announce: boolean): void {
+    const signature = `${state.phase}:${state.window}`;
+    const changed = signature !== this.phaseSignature;
+    const shield = state.window === 'shield';
+    const weak = state.window === 'weak';
+    const phasePrefix = `PHASE ${this.roman(state.phase)}`;
+    const suffix = weak ? 'WEAK POINT' : shield ? 'SHIELD' : 'OPEN';
+    const color = weak ? 0xffe77a : shield ? 0x75e6ff : state.enrage ? 0xff7893 : 0xbfeeff;
+    const enrage = state.enrage ? ' • ENRAGED' : '';
+    this.phaseText.setText(`${phasePrefix}${enrage} • ${suffix} • ${state.label}`).setColor(this.cssColor(color));
+    this.drawPhaseAura(state, color);
+
+    if (changed && this.phaseSignature !== '' && announce) {
+      const hint = weak
+        ? `${state.label} • WEAK POINT!`
+        : state.enrage
+          ? `${state.label} • ENRAGED SHIELD!`
+          : `${state.label} • SHIELD UP!`;
+      this.fx.showHint(hint, 1015, this.cssColor(color));
+      this.fx.flashRing(BOSS_X, BOSS_Y, color);
+      this.fx.burst(BOSS_X, BOSS_Y, color, weak ? 18 : 12, weak ? 220 : 175);
+      this.scene.cameras.main.shake(weak ? 115 : 150, weak ? 0.0024 : 0.0036);
+      this.scene.tweens.killTweensOf(this.phaseText);
+      this.phaseText.setScale(1.14).setAlpha(0.58);
+      this.scene.tweens.add({ targets: this.phaseText, scaleX: 1, scaleY: 1, alpha: 1, duration: 280, ease: 'Back.Out' });
+    }
+    this.phaseSignature = signature;
+  }
+
+  private drawPhaseAura(state: BossPhaseState, color: number): void {
+    this.phaseAura.clear();
+    if (state.window === 'open' && !state.enrage) {
+      this.phaseAura.lineStyle(4, color, 0.14);
+      this.phaseAura.strokeCircle(BOSS_X, BOSS_Y + 10, 245);
+      return;
+    }
+
+    const alpha = state.window === 'weak' ? 0.72 : 0.48;
+    this.phaseAura.lineStyle(state.window === 'weak' ? 7 : 10, color, alpha);
+    this.phaseAura.strokeCircle(BOSS_X, BOSS_Y + 10, 250);
+    this.phaseAura.lineStyle(4, state.enrage ? 0xff637e : color, state.enrage ? 0.46 : 0.25);
+    this.phaseAura.strokeCircle(BOSS_X, BOSS_Y + 10, 282);
+    if (state.window === 'weak') {
+      this.phaseAura.lineStyle(5, 0xfff4b2, 0.72);
+      this.phaseAura.lineBetween(BOSS_X - 315, BOSS_Y + 10, BOSS_X - 220, BOSS_Y + 10);
+      this.phaseAura.lineBetween(BOSS_X + 220, BOSS_Y + 10, BOSS_X + 315, BOSS_Y + 10);
+      this.phaseAura.lineBetween(BOSS_X, BOSS_Y - 300, BOSS_X, BOSS_Y - 215);
+      this.phaseAura.lineBetween(BOSS_X, BOSS_Y + 235, BOSS_X, BOSS_Y + 315);
+    }
+  }
+
+  private drawPhaseMarker(ratio: number, color: number): void {
+    const x = 178 + 724 * ratio;
+    this.hpBar.lineStyle(4, color, 0.82);
+    this.hpBar.lineBetween(x, 868, x, 930);
   }
 
   private startIdle(scaleX: number, scaleY: number): void {
@@ -206,6 +288,10 @@ export class BossView {
       return;
     }
     this.scene.tweens.add({ targets: this.boss, y: 720, angle: 11, scaleX: this.boss.scaleX * 0.82, scaleY: this.boss.scaleY * 0.72, alpha: 0, duration: 760, ease: 'Back.In' });
+  }
+
+  private roman(phase: 1 | 2 | 3): string {
+    return phase === 1 ? 'I' : phase === 2 ? 'II' : 'III';
   }
 
   private cssColor(color: number): string { return `#${color.toString(16).padStart(6, '0')}`; }
