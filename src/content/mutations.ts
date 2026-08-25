@@ -3,6 +3,7 @@ import {
   currentActiveHasteMultiplier,
   recordCrewAttackEnergy
 } from '../systems/activeAbilities';
+import { currentBossIncomingDamageMultiplier } from '../systems/bossPhases';
 import { getCurrentChaosPerkMultipliers } from '../systems/chaosDraft';
 import { getCurrentCrewSynergyState } from '../systems/crewSynergies';
 
@@ -121,6 +122,7 @@ export function mutatedDamage(baseDamage: number, mutation: MutationId): number 
     * synergy.squadDamageMultiplier
     * perks.squadDamageMultiplier
     * currentActiveDamageMultiplier()
+    * currentBossIncomingDamageMultiplier()
   ));
 }
 
