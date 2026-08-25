@@ -1,4 +1,4 @@
-import { getBossForChapter, scaleBoss, type BossPresentation } from '../content/bosses';
+import { getBossForChapter, scaleBoss, type BossPhaseProfile, type BossPresentation } from '../content/bosses';
 import {
   applyChapterMutator,
   getChapterMutator,
@@ -41,6 +41,7 @@ export interface WaveEncounterSpec extends EncounterSpecBase {
 export interface BossEncounterSpec extends EncounterSpecBase {
   readonly kind: 'boss';
   readonly presentation: BossPresentation;
+  readonly phases: BossPhaseProfile;
 }
 
 export type EncounterSpec = WaveEncounterSpec | BossEncounterSpec;
@@ -91,6 +92,7 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
       projectileColor: boss.projectileColor,
       displaySize: boss.displaySize,
       presentation: boss.presentation,
+      phases: boss.phases,
       mutator
     };
   }
