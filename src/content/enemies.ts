@@ -1,4 +1,10 @@
-export type EnemyId = 'jellini-sprinter' | 'sock-gobblino' | 'wifino-mole';
+export type EnemyId =
+  | 'jellini-sprinter'
+  | 'sock-gobblino'
+  | 'wifino-mole'
+  | 'noodlini-skipper'
+  | 'vacuum-capybara'
+  | 'cactus-tv-crab';
 
 export interface EnemyDefinition {
   readonly id: EnemyId;
@@ -72,6 +78,54 @@ const ENEMIES: readonly EnemyDefinition[] = [
     accentColor: 0x78e8ff,
     projectileColor: 0x9dff7a,
     displaySize: 430
+  },
+  {
+    id: 'noodlini-skipper',
+    name: 'Noodlini Skipper',
+    texture: 'enemy-noodlini-skipper',
+    assetPath: 'assets/enemies/noodlini-skipper.svg',
+    baseHp: 160,
+    hpGrowth: 1.165,
+    baseDamage: 4,
+    damageGrowth: 1.095,
+    attackMs: 2200,
+    baseReward: 20,
+    rewardGrowth: 1.125,
+    accentColor: 0xffdb6e,
+    projectileColor: 0xff6fae,
+    displaySize: 405
+  },
+  {
+    id: 'vacuum-capybara',
+    name: 'Vacuum Capybara',
+    texture: 'enemy-vacuum-capybara',
+    assetPath: 'assets/enemies/vacuum-capybara.svg',
+    baseHp: 270,
+    hpGrowth: 1.175,
+    baseDamage: 11,
+    damageGrowth: 1.105,
+    attackMs: 3800,
+    baseReward: 32,
+    rewardGrowth: 1.135,
+    accentColor: 0xff9a68,
+    projectileColor: 0x82f0ff,
+    displaySize: 445
+  },
+  {
+    id: 'cactus-tv-crab',
+    name: 'Cactus TV Crab',
+    texture: 'enemy-cactus-tv-crab',
+    assetPath: 'assets/enemies/cactus-tv-crab.svg',
+    baseHp: 205,
+    hpGrowth: 1.17,
+    baseDamage: 8,
+    damageGrowth: 1.1,
+    attackMs: 2900,
+    baseReward: 26,
+    rewardGrowth: 1.13,
+    accentColor: 0x92ef75,
+    projectileColor: 0xb886ff,
+    displaySize: 425
   }
 ] as const;
 
