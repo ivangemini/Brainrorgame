@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createStarterBoard } from '../systems/board';
 import { createDefaultCollectionProgress, discoverCreature } from '../systems/collectionProgression';
 import { createDefaultDailyState } from '../systems/dailyRetention';
+import { BOSS_STEP } from '../systems/encounters';
 import { createDefaultMetaUpgradeLevels } from '../systems/metaProgression';
 import { createDefaultOnboardingState } from '../systems/onboarding';
 import { createGameSave, parseGameSave } from './save';
@@ -30,10 +31,19 @@ function makeLegacyBoard() {
 }
 
 describe('game save', () => {
-  it('round-trips a valid v7 snapshot', () => {
+  it('round-trips a valid v8 snapshot', () => {
     const save = createGameSave(makeSnapshot(), 12345);
-    expect(save.version).toBe(7);
+    expect(save.version).toBe(8);
     expect(parseGameSave(save)).toEqual(save);
+  });
+
+  it('round-trips the new late-wave and boss encounter steps', () => {
+    const waveFour = createGameSave({ ...makeSnapshot(), encounterStep: 3 }, 23001);
+    const gate = createGameSave({ ...makeSnapshot(), encounterStep: 4 }, 23002);
+    const boss = createGameSave({ ...makeSnapshot(), encounterStep: BOSS_STEP }, 23003);
+    expect(parseGameSave(waveFour)?.encounterStep).toBe(3);
+    expect(parseGameSave(gate)?.encounterStep).toBe(4);
+    expect(parseGameSave(boss)?.encounterStep).toBe(BOSS_STEP);
   });
 
   it('round-trips a mutated Lampalotl unit', () => {
@@ -43,12 +53,60 @@ describe('game save', () => {
     const collection = discoverCreature(snapshot.collection, 'lampalotl-2');
     const save = createGameSave({ ...snapshot, board, collection }, 22222);
     const parsed = parseGameSave(save);
-    expect(parsed?.version).toBe(7);
+    expect(parsed?.version).toBe(8);
     expect(parsed?.board[8]).toEqual({ id: 'lamp-save', family: 'lampalotl', level: 2, mutation: 'prismatic' });
     expect(parsed?.collection.discovered).toContain('lampalotl-2');
   });
 
-  it('migrates v2 saves through v7 and preserves progression', () => {
+  it('migrates a historical v7 boss step into the new step 5 boss position', () => {
+    const snapshot = makeSnapshot();
+    const oldSave = {
+      version: 7,
+      updatedAt: 30000,
+      coins: snapshot.coins,
+      coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades,
+      daily: snapshot.daily,
+      collection: snapshot.collection,
+      onboarding: { step: 'complete', completedAt: 25000 },
+      baseHp: snapshot.baseHp,
+      chapter: 4,
+      encounterStep: 3,
+      targetHpMax: 930,
+      targetHp: 410,
+      recruitSerial: snapshot.recruitSerial,
+      board: snapshot.board
+    };
+    const migrated = parseGameSave(oldSave);
+    expect(migrated?.version).toBe(8);
+    expect(migrated?.encounterStep).toBe(BOSS_STEP);
+    expect(migrated?.targetHpMax).toBe(930);
+    expect(migrated?.targetHp).toBe(410);
+  });
+
+  it('keeps historical v7 wave steps before the old boss unchanged', () => {
+    const snapshot = makeSnapshot();
+    const oldSave = {
+      version: 7,
+      updatedAt: 30000,
+      coins: snapshot.coins,
+      coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades,
+      daily: snapshot.daily,
+      collection: snapshot.collection,
+      onboarding: { step: 'complete', completedAt: 25000 },
+      baseHp: snapshot.baseHp,
+      chapter: 4,
+      encounterStep: 2,
+      targetHpMax: 500,
+      targetHp: 250,
+      recruitSerial: snapshot.recruitSerial,
+      board: snapshot.board
+    };
+    expect(parseGameSave(oldSave)?.encounterStep).toBe(2);
+  });
+
+  it('migrates v2 saves through v8 and preserves progression', () => {
     const oldSave = {
       version: 2,
       updatedAt: Date.parse('2026-08-24T12:00:00.000Z'),
@@ -62,7 +120,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(7);
+    expect(migrated?.version).toBe(8);
     expect(migrated?.coreShards).toBe(3);
     expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
     expect(migrated?.daily.streak).toBe(0);
@@ -72,7 +130,7 @@ describe('game save', () => {
     expect(migrated?.board[0]?.mutation).toBe('none');
   });
 
-  it('migrates v3 saves with fresh daily state and collection backfill', () => {
+  it('migrates v3 boss saves through the extended chapter migration', () => {
     const oldSave = {
       version: 3,
       updatedAt: Date.parse('2026-08-25T08:00:00.000Z'),
@@ -88,7 +146,8 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(7);
+    expect(migrated?.version).toBe(8);
+    expect(migrated?.encounterStep).toBe(BOSS_STEP);
     expect(migrated?.daily.dayKey).toBe('2026-08-25');
     expect(migrated?.daily.counters).toEqual({ merge: 0, defeat: 0, recruit: 0 });
     expect(migrated?.collection.stats.bosses).toBe(5);
@@ -114,7 +173,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(7);
+    expect(migrated?.version).toBe(8);
     expect(migrated?.daily).toEqual(snapshot.daily);
     expect(migrated?.collection.stats.recruits).toBe(snapshot.recruitSerial);
     expect(migrated?.onboarding.step).toBe('complete');
@@ -139,7 +198,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(7);
+    expect(migrated?.version).toBe(8);
     expect(migrated?.onboarding).toEqual({ step: 'complete', completedAt: 777 });
   });
 
@@ -163,7 +222,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(7);
+    expect(migrated?.version).toBe(8);
     expect(migrated?.board.filter(Boolean).every((unit) => unit?.mutation === 'none')).toBe(true);
   });
 
@@ -203,7 +262,12 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, upgrades: { power: 'max', armor: 0, bounty: 0 } })).toBeNull();
   });
 
-  it('rejects malformed board mutation data in v7', () => {
+  it('rejects unsupported v8 encounter steps', () => {
+    const save = createGameSave(makeSnapshot());
+    expect(parseGameSave({ ...save, encounterStep: 6 })).toBeNull();
+  });
+
+  it('rejects malformed board mutation data in v8', () => {
     const save = createGameSave(makeSnapshot());
     const board = [...save.board];
     const first = board[0];
@@ -212,7 +276,7 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, board })).toBeNull();
   });
 
-  it('rejects v7 board units that omit mutation', () => {
+  it('rejects v8 board units that omit mutation', () => {
     const save = createGameSave(makeSnapshot());
     const board = save.board.map((unit) => unit ? { id: unit.id, family: unit.family, level: unit.level } : null);
     expect(parseGameSave({ ...save, board })).toBeNull();
