@@ -45,7 +45,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 
 - [x] CrazyGames adapter/build foundation.
 - [x] Poki adapter/build foundation.
-- [ ] Playgama adapter/build.
+- [x] Playgama adapter/build foundation.
 - [ ] GameDistribution adapter/build.
 - [ ] Creative/store-page A/B asset variants.
 
@@ -124,6 +124,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] CrazyGames production host detection plus `?platform=crazygames` localhost QA route
 - [x] Poki HTML5 adapter: dynamic loader, loading/gameplay events, commercial/rewarded breaks and cloud-gamesave-compatible localStorage
 - [x] Poki host/referrer detection plus `?platform=poki` localhost QA route
+- [x] Playgama Bridge adapter: dynamic stable loader, lifecycle messages, pause-state integration, ad state machines and Bridge storage
+- [x] Playgama host/referrer detection plus `?platform=playgama` localhost QA route
 - [x] Optional rewarded offline double while base earnings stay free
 - [x] Optional rewarded fortress revive with always-available free retry
 - [x] Chapter-break interstitial policy with first-session and frequency protection
@@ -135,5 +137,5 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
 - [x] Retention MVP content target reached: creatures 21 / 20–30 target, bosses 6 / 4–6 target
 - [x] Mutations / rarity system
-- [ ] Playgama / GameDistribution adapters
+- [ ] GameDistribution adapter
 - [ ] First external playtest and balance pass
