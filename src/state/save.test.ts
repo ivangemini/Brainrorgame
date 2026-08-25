@@ -41,7 +41,8 @@ describe('game save', () => {
 
   it('migrates a valid v8 save with an empty chapter build', () => {
     const current = createGameSave(makeSnapshot(), 12346);
-    const { chaosPerks: _removed, ...legacy } = current;
+    const legacy: Record<string, unknown> = { ...current };
+    delete legacy.chaosPerks;
     const migrated = parseGameSave({ ...legacy, version: 8 });
     expect(migrated?.version).toBe(9);
     expect(migrated?.chaosPerks).toEqual([]);
