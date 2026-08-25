@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import type { GameFx } from '../presentation/GameFx';
+import type { EncounterSpec } from '../systems/encounters';
 
 export class BossView {
   private title!: Phaser.GameObjects.Text;
@@ -7,11 +8,12 @@ export class BossView {
   private boss!: Phaser.GameObjects.Image;
   private hpBar!: Phaser.GameObjects.Graphics;
   private hpText!: Phaser.GameObjects.Text;
+  private spec: EncounterSpec | null = null;
 
   public constructor(private readonly scene: Phaser.Scene, private readonly fx: GameFx) {}
 
   public create(): void {
-    this.title = this.scene.add.text(540, 282, 'FRIDGINO MAXIMO', {
+    this.title = this.scene.add.text(540, 282, '', {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '42px',
       color: '#dffaff',
@@ -31,13 +33,20 @@ export class BossView {
     this.hide();
   }
 
-  public show(): void {
+  public show(spec: EncounterSpec): void {
+    this.spec = spec;
     this.scene.tweens.killTweensOf(this.boss);
-    this.title.setVisible(true).setAlpha(1);
+    this.title.setText(spec.name.toUpperCase()).setVisible(true).setAlpha(1);
     this.shadow.setVisible(true).setAlpha(1);
     this.hpBar.setVisible(true).setAlpha(1);
     this.hpText.setVisible(true).setAlpha(1);
-    this.boss.setVisible(true).setPosition(540, 565).setAngle(0).setAlpha(1).setDisplaySize(570, 570);
+    this.boss
+      .setTexture(spec.texture)
+      .setVisible(true)
+      .setPosition(540, 565)
+      .setAngle(0)
+      .setAlpha(1)
+      .setDisplaySize(spec.displaySize, spec.displaySize);
     const targetScaleX = this.boss.scaleX;
     const targetScaleY = this.boss.scaleY;
     this.boss.setScale(targetScaleX * 0.68, targetScaleY * 0.68);
@@ -73,10 +82,11 @@ export class BossView {
 
   public setHealth(current: number, max: number): void {
     const ratio = Phaser.Math.Clamp(current / max, 0, 1);
+    const healthyColor = this.spec?.accentColor ?? 0x69dcff;
     this.hpBar.clear();
     this.hpBar.fillStyle(0x10182f, 0.92);
     this.hpBar.fillRoundedRect(170, 866, 740, 66, 33);
-    this.hpBar.fillStyle(ratio > 0.35 ? 0x69dcff : 0xff6784, 1);
+    this.hpBar.fillStyle(ratio > 0.35 ? healthyColor : 0xff6784, 1);
     this.hpBar.fillRoundedRect(178, 874, 724 * ratio, 50, 25);
     this.hpBar.lineStyle(4, 0xdaf9ff, 0.5);
     this.hpBar.strokeRoundedRect(170, 866, 740, 66, 33);
@@ -100,8 +110,9 @@ export class BossView {
   }
 
   public telegraph(onImpact: () => void): void {
-    const ring = this.scene.add.circle(this.boss.x, this.boss.y + 20, 115, 0xff6688, 0.08)
-      .setStrokeStyle(12, 0xff8ca6, 0.82)
+    const telegraphColor = this.spec?.projectileColor ?? 0xff6688;
+    const ring = this.scene.add.circle(this.boss.x, this.boss.y + 20, 115, telegraphColor, 0.08)
+      .setStrokeStyle(12, telegraphColor, 0.82)
       .setDepth(700)
       .setScale(0.55);
     this.scene.tweens.add({ targets: ring, scaleX: 2.25, scaleY: 2.25, alpha: 0.14, duration: 630, ease: 'Cubic.Out' });
@@ -115,14 +126,16 @@ export class BossView {
 
   public defeat(reward: number, onComplete: () => void): void {
     this.scene.tweens.killTweensOf(this.boss);
-    const banner = this.scene.add.text(540, 420, 'BOSS MELTED!', {
+    const banner = this.scene.add.text(540, 420, this.spec?.defeatCallout ?? 'BOSS MELTED!', {
       fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '70px',
+      fontSize: '60px',
       color: '#fff5a8',
       stroke: '#66305c',
-      strokeThickness: 12
+      strokeThickness: 12,
+      align: 'center',
+      wordWrap: { width: 940 }
     }).setOrigin(0.5).setDepth(1200).setScale(0.35);
-    const rewardText = this.scene.add.text(540, 500, `+${reward} COINS`, {
+    const rewardText = this.scene.add.text(540, 510, `+${reward} COINS`, {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '34px',
       color: '#dfffff',
@@ -130,7 +143,7 @@ export class BossView {
       strokeThickness: 7
     }).setOrigin(0.5).setDepth(1200).setAlpha(0);
     this.scene.tweens.add({ targets: banner, scaleX: 1, scaleY: 1, duration: 350, ease: 'Back.Out' });
-    this.scene.tweens.add({ targets: rewardText, alpha: 1, y: 520, duration: 350, delay: 180, ease: 'Quad.Out' });
+    this.scene.tweens.add({ targets: rewardText, alpha: 1, y: 530, duration: 350, delay: 180, ease: 'Quad.Out' });
     this.scene.tweens.add({
       targets: this.boss,
       y: 720,
@@ -150,6 +163,7 @@ export class BossView {
 
   public reset(): void {
     this.scene.tweens.killTweensOf(this.boss);
-    this.boss.setPosition(540, 565).setAngle(0).setAlpha(1).setDisplaySize(570, 570);
+    const displaySize = this.spec?.displaySize ?? 570;
+    this.boss.setPosition(540, 565).setAngle(0).setAlpha(1).setDisplaySize(displaySize, displaySize);
   }
 }
