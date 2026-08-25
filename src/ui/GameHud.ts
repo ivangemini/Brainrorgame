@@ -1,5 +1,5 @@
 import type * as Phaser from 'phaser';
-import { BOSS_STEP, type EncounterStep } from '../systems/encounters';
+import { BOSS_STEP, GAUNTLET_STEP, WAVES_PER_CHAPTER, type EncounterStep } from '../systems/encounters';
 
 const RECRUIT_COST = 20;
 
@@ -31,7 +31,7 @@ export class GameHud {
     topGlow.lineStyle(3, 0xa9c8ff, 0.15);
     topGlow.strokeRoundedRect(54, 54, 972, 186, 48);
 
-    this.encounterText = this.scene.add.text(100, 80, 'WAVE 1 / 3', {
+    this.encounterText = this.scene.add.text(100, 80, `WAVE 1 / ${WAVES_PER_CHAPTER}`, {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '42px', color: '#f7fbff', stroke: '#18264d', strokeThickness: 8
     });
     this.chapterText = this.scene.add.text(102, 137, 'CHAPTER 1', {
@@ -69,8 +69,13 @@ export class GameHud {
     this.baseText.setText(`FORTRESS ${baseHp}`);
     this.baseText.setColor(baseHp > 35 ? '#9ff4ff' : '#ff9bab');
     this.chapterText.setText(`CHAPTER ${chapter}`);
-    this.encounterText.setText(step === BOSS_STEP ? `BOSS ${chapter}` : `WAVE ${step + 1} / 3`);
-    this.encounterText.setColor(step === BOSS_STEP ? '#fff0a6' : '#f7fbff');
+    if (step === BOSS_STEP) {
+      this.encounterText.setText(`BOSS ${chapter}`).setColor('#fff0a6');
+    } else if (step === GAUNTLET_STEP) {
+      this.encounterText.setText(`CHAOS GATE ${WAVES_PER_CHAPTER} / ${WAVES_PER_CHAPTER}`).setColor('#ffcf72');
+    } else {
+      this.encounterText.setText(`WAVE ${step + 1} / ${WAVES_PER_CHAPTER}`).setColor('#f7fbff');
+    }
     this.dailyDot.setVisible(dailyReady);
     this.collectionDot.setVisible(collectionReady);
   }

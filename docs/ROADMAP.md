@@ -26,8 +26,6 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - 20–30 creatures.
 - 4–6 bosses.
 - Mutations/rarity.
-- Max-tier ascension / long-session merge sink.
-- Elite wave encounter variants.
 - Daily reward and missions.
 - Offline progression where appropriate.
 - Rewarded + interstitial integration behind adapter.
@@ -69,7 +67,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Six original normal-wave enemies with rotating chapter order and distinct pacing profiles
 - [x] Deterministic elite waves from chapter 3 with Berserk / Bulwark / Siege combat identities
 - [x] Elite-specific pressure/reward scaling, badges and telegraph choreography
-- [x] Three-wave -> boss encounter loop
+- [x] Five-wave -> boss encounter loop
+- [x] Wave 4 pressure ramp + guaranteed Wave 5 Chaos Gate before every boss
 - [x] Real-time auto combat for waves and boss
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop
 - [x] Data-driven rotating boss roster with distinct idle, telegraph and defeat choreography
@@ -83,8 +82,9 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
-- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7
+- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7 -> v8
 - [x] v6 -> v7 mutation migration preserving legacy boards as Common
+- [x] v7 -> v8 encounter migration preserving historical boss HP at the new boss step
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
 - [x] Capped offline coin progression on reload/background resume
@@ -109,6 +109,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Resumable onboarding state with pre-v6 saves migrated as already complete
 - [x] Onboarding funnel telemetry and first-session skill/doc
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
+- [ ] Crew-family combat synergies and composition bonuses
 - [ ] Expand playable creature families and boss roster toward retention MVP targets (creatures: 12 / 20–30 target, bosses: 4 / 4–6 target)
 - [x] Mutations / rarity system
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
