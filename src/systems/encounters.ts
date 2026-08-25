@@ -11,6 +11,10 @@ import {
 } from '../content/eliteModifiers';
 import { getEnemyForWave, scaleEnemy, type EnemyWaveNumber } from '../content/enemies';
 import { beginActiveAbilityEncounter } from './activeAbilities';
+import {
+  currentBossAttackIntervalMultiplier,
+  currentBossOutgoingDamageMultiplier
+} from './bossPhases';
 
 export const WAVES_PER_CHAPTER = 5 as const;
 export const GAUNTLET_STEP = 4 as const;
@@ -85,8 +89,12 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
       name: boss.name,
       texture: boss.texture,
       hp: scaled.hp,
-      damage: scaled.damage,
-      attackMs: scaled.attackMs,
+      get damage(): number {
+        return Math.max(1, Math.round(scaled.damage * currentBossOutgoingDamageMultiplier()));
+      },
+      get attackMs(): number {
+        return Math.max(1200, Math.round(scaled.attackMs * currentBossAttackIntervalMultiplier()));
+      },
       reward: scaled.reward,
       accentColor: boss.accentColor,
       projectileColor: boss.projectileColor,
