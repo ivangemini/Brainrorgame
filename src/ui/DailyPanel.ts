@@ -1,9 +1,12 @@
 import type * as Phaser from 'phaser';
 import {
+  DAILY_CHAOS_CHEST_REWARD_COINS,
   DAILY_MISSIONS,
   canClaimDailyReward,
   getDailyMission,
+  getDailyMissionCompletionCount,
   getDailyRewardPreview,
+  isDailyChaosChestComplete,
   type DailyMissionId,
   type DailyRetentionState
 } from '../systems/dailyRetention';
@@ -25,6 +28,8 @@ export class DailyPanel {
   private rewardButton!: Phaser.GameObjects.Container;
   private rewardButtonBackground!: Phaser.GameObjects.Graphics;
   private rewardButtonLabel!: Phaser.GameObjects.Text;
+  private chestProgressText!: Phaser.GameObjects.Text;
+  private chestRewardText!: Phaser.GameObjects.Text;
   private readonly missionCards = new Map<DailyMissionId, MissionCard>();
   private opened = false;
   private state!: DailyRetentionState;
@@ -91,7 +96,23 @@ export class DailyPanel {
       this.missionCards.set(mission.id, card.view);
     });
 
-    const hint = this.scene.add.text(70, 1592, 'Daily reset uses UTC for consistent cross-platform saves.', {
+    const chestBackground = this.scene.add.graphics();
+    chestBackground.fillStyle(0x34214f, 0.96);
+    chestBackground.fillRoundedRect(62, 1434, 510, 122, 34);
+    chestBackground.lineStyle(3, 0xffcf78, 0.32);
+    chestBackground.strokeRoundedRect(62, 1434, 510, 122, 34);
+    const chestTitle = this.scene.add.text(92, 1458, 'DAILY CHAOS CHEST', {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '22px', color: '#fff0b5'
+    });
+    this.chestProgressText = this.scene.add.text(92, 1502, '0 / 3 MISSIONS', {
+      fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '18px', color: '#bdefff'
+    });
+    this.chestRewardText = this.scene.add.text(362, 1502, `+${DAILY_CHAOS_CHEST_REWARD_COINS} COINS`, {
+      fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '18px', color: '#ffe59a'
+    });
+    children.push(chestBackground, chestTitle, this.chestProgressText, this.chestRewardText);
+
+    const hint = this.scene.add.text(70, 1592, 'Finish all three missions to crack the Chaos Chest. Daily reset uses UTC.', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '17px', color: '#7f91bd', wordWrap: { width: 500 }
     });
     children.push(hint);
@@ -190,6 +211,13 @@ export class DailyPanel {
       if (ready) card.button.setInteractive({ useHandCursor: true });
       else card.button.disableInteractive();
     }
+
+    const completionCount = getDailyMissionCompletionCount(this.state);
+    const chestComplete = isDailyChaosChestComplete(this.state);
+    this.chestProgressText.setText(chestComplete ? 'CHEST CRACKED' : `${completionCount} / ${DAILY_MISSIONS.length} MISSIONS`);
+    this.chestProgressText.setColor(chestComplete ? '#a9ffcc' : '#bdefff');
+    this.chestRewardText.setText(chestComplete ? 'BONUS CLAIMED' : `+${DAILY_CHAOS_CHEST_REWARD_COINS} COINS`);
+    this.chestRewardText.setColor(chestComplete ? '#7e90b9' : '#ffe59a');
   }
 
   private paintButton(graphics: Phaser.GameObjects.Graphics, active: boolean, width: number, height: number): void {

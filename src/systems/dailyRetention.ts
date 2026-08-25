@@ -35,6 +35,7 @@ export interface DailyClaimResult {
 export interface MissionClaimResult {
   readonly claimed: boolean;
   readonly coins: number;
+  readonly chestBonusCoins: number;
   readonly state: DailyRetentionState;
 }
 
@@ -50,6 +51,8 @@ export const DAILY_MISSIONS: readonly DailyMissionDefinition[] = [
   { id: 'defeat', name: 'Defeat 6 enemies', target: 6, rewardCoins: 90 },
   { id: 'recruit', name: 'Recruit 3 weirdos', target: 3, rewardCoins: 60 }
 ] as const;
+
+export const DAILY_CHAOS_CHEST_REWARD_COINS = 300;
 
 const DEFAULT_DAILY_REWARD: DailyReward = { day: 1, coins: 80, coreShards: 0 };
 const DAILY_REWARDS: readonly DailyReward[] = [
@@ -131,13 +134,32 @@ export function claimDailyMission(state: DailyRetentionState, id: DailyMissionId
   const current = rollDailyState(state, now);
   const definition = getDailyMission(id);
   if (current.claimed[id] || current.counters[id] < definition.target) {
-    return { claimed: false, coins: 0, state: current };
+    return { claimed: false, coins: 0, chestBonusCoins: 0, state: current };
   }
+
+  const nextState: DailyRetentionState = {
+    ...current,
+    claimed: { ...current.claimed, [id]: true }
+  };
+  const chestBonusCoins = getDailyMissionCompletionCount(current) === DAILY_MISSIONS.length - 1
+    ? DAILY_CHAOS_CHEST_REWARD_COINS
+    : 0;
+
   return {
     claimed: true,
-    coins: definition.rewardCoins,
-    state: { ...current, claimed: { ...current.claimed, [id]: true } }
+    coins: definition.rewardCoins + chestBonusCoins,
+    chestBonusCoins,
+    state: nextState
   };
+}
+
+export function getDailyMissionCompletionCount(state: DailyRetentionState, now = Date.now()): number {
+  const current = rollDailyState(state, now);
+  return DAILY_MISSIONS.reduce((count, mission) => count + (current.claimed[mission.id] ? 1 : 0), 0);
+}
+
+export function isDailyChaosChestComplete(state: DailyRetentionState, now = Date.now()): boolean {
+  return getDailyMissionCompletionCount(state, now) === DAILY_MISSIONS.length;
 }
 
 export function getDailyRewardPreview(state: DailyRetentionState, now = Date.now()): DailyReward {

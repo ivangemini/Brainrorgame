@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DAILY_CHAOS_CHEST_REWARD_COINS,
   canClaimDailyReward,
   claimDailyMission,
   claimDailyReward,
   createDefaultDailyState,
+  getDailyMissionCompletionCount,
+  isDailyChaosChestComplete,
   recordDailyAction,
   rollDailyState
 } from './dailyRetention';
@@ -44,6 +47,43 @@ describe('daily retention', () => {
     const second = claimDailyMission(first.state, 'recruit', day1);
     expect(first.claimed).toBe(true);
     expect(first.coins).toBe(60);
+    expect(first.chestBonusCoins).toBe(0);
     expect(second.claimed).toBe(false);
+  });
+
+  it('pays the Daily Chaos Chest exactly when the third mission is claimed', () => {
+    let state = createDefaultDailyState(day1);
+    state = recordDailyAction(state, 'merge', 3, day1);
+    state = recordDailyAction(state, 'defeat', 6, day1);
+    state = recordDailyAction(state, 'recruit', 3, day1);
+
+    const merge = claimDailyMission(state, 'merge', day1);
+    expect(merge.chestBonusCoins).toBe(0);
+    expect(getDailyMissionCompletionCount(merge.state, day1)).toBe(1);
+
+    const defeat = claimDailyMission(merge.state, 'defeat', day1);
+    expect(defeat.chestBonusCoins).toBe(0);
+    expect(getDailyMissionCompletionCount(defeat.state, day1)).toBe(2);
+
+    const recruit = claimDailyMission(defeat.state, 'recruit', day1);
+    expect(recruit.chestBonusCoins).toBe(DAILY_CHAOS_CHEST_REWARD_COINS);
+    expect(recruit.coins).toBe(60 + DAILY_CHAOS_CHEST_REWARD_COINS);
+    expect(getDailyMissionCompletionCount(recruit.state, day1)).toBe(3);
+    expect(isDailyChaosChestComplete(recruit.state, day1)).toBe(true);
+
+    const retry = claimDailyMission(recruit.state, 'recruit', day1);
+    expect(retry.claimed).toBe(false);
+    expect(retry.chestBonusCoins).toBe(0);
+  });
+
+  it('resets Daily Chaos Chest progress with the UTC daily rollover', () => {
+    let state = createDefaultDailyState(day1);
+    state = recordDailyAction(state, 'merge', 3, day1);
+    state = claimDailyMission(state, 'merge', day1).state;
+    expect(getDailyMissionCompletionCount(state, day1)).toBe(1);
+
+    const rolled = rollDailyState(state, day2);
+    expect(getDailyMissionCompletionCount(rolled, day2)).toBe(0);
+    expect(isDailyChaosChestComplete(rolled, day2)).toBe(false);
   });
 });
