@@ -1,4 +1,5 @@
 import { CrazyGamesAdapter } from './CrazyGamesAdapter';
+import { GameDistributionAdapter } from './GameDistributionAdapter';
 import type { PlatformAdapter } from './PlatformAdapter';
 import { PlaygamaAdapter } from './PlaygamaAdapter';
 import { PokiAdapter, type PokiSdkLike } from './PokiAdapter';
@@ -25,6 +26,9 @@ export function createPlatformAdapter(environment: PlatformEnvironment = browser
     return new PokiAdapter();
   }
   if (shouldUsePlaygama(environment.hostname, environment.search, environment.referrer)) return new PlaygamaAdapter();
+  if (shouldUseGameDistribution(environment.hostname, environment.search, environment.referrer)) {
+    return new GameDistributionAdapter();
+  }
   return new WebAdapter();
 }
 
@@ -49,11 +53,27 @@ export function shouldUsePlaygama(hostname: string, search: string, referrer = '
   return referrerMatches(referrer, 'playgama.com');
 }
 
+export function shouldUseGameDistribution(hostname: string, search: string, referrer = ''): boolean {
+  const hint = platformHint(search);
+  if (hint) return hint === 'gamedistribution';
+  if (hasGameDistributionReferrerParam(search)) return true;
+  if (isPortalHost(hostname, 'gamedistribution.com')) return true;
+  return referrerMatches(referrer, 'gamedistribution.com');
+}
+
 function platformHint(search: string): string | null {
   try {
     return new URLSearchParams(search).get('platform')?.trim().toLowerCase() ?? null;
   } catch {
     return null;
+  }
+}
+
+function hasGameDistributionReferrerParam(search: string): boolean {
+  try {
+    return new URLSearchParams(search).has('gd_sdk_referrer_url');
+  } catch {
+    return false;
   }
 }
 
