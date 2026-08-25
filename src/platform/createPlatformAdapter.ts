@@ -1,5 +1,6 @@
 import { CrazyGamesAdapter } from './CrazyGamesAdapter';
 import type { PlatformAdapter } from './PlatformAdapter';
+import { PlaygamaAdapter } from './PlaygamaAdapter';
 import { PokiAdapter, type PokiSdkLike } from './PokiAdapter';
 import { WebAdapter } from './WebAdapter';
 import { YandexAdapter, type YandexGamesLoaderLike } from './YandexAdapter';
@@ -23,6 +24,7 @@ export function createPlatformAdapter(environment: PlatformEnvironment = browser
   if (environment.globalScope.PokiSDK || shouldUsePoki(environment.hostname, environment.search, environment.referrer)) {
     return new PokiAdapter();
   }
+  if (shouldUsePlaygama(environment.hostname, environment.search, environment.referrer)) return new PlaygamaAdapter();
   return new WebAdapter();
 }
 
@@ -36,12 +38,15 @@ export function shouldUseCrazyGames(hostname: string, search: string): boolean {
 export function shouldUsePoki(hostname: string, search: string, referrer = ''): boolean {
   const hint = platformHint(search);
   if (hint) return hint === 'poki';
-  if (isPokiHost(hostname)) return true;
-  try {
-    return isPokiHost(new URL(referrer).hostname);
-  } catch {
-    return false;
-  }
+  if (isPortalHost(hostname, 'poki.com')) return true;
+  return referrerMatches(referrer, 'poki.com');
+}
+
+export function shouldUsePlaygama(hostname: string, search: string, referrer = ''): boolean {
+  const hint = platformHint(search);
+  if (hint) return hint === 'playgama';
+  if (isPortalHost(hostname, 'playgama.com')) return true;
+  return referrerMatches(referrer, 'playgama.com');
 }
 
 function platformHint(search: string): string | null {
@@ -52,9 +57,17 @@ function platformHint(search: string): string | null {
   }
 }
 
-function isPokiHost(hostname: string): boolean {
+function isPortalHost(hostname: string, domain: string): boolean {
   const normalizedHost = hostname.trim().toLowerCase();
-  return normalizedHost === 'poki.com' || normalizedHost.endsWith('.poki.com');
+  return normalizedHost === domain || normalizedHost.endsWith(`.${domain}`);
+}
+
+function referrerMatches(referrer: string, domain: string): boolean {
+  try {
+    return isPortalHost(new URL(referrer).hostname, domain);
+  } catch {
+    return false;
+  }
 }
 
 function browserEnvironment(): PlatformEnvironment {
