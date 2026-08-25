@@ -74,14 +74,10 @@ export function getMutationDefinition(id: MutationId): MutationDefinition {
   return found;
 }
 
-export function getAllMutationDefinitions(): readonly MutationDefinition[] {
-  return MUTATIONS;
-}
-
+export function getAllMutationDefinitions(): readonly MutationDefinition[] { return MUTATIONS; }
 export function getMutationOverlayDefinitions(): readonly MutationDefinition[] {
   return MUTATIONS.filter((mutation) => mutation.texture !== null && mutation.assetPath !== null);
 }
-
 export function isMutationId(value: unknown): value is MutationId {
   return typeof value === 'string' && (MUTATION_IDS as readonly string[]).includes(value);
 }
@@ -120,6 +116,7 @@ export function mutatedDamage(baseDamage: number, mutation: MutationId): number 
     baseDamage
     * getMutationDefinition(mutation).damageMultiplier
     * synergy.squadDamageMultiplier
+    * synergy.bossDamageMultiplier
     * perks.squadDamageMultiplier
     * currentActiveDamageMultiplier()
     * currentBossIncomingDamageMultiplier()
