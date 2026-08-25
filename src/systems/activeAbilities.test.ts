@@ -1,71 +1,87 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   MAX_COMBAT_ENERGY,
+  beginActiveAbilityEncounter,
   canCastActiveAbility,
   castActiveAbility,
   createActiveAbilityRuntimeState,
+  currentActiveDamageMultiplier,
+  currentActiveGuardMultiplier,
   currentActiveHasteMultiplier,
-  energyGainForFortressHit,
-  energyGainForUnitAttack,
+  currentActiveRewardMultiplier,
   gainCombatEnergy,
-  isTargetStunned,
-  tickActiveAbilityRuntime
+  getCurrentActiveAbilityRuntime,
+  recordCrewAttackEnergy,
+  recordFortressHitEnergy,
+  resetActiveAbilityRuntime,
+  tickActiveAbilityRuntime,
+  tickCurrentActiveAbilityRuntime,
+  tryCastCurrentActiveAbility
 } from './activeAbilities';
 
+afterEach(() => resetActiveAbilityRuntime());
+
 describe('active combat abilities', () => {
-  it('caps shared combat energy and rewards higher merge tiers modestly', () => {
+  it('caps shared combat energy and gains charge from combat events', () => {
     let state = createActiveAbilityRuntimeState(98);
     state = gainCombatEnergy(state, 9);
     expect(state.energy).toBe(MAX_COMBAT_ENERGY);
-    expect(energyGainForUnitAttack(1)).toBe(1);
-    expect(energyGainForUnitAttack(2)).toBe(2);
-    expect(energyGainForUnitAttack(3)).toBe(3);
-    expect(energyGainForFortressHit(4)).toBe(3);
-    expect(energyGainForFortressHit(40)).toBe(8);
+
+    beginActiveAbilityEncounter('wave-1');
+    recordCrewAttackEnergy();
+    recordCrewAttackEnergy();
+    recordFortressHitEnergy();
+    expect(getCurrentActiveAbilityRuntime().energy).toBe(6);
   });
 
-  it('requires the matching family synergy and enough energy', () => {
+  it('requires matching family synergy, an active target and enough energy', () => {
     const state = createActiveAbilityRuntimeState(100);
-    expect(canCastActiveAbility('slipstream-burst', state, 0, 80, true)).toBe('locked');
-    expect(canCastActiveAbility('slipstream-burst', createActiveAbilityRuntimeState(10), 1, 80, true)).toBe('energy');
-    expect(canCastActiveAbility('crust-mend', state, 1, 100, true)).toBe('full-fortress');
-    expect(canCastActiveAbility('neon-nova', state, 1, 80, false)).toBe('no-target');
+    expect(canCastActiveAbility('slipstream-burst', state, 0, true)).toBe('locked');
+    expect(canCastActiveAbility('slipstream-burst', createActiveAbilityRuntimeState(10), 1, true)).toBe('energy');
+    expect(canCastActiveAbility('neon-overdrive', state, 1, false)).toBe('no-target');
   });
 
-  it('applies temporary haste and independent cooldowns', () => {
+  it('applies distinct temporary buffs with independent cooldowns', () => {
     const state = createActiveAbilityRuntimeState(100);
-    const cast = castActiveAbility('slipstream-burst', state, 2, 500, 80, true);
+    const haste = castActiveAbility('slipstream-burst', state, 2, true);
+    expect(haste.cast).toBe(true);
+    expect(haste.effect).toEqual({ kind: 'haste', durationMs: 4_600, multiplier: 0.72 });
+    expect(haste.state.energy).toBe(58);
+    expect(haste.state.cooldowns['slipstream-burst']).toBe(14_000);
+    expect(haste.state.cooldowns['neon-overdrive']).toBe(0);
+
+    const guard = castActiveAbility('crust-guard', state, 3, true);
+    expect(guard.effect).toEqual({ kind: 'guard', durationMs: 6_000, multiplier: 0.58 });
+    const overdrive = castActiveAbility('neon-overdrive', state, 3, true);
+    expect(overdrive.effect).toEqual({ kind: 'overdrive', durationMs: 5_200, multiplier: 1.55 });
+    const jackpot = castActiveAbility('quasar-jackpot', state, 3, true);
+    expect(jackpot.effect).toEqual({ kind: 'jackpot', durationMs: 6_600, multiplier: 1.8 });
+  });
+
+  it('expires buffs while cooldowns continue independently', () => {
+    const state = createActiveAbilityRuntimeState(100);
+    const cast = castActiveAbility('slipstream-burst', state, 1, true);
+    const ticked = tickActiveAbilityRuntime(cast.state, 4_100);
+    expect(ticked.hasteRemainingMs).toBe(0);
+    expect(ticked.hasteMultiplier).toBe(1);
+    expect(ticked.cooldowns['slipstream-burst']).toBe(9_900);
+  });
+
+  it('drives the singleton runtime used by combat math and resets on a new encounter', () => {
+    beginActiveAbilityEncounter('chapter-2-wave-4');
+    for (let index = 0; index < 50; index += 1) recordCrewAttackEnergy();
+    const cast = tryCastCurrentActiveAbility('neon-overdrive', 2);
     expect(cast.cast).toBe(true);
-    expect(cast.effect?.kind).toBe('haste');
-    expect(currentActiveHasteMultiplier(cast.state)).toBeCloseTo(0.72);
-    expect(cast.state.energy).toBe(58);
-    expect(cast.state.cooldowns['slipstream-burst']).toBe(14_000);
-    expect(cast.state.cooldowns['neon-nova']).toBe(0);
+    expect(currentActiveDamageMultiplier()).toBeCloseTo(1.38);
+    expect(currentActiveHasteMultiplier()).toBe(1);
+    expect(currentActiveGuardMultiplier()).toBe(1);
+    expect(currentActiveRewardMultiplier()).toBe(1);
 
-    const ticked = tickActiveAbilityRuntime(cast.state, 4_700);
-    expect(currentActiveHasteMultiplier(ticked)).toBe(1);
-    expect(ticked.cooldowns['slipstream-burst']).toBe(9_300);
-  });
+    tickCurrentActiveAbilityRuntime(4_700);
+    expect(currentActiveDamageMultiplier()).toBe(1);
 
-  it('scales heal, burst and stun with synergy tier without one-shotting bosses', () => {
-    const full = createActiveAbilityRuntimeState(100);
-    const heal = castActiveAbility('crust-mend', full, 3, 1_000, 50, true);
-    expect(heal.effect).toEqual({ kind: 'heal', amount: 36 });
-
-    const nova = castActiveAbility('neon-nova', full, 3, 1_000, 50, true);
-    expect(nova.effect).toEqual({ kind: 'burst', damage: 170 });
-
-    const lock = castActiveAbility('quasar-lock', full, 3, 1_000, 50, true);
-    expect(lock.effect).toEqual({ kind: 'stun', durationMs: 3_900 });
-    expect(isTargetStunned(lock.state)).toBe(true);
-    expect(isTargetStunned(tickActiveAbilityRuntime(lock.state, 4_000))).toBe(false);
-  });
-
-  it('does not spend energy or start cooldown when casting is blocked', () => {
-    const state = createActiveAbilityRuntimeState(100);
-    const blocked = castActiveAbility('crust-mend', state, 1, 500, 100, true);
-    expect(blocked.cast).toBe(false);
-    expect(blocked.reason).toBe('full-fortress');
-    expect(blocked.state).toBe(state);
+    beginActiveAbilityEncounter('chapter-2-wave-5');
+    expect(getCurrentActiveAbilityRuntime().energy).toBe(0);
+    expect(getCurrentActiveAbilityRuntime().cooldowns['neon-overdrive']).toBe(0);
   });
 });
