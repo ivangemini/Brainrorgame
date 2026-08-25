@@ -3,6 +3,7 @@ import {
   currentActiveRewardMultiplier,
   recordFortressHitEnergy
 } from './activeAbilities';
+import { getCurrentChaosPerkMultipliers } from './chaosDraft';
 import { getCurrentCrewSynergyState } from './crewSynergies';
 
 export type MetaUpgradeId = 'power' | 'armor' | 'bounty';
@@ -93,13 +94,16 @@ export function squadDamageMultiplier(levels: MetaUpgradeLevels): number {
 export function incomingDamageMultiplier(levels: MetaUpgradeLevels): number {
   recordFortressHitEnergy();
   const metaMultiplier = Math.max(0.52, 1 - levels.armor * 0.06);
-  const passiveMultiplier = metaMultiplier * getCurrentCrewSynergyState().incomingDamageMultiplier;
+  const passiveMultiplier = metaMultiplier
+    * getCurrentCrewSynergyState().incomingDamageMultiplier
+    * getCurrentChaosPerkMultipliers().incomingDamageMultiplier;
   return Math.max(0.22, passiveMultiplier * currentActiveGuardMultiplier());
 }
 
 export function coinRewardMultiplier(levels: MetaUpgradeLevels): number {
   return (1 + levels.bounty * 0.1)
     * getCurrentCrewSynergyState().coinRewardMultiplier
+    * getCurrentChaosPerkMultipliers().coinRewardMultiplier
     * currentActiveRewardMultiplier();
 }
 
