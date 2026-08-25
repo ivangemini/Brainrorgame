@@ -145,13 +145,7 @@ export class RevivePanel {
     this.reviveButton.setAlpha(0.72);
     this.scene.tweens.add({ targets: this.reviveButton, scaleX: 0.96, scaleY: 0.95, duration: 80, yoyo: true, ease: 'Quad.Out' });
 
-    let revived = false;
-    try {
-      revived = await this.onRewardedRevive();
-    } catch {
-      revived = false;
-    }
-
+    const revived = await this.onRewardedRevive().catch(() => false);
     if (!this.opened) return;
     this.inFlight = false;
     if (revived) {
