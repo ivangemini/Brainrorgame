@@ -3,6 +3,7 @@ import { createGameConfig } from './game/config';
 import { createPlatformAdapter } from './platform/createPlatformAdapter';
 import type { PlatformAdapter } from './platform/PlatformAdapter';
 import { WebAdapter } from './platform/WebAdapter';
+import { installPlaytestRecorder } from './qa/PlaytestRecorder';
 import { loadGameSave } from './state/save';
 import './style.css';
 
@@ -18,6 +19,7 @@ async function initializePlatform(): Promise<PlatformAdapter> {
   }
 }
 
+const playtest = installPlaytestRecorder();
 const platform = await initializePlatform();
 const initialSave = await loadGameSave(platform);
 let game: Phaser.Game | null = null;
@@ -65,6 +67,7 @@ game = new Phaser.Game(createGameConfig('game-root', {
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
+    playtest?.destroy();
     platform.gameplayStop();
     game?.destroy(true);
   });
