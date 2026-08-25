@@ -46,13 +46,13 @@ export interface GameSaveV2 {
   readonly board: BoardState;
 }
 
-export interface GameSaveV3 extends GameSaveV2 {
+export interface GameSaveV3 extends Omit<GameSaveV2, 'version'> {
   readonly version: 3;
   readonly coreShards: number;
   readonly upgrades: MetaUpgradeLevels;
 }
 
-export interface GameSaveV4 extends GameSaveV3 {
+export interface GameSaveV4 extends Omit<GameSaveV3, 'version'> {
   readonly version: 4;
   readonly daily: DailyRetentionState;
 }
