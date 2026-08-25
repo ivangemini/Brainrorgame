@@ -1,4 +1,4 @@
-export const CREATURE_FAMILIES = ['pinguino', 'toastodilo', 'lampalotl'] as const;
+export const CREATURE_FAMILIES = ['pinguino', 'toastodilo', 'lampalotl', 'dishnail'] as const;
 
 export type CreatureFamily = (typeof CREATURE_FAMILIES)[number];
 export type CreatureLevel = 1 | 2 | 3;
@@ -26,7 +26,10 @@ const CREATURES: readonly CreatureDefinition[] = [
   { key: 'toastodilo-3', family: 'toastodilo', level: 3, name: 'Solar Toastodilo', texture: 'creature-toastodilo-3', assetPath: 'assets/characters/toastodilo-3.svg', damage: 61, attackMs: 1190, projectileColor: 0xffec92, accentColor: 0xffd65c },
   { key: 'lampalotl-1', family: 'lampalotl', level: 1, name: 'Glow Lampalotl', texture: 'creature-lampalotl-1', assetPath: 'assets/characters/lampalotl-1.svg', damage: 6, attackMs: 850, projectileColor: 0xff83de, accentColor: 0x74f1d8 },
   { key: 'lampalotl-2', family: 'lampalotl', level: 2, name: 'Prism Lampalotl', texture: 'creature-lampalotl-2', assetPath: 'assets/characters/lampalotl-2.svg', damage: 14, attackMs: 760, projectileColor: 0x82f7ff, accentColor: 0xff86d7 },
-  { key: 'lampalotl-3', family: 'lampalotl', level: 3, name: 'Nova Lampalotl', texture: 'creature-lampalotl-3', assetPath: 'assets/characters/lampalotl-3.svg', damage: 31, attackMs: 660, projectileColor: 0xfff09a, accentColor: 0xa77cff }
+  { key: 'lampalotl-3', family: 'lampalotl', level: 3, name: 'Nova Lampalotl', texture: 'creature-lampalotl-3', assetPath: 'assets/characters/lampalotl-3.svg', damage: 31, attackMs: 660, projectileColor: 0xfff09a, accentColor: 0xa77cff },
+  { key: 'dishnail-1', family: 'dishnail', level: 1, name: 'Ping Dishnail', texture: 'creature-dishnail-1', assetPath: 'assets/characters/dishnail-1.svg', damage: 15, attackMs: 1950, projectileColor: 0xffda73, accentColor: 0x6fe8ed },
+  { key: 'dishnail-2', family: 'dishnail', level: 2, name: 'Relay Dishnail', texture: 'creature-dishnail-2', assetPath: 'assets/characters/dishnail-2.svg', damage: 36, attackMs: 1760, projectileColor: 0xffef9d, accentColor: 0x80dcff },
+  { key: 'dishnail-3', family: 'dishnail', level: 3, name: 'Quasar Dishnail', texture: 'creature-dishnail-3', assetPath: 'assets/characters/dishnail-3.svg', damage: 82, attackMs: 1530, projectileColor: 0xfff3a8, accentColor: 0xc57dff }
 ];
 
 export function getCreature(family: CreatureFamily, level: number): CreatureDefinition {
