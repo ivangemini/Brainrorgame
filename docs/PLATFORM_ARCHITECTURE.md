@@ -17,7 +17,7 @@ Adapters:
 1. Web/local development — implemented
 2. Yandex Games — implemented
 3. CrazyGames — implemented
-4. Poki — planned
+4. Poki — implemented
 5. Playgama — planned
 6. GameDistribution — planned
 
@@ -26,8 +26,9 @@ Adapters:
 `createPlatformAdapter()` keeps portal detection outside gameplay code.
 
 - Yandex wins when `YaGames` is injected by the host.
-- CrazyGames is selected on `crazygames.com` subdomains.
-- `?platform=crazygames` provides an explicit localhost/preview QA route.
+- Explicit `?platform=crazygames` / `?platform=poki` hints are available for localhost and portal QA.
+- CrazyGames is detected from `crazygames.com` hosts.
+- Poki is detected from an injected `PokiSDK`, a `poki.com` host, or a Poki embedding referrer.
 - Otherwise the game falls back to the Web adapter.
 
 ## CrazyGames
@@ -42,4 +43,16 @@ The CrazyGames adapter uses the HTML5 SDK v3 and loads it only when CrazyGames i
 - Save data uses the CrazyGames Data Module as the canonical store. The SDK handles guest LocalStorage and signed-in cross-device synchronization.
 - Adapter data/ad failures fail soft so a portal outage never blocks the core game loop.
 
-The initial architecture proved Yandex first; CrazyGames now validates that the same gameplay/economy code can run behind a second real portal adapter without portal-specific branches in `GameScene`.
+## Poki
+
+The Poki adapter dynamically loads the HTML5 v2 SDK only after Poki selection.
+
+- `PokiSDK.init()` is attempted before Phaser boot. Poki's documented init-error path is fail-soft: if the script exists but init rejects, the game still starts with the Poki adapter.
+- `gameLoadingFinished()` maps to `PlatformAdapter.loadingReady()`.
+- `gameplayStart()` / `gameplayStop()` use the same scene lifecycle boundary as Yandex and CrazyGames.
+- `commercialBreak()` maps to interstitial opportunities and only pauses gameplay when Poki invokes the ad-start callback.
+- `rewardedBreak({ size: 'medium', onStart })` grants value only when the returned promise resolves `true`.
+- Save data stays in the existing `brainrot-merge-boss:save` localStorage key. Poki cloud gamesaves automatically monitor and synchronize localStorage for logged-in users.
+- Every localStorage read/write is wrapped so incognito/storage restrictions cannot prevent the game from booting or playing.
+
+The architecture is now proven against three materially different real portal contracts without adding portal branches to `GameScene` or the economy systems.
