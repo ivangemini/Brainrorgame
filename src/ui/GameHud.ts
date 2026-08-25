@@ -1,6 +1,7 @@
 import type * as Phaser from 'phaser';
 import { getChapterMutator } from '../content/chapterMutators';
 import { getAllWorlds, getWorldForChapter, getWorldStage, type WorldId } from '../content/worlds';
+import { translate } from '../i18n';
 import {
   ANOMALY_PITY_MAX,
   ANOMALY_SECRET_PITY_MAX,
@@ -44,7 +45,7 @@ export class GameHud {
     topGlow.lineStyle(3, 0xa9c8ff, 0.15);
     topGlow.strokeRoundedRect(54, 54, 972, 186, 48);
 
-    this.encounterText = this.scene.add.text(100, 80, `WAVE 1 / ${WAVES_PER_CHAPTER}`, {
+    this.encounterText = this.scene.add.text(100, 80, translate('hud.wave', { current: 1, total: WAVES_PER_CHAPTER }), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '42px', color: '#f7fbff', stroke: '#18264d', strokeThickness: 8
     });
     this.chapterText = this.scene.add.text(102, 137, 'CANDY • 1 / 5', {
@@ -55,7 +56,7 @@ export class GameHud {
     }).setOrigin(1, 0);
     this.scene.add.circle(676, 119, 25, 0xffd55e).setStrokeStyle(6, 0xfff0a6, 1);
     this.scene.add.circle(676, 119, 10, 0xf5a623);
-    this.baseText = this.scene.add.text(100, 180, 'FORTRESS 100', {
+    this.baseText = this.scene.add.text(100, 180, translate('hud.fortress', { hp: 100 }), {
       fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '27px', color: '#9ff4ff'
     });
     this.scene.add.image(684, 191, 'ui-core-shard').setDisplaySize(48, 48);
@@ -80,15 +81,15 @@ export class GameHud {
   ): void {
     this.coinsText.setText(`${coins}`);
     this.coreText.setText(`${coreShards}`);
-    this.baseText.setText(`FORTRESS ${baseHp}`);
+    this.baseText.setText(translate('hud.fortress', { hp: baseHp }));
     this.baseText.setColor(baseHp > 35 ? '#9ff4ff' : '#ff9bab');
 
     const world = getWorldForChapter(chapter);
     const stage = getWorldStage(chapter);
     this.biomeBackdrop.setTexture(world.texture);
     const mutator = getChapterMutator(chapter);
-    const stageLabel = stage <= 5 ? `${stage} / 5` : `ENDLESS ${stage}`;
-    const riftLabel = mutator && mutator.endlessTier > 0 ? `  •  RIFT ${mutator.endlessTier}` : '';
+    const stageLabel = stage <= 5 ? `${stage} / 5` : translate('hud.endless', { stage });
+    const riftLabel = mutator && mutator.endlessTier > 0 ? `  •  ${translate('hud.rift', { tier: mutator.endlessTier })}` : '';
     const mutatorLabel = mutator ? `  •  ${mutator.name.toUpperCase()}` : '';
     this.chapterText
       .setText(`${world.shortName}  •  ${stageLabel}${riftLabel}${mutatorLabel}`)
@@ -98,18 +99,18 @@ export class GameHud {
     this.showWorldTransitionIfNeeded(world.id, world.name, world.ruleLabel, world.accentColor);
 
     if (step === BOSS_STEP) {
-      this.encounterText.setText(`BOSS ${chapter}`).setColor('#fff0a6');
+      this.encounterText.setText(translate('hud.boss', { chapter })).setColor('#fff0a6');
     } else if (step === GAUNTLET_STEP) {
-      this.encounterText.setText(`CHAOS GATE ${WAVES_PER_CHAPTER} / ${WAVES_PER_CHAPTER}`).setColor('#ffcf72');
+      this.encounterText.setText(translate('hud.chaosGate', { current: WAVES_PER_CHAPTER, total: WAVES_PER_CHAPTER })).setColor('#ffcf72');
     } else {
-      this.encounterText.setText(`WAVE ${step + 1} / ${WAVES_PER_CHAPTER}`).setColor('#f7fbff');
+      this.encounterText.setText(translate('hud.wave', { current: step + 1, total: WAVES_PER_CHAPTER })).setColor('#f7fbff');
     }
     this.dailyDot.setVisible(dailyReady);
     this.collectionDot.setVisible(collectionReady);
 
     const charge = anomalyChargePercent(anomalyHunt);
     this.anomalyText
-      .setText(`ANOMALY ${anomalyHunt.charge} / ${ANOMALY_PITY_MAX}  •  CROWN SIGNAL ${anomalyHunt.secretPity} / ${ANOMALY_SECRET_PITY_MAX}`)
+      .setText(`${translate('hud.anomaly', { current: anomalyHunt.charge, max: ANOMALY_PITY_MAX })}  •  ${translate('hud.crownSignal', { current: anomalyHunt.secretPity, max: ANOMALY_SECRET_PITY_MAX })}`)
       .setColor(charge >= 80 ? '#63244d' : charge >= 50 ? '#6e3c2c' : '#76431f');
   }
 
@@ -135,7 +136,7 @@ export class GameHud {
     this.lastWorldId = id;
     const worldNumber = getAllWorlds().findIndex((world) => world.id === id) + 1;
     const color = `#${accentColor.toString(16).padStart(6, '0')}`;
-    const banner = this.scene.add.text(540, 350, `WORLD ${worldNumber} • ${name.toUpperCase()}`, {
+    const banner = this.scene.add.text(540, 350, translate('hud.world', { number: worldNumber, name: name.toUpperCase() }), {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '52px',
       color,
@@ -190,7 +191,7 @@ export class GameHud {
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x7359c9, 0.94); bg.fillRoundedRect(-94, -27, 188, 54, 24);
     bg.lineStyle(3, 0xc7f6ff, 0.35); bg.strokeRoundedRect(-94, -27, 188, 54, 24);
-    const label = this.scene.add.text(0, 0, 'UPGRADES', {
+    const label = this.scene.add.text(0, 0, translate('hud.upgrades'), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '17px', color: '#f5f9ff'
     }).setOrigin(0.5);
     this.upgradeButton = this.scene.add.container(912, 191, [bg, label]);
@@ -206,10 +207,10 @@ export class GameHud {
     background.fillStyle(0xffc94d, 1); background.fillRoundedRect(-238, -62, 476, 124, 54);
     background.lineStyle(7, 0xffef9c, 0.86); background.strokeRoundedRect(-238, -62, 476, 124, 54);
     background.fillStyle(0xf0833e, 0.34); background.fillRoundedRect(-215, 20, 430, 25, 12);
-    const label = this.scene.add.text(0, -8, `RECRUIT  •  ${RECRUIT_COST}`, {
+    const label = this.scene.add.text(0, -8, translate('hud.recruit', { cost: RECRUIT_COST }), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '37px', color: '#47271e', align: 'center'
     }).setOrigin(0.5);
-    this.anomalyText = this.scene.add.text(0, 37, `ANOMALY 0 / ${ANOMALY_PITY_MAX}  •  CROWN SIGNAL 0 / ${ANOMALY_SECRET_PITY_MAX}`, {
+    this.anomalyText = this.scene.add.text(0, 37, `${translate('hud.anomaly', { current: 0, max: ANOMALY_PITY_MAX })}  •  ${translate('hud.crownSignal', { current: 0, max: ANOMALY_SECRET_PITY_MAX })}`, {
       fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '16px', color: '#76431f'
     }).setOrigin(0.5);
     this.recruitButton = this.scene.add.container(540, 1841, [background, label, this.anomalyText]);
