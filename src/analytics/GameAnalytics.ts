@@ -3,6 +3,7 @@ import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPoli
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
+import type { OnboardingStep } from '../systems/onboarding';
 import type { AnalyticsSink, EncounterKind, GameAnalyticsEvent } from './events';
 
 export class GameAnalytics {
@@ -20,6 +21,18 @@ export class GameAnalytics {
 
   public sessionStart(returning: boolean, chapter: number): void {
     this.send({ name: 'session_start', elapsedMs: this.elapsed(), returning, chapter });
+  }
+
+  public onboardingStep(step: OnboardingStep): void {
+    if (step === 'complete') {
+      this.onboardingComplete();
+      return;
+    }
+    this.send({ name: 'onboarding_step', elapsedMs: this.elapsed(), step });
+  }
+
+  public onboardingComplete(): void {
+    this.send({ name: 'onboarding_complete', elapsedMs: this.elapsed() });
   }
 
   public merge(family: CreatureFamily, resultingLevel: number, chapter: number): void {

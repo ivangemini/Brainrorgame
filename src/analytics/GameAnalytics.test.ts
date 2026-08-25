@@ -23,6 +23,26 @@ describe('GameAnalytics', () => {
     expect(sink.events.filter((event) => event.name === 'merge')).toHaveLength(2);
   });
 
+  it('records onboarding funnel timing', () => {
+    let now = 1000;
+    const sink = new CaptureSink();
+    const analytics = new GameAnalytics(sink, () => now);
+    analytics.onboardingStep('merge');
+    now = 2400;
+    analytics.onboardingStep('recruit');
+    now = 4100;
+    analytics.onboardingStep('fight');
+    now = 7600;
+    analytics.onboardingComplete();
+
+    expect(sink.events).toEqual([
+      { name: 'onboarding_step', elapsedMs: 0, step: 'merge' },
+      { name: 'onboarding_step', elapsedMs: 1400, step: 'recruit' },
+      { name: 'onboarding_step', elapsedMs: 3100, step: 'fight' },
+      { name: 'onboarding_complete', elapsedMs: 6600 }
+    ]);
+  });
+
   it('measures encounter duration independently from session elapsed time', () => {
     let now = 1000;
     const sink = new CaptureSink();

@@ -70,7 +70,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
-- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5
+- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
 - [x] Capped offline coin progression on reload/background resume
@@ -89,6 +89,11 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Optional rewarded fortress revive with always-available free retry
 - [x] Chapter-break interstitial policy with first-session and frequency protection
 - [x] Placement-level ad analytics contract
+- [x] Interactive first-session onboarding: merge -> recruit -> fight
+- [x] Protected first merge/recruit with contextual animated coach marks
+- [x] Resumable onboarding state with pre-v6 saves migrated as already complete
+- [x] Onboarding funnel telemetry and first-session skill/doc
+- [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
 - [ ] Expand creature/boss content toward retention MVP targets
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass

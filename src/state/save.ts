@@ -18,8 +18,13 @@ import {
   getMetaUpgradeDefinition,
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
+import {
+  createCompletedOnboardingState,
+  isValidOnboardingState,
+  type OnboardingState
+} from '../systems/onboarding';
 
-export const SAVE_VERSION = 5 as const;
+export const SAVE_VERSION = 6 as const;
 
 export interface GameSaveV1 {
   readonly version: 1;
@@ -58,11 +63,16 @@ export interface GameSaveV4 extends Omit<GameSaveV3, 'version'> {
 }
 
 export interface GameSaveV5 extends Omit<GameSaveV4, 'version'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 5;
   readonly collection: CollectionProgress;
 }
 
-export type GameSave = GameSaveV5;
+export interface GameSaveV6 extends Omit<GameSaveV5, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly onboarding: OnboardingState;
+}
+
+export type GameSave = GameSaveV6;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -70,6 +80,7 @@ export interface GameSaveSnapshot {
   readonly upgrades: MetaUpgradeLevels;
   readonly daily: DailyRetentionState;
   readonly collection: CollectionProgress;
+  readonly onboarding: OnboardingState;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -97,7 +108,11 @@ interface V4ProgressFields extends CommonProgressFields {
   readonly daily: DailyRetentionState;
 }
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV5 {
+interface V5ProgressFields extends V4ProgressFields {
+  readonly collection: CollectionProgress;
+}
+
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV6 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -106,6 +121,7 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     upgrades: { ...snapshot.upgrades },
     daily: cloneDaily(snapshot.daily),
     collection: cloneCollection(snapshot.collection),
+    onboarding: cloneOnboarding(snapshot.onboarding),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -131,27 +147,44 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v2 = migrateV1ToV2(value);
     const v3 = v2 ? migrateV2ToV3(v2) : null;
     const v4 = v3 ? migrateV3ToV4(v3) : null;
-    return v4 ? migrateV4ToV5(v4) : null;
+    const v5 = v4 ? migrateV4ToV5(v4) : null;
+    return v5 ? migrateV5ToV6(v5) : null;
   }
   if (value.version === 2) {
     const v3 = migrateV2ToV3(value);
     const v4 = v3 ? migrateV3ToV4(v3) : null;
-    return v4 ? migrateV4ToV5(v4) : null;
+    const v5 = v4 ? migrateV4ToV5(v4) : null;
+    return v5 ? migrateV5ToV6(v5) : null;
   }
   if (value.version === 3) {
     const v4 = migrateV3ToV4(value);
-    return v4 ? migrateV4ToV5(v4) : null;
+    const v5 = v4 ? migrateV4ToV5(v4) : null;
+    return v5 ? migrateV5ToV6(v5) : null;
   }
-  if (value.version === 4) return migrateV4ToV5(value);
+  if (value.version === 4) {
+    const v5 = migrateV4ToV5(value);
+    return v5 ? migrateV5ToV6(v5) : null;
+  }
+  if (value.version === 5) return migrateV5ToV6(value);
   if (value.version !== SAVE_VERSION) return null;
 
-  const v4 = parseV4Fields(value);
-  const collection = parseCollection(value.collection);
-  if (!v4 || !collection) return null;
-  return { version: SAVE_VERSION, ...v4, collection };
+  const v5 = parseV5Fields(value);
+  if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
+  return { version: SAVE_VERSION, ...v5, onboarding: cloneOnboarding(value.onboarding) };
 }
 
-function migrateV4ToV5(value: unknown): GameSaveV5 | null {
+function migrateV5ToV6(value: unknown): GameSaveV6 | null {
+  if (!isRecord(value)) return null;
+  const v5 = parseV5Fields(value);
+  if (!v5) return null;
+  return {
+    version: SAVE_VERSION,
+    ...v5,
+    onboarding: createCompletedOnboardingState(v5.updatedAt)
+  };
+}
+
+function migrateV4ToV5(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
   const v4 = parseV4Fields(value);
   if (!v4) return null;
@@ -162,7 +195,7 @@ function migrateV4ToV5(value: unknown): GameSaveV5 | null {
     v4.recruitSerial,
     v4.upgrades
   );
-  return { version: SAVE_VERSION, ...v4, collection };
+  return { version: 5, ...v4, collection };
 }
 
 function migrateV3ToV4(value: unknown): Record<string, unknown> | null {
@@ -212,6 +245,13 @@ function migrateV1ToV2(value: unknown): Record<string, unknown> | null {
     recruitSerial: Math.max(0, Math.floor(value.recruitSerial)),
     board
   };
+}
+
+function parseV5Fields(value: Record<string, unknown>): V5ProgressFields | null {
+  const v4 = parseV4Fields(value);
+  const collection = parseCollection(value.collection);
+  if (!v4 || !collection) return null;
+  return { ...v4, collection };
 }
 
 function parseV4Fields(value: Record<string, unknown>): V4ProgressFields | null {
@@ -322,6 +362,10 @@ function cloneDaily(daily: DailyRetentionState): DailyRetentionState {
     counters: { ...daily.counters },
     claimed: { ...daily.claimed }
   };
+}
+
+function cloneOnboarding(onboarding: OnboardingState): OnboardingState {
+  return { step: onboarding.step, completedAt: onboarding.completedAt };
 }
 
 function parseBoard(value: unknown): BoardState | null {
