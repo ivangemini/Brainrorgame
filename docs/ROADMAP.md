@@ -62,7 +62,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Drag / move / swap / merge interaction
 - [x] Six original creature designs across two three-tier families
 - [x] Original boss and arena art
-- [x] Three original normal-wave enemies with rotating chapter order
+- [x] Six original normal-wave enemies with rotating chapter order and distinct pacing profiles
 - [x] Three-wave -> boss encounter loop
 - [x] Real-time auto combat for waves and boss
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop
@@ -94,6 +94,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Resumable onboarding state with pre-v6 saves migrated as already complete
 - [x] Onboarding funnel telemetry and first-session skill/doc
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
-- [ ] Expand creature/boss content toward retention MVP targets
+- [ ] Expand playable creature families and boss roster toward retention MVP targets
+- [ ] Mutations / rarity system
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass
