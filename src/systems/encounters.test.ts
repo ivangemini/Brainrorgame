@@ -9,6 +9,35 @@ describe('encounter progression', () => {
     expect(getEncounterSpec(1, BOSS_STEP).kind).toBe('boss');
   });
 
+  it('keeps early chapters free of elite waves', () => {
+    for (const chapter of [1, 2]) {
+      for (const step of [0, 1, 2] as const) {
+        const encounter = getEncounterSpec(chapter, step);
+        expect(encounter.kind).toBe('wave');
+        if (encounter.kind === 'wave') expect(encounter.elite).toBeNull();
+      }
+    }
+  });
+
+  it('integrates one rotating elite wave per chapter from chapter three', () => {
+    const chapter3 = [0, 1, 2].map((step) => getEncounterSpec(3, step as 0 | 1 | 2));
+    const chapter4 = [0, 1, 2].map((step) => getEncounterSpec(4, step as 0 | 1 | 2));
+    const chapter5 = [0, 1, 2].map((step) => getEncounterSpec(5, step as 0 | 1 | 2));
+    const elite3 = chapter3.filter((encounter) => encounter.kind === 'wave' && encounter.elite !== null);
+    const elite4 = chapter4.filter((encounter) => encounter.kind === 'wave' && encounter.elite !== null);
+    const elite5 = chapter5.filter((encounter) => encounter.kind === 'wave' && encounter.elite !== null);
+    expect(elite3).toHaveLength(1);
+    expect(elite4).toHaveLength(1);
+    expect(elite5).toHaveLength(1);
+    if (elite3[0]?.kind === 'wave' && elite4[0]?.kind === 'wave' && elite5[0]?.kind === 'wave') {
+      expect(elite3[0].elite?.id).toBe('berserk');
+      expect(elite4[0].elite?.id).toBe('bulwark');
+      expect(elite5[0].elite?.id).toBe('siege');
+      expect(elite3[0].reward).toBeGreaterThan(0);
+      expect(elite4[0].displaySize).toBeGreaterThan(0);
+    }
+  });
+
   it('advances boss completion into the next chapter first wave', () => {
     expect(nextEncounter(4, BOSS_STEP)).toEqual({ chapter: 5, step: 0 });
   });
