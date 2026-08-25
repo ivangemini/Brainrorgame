@@ -83,5 +83,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Chaos Codex collection with discovered / hidden creature forms
 - [x] Lifetime stats + six claimable achievements
 - [x] Conservative collection backfill for pre-v5 saves
-- [ ] Platform SDK adapters beyond web
+- [x] Yandex SDK adapter foundation: loader, LoadingAPI, lifecycle, local/cloud save arbitration
+- [x] Yandex fullscreen/rewarded ad API behind PlatformAdapter with safe callback semantics
+- [ ] Player-facing rewarded/interstitial placements and ad economy balance
+- [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass
