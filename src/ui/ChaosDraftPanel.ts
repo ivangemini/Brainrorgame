@@ -7,7 +7,7 @@ import {
 
 export class ChaosDraftPanel {
   private root!: Phaser.GameObjects.Container;
-  private cards!: readonly Phaser.GameObjects.Container[];
+  private cards!: readonly [Phaser.GameObjects.Container, Phaser.GameObjects.Container, Phaser.GameObjects.Container];
   private open = false;
 
   public constructor(
@@ -38,7 +38,7 @@ export class ChaosDraftPanel {
       strokeThickness: 4
     }).setOrigin(0.5);
 
-    this.cards = [-300, 0, 300].map((x) => this.createCard(x));
+    this.cards = [this.createCard(-300), this.createCard(0), this.createCard(300)];
     this.root = this.scene.add.container(540, 960, [dim, panel, title, subtitle, ...this.cards])
       .setDepth(1800)
       .setVisible(false);
@@ -57,7 +57,9 @@ export class ChaosDraftPanel {
     const subtitle = this.root.list[3] as Phaser.GameObjects.Text;
     subtitle.setText(`CHAPTER ${chapter} • DRAFT ${checkpoint}/2 • OWNED ${owned.length}/2`);
 
-    offers.forEach((id, index) => this.updateCard(this.cards[index], id));
+    this.updateCard(this.cards[0], offers[0]);
+    this.updateCard(this.cards[1], offers[1]);
+    this.updateCard(this.cards[2], offers[2]);
   }
 
   public hide(): void {
