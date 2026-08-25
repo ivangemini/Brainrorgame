@@ -34,7 +34,7 @@ export function isOnboardingComplete(state: OnboardingState): boolean {
 }
 
 export function blocksCombatForOnboarding(state: OnboardingState): boolean {
-  return state.step === 'merge';
+  return state.step === 'merge' || state.step === 'recruit';
 }
 
 export function isValidOnboardingState(value: unknown): value is OnboardingState {
