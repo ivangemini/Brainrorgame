@@ -51,7 +51,8 @@ describe('board rules', () => {
   });
 
   it('continues T3 ascension through epic and legendary rarity', () => {
-    const charged = Array.from<null | { id: string; family: 'dishnail'; level: 3; mutation: 'charged' }>({ length: 4 }, () => null);
+    type DishnailT3 = { id: string; family: 'dishnail'; level: 3; mutation: 'charged' | 'prismatic' };
+    const charged: Array<null | DishnailT3> = Array.from({ length: 4 }, () => null);
     charged[0] = { id: 'a', family: 'dishnail', level: 3, mutation: 'charged' };
     charged[1] = { id: 'b', family: 'dishnail', level: 3, mutation: 'charged' };
     const epic = moveOrMerge(charged, 0, 1);
@@ -64,7 +65,8 @@ describe('board rules', () => {
   });
 
   it('does not consume incompatible or already legendary T3 pairs', () => {
-    const board = Array.from<null | { id: string; family: 'pinguino'; level: 3; mutation: 'crowned' | 'prismatic' }>({ length: 4 }, () => null);
+    type PinguinoT3 = { id: string; family: 'pinguino'; level: 3; mutation: 'crowned' | 'prismatic' };
+    const board: Array<null | PinguinoT3> = Array.from({ length: 4 }, () => null);
     board[0] = { id: 'legend-a', family: 'pinguino', level: 3, mutation: 'crowned' };
     board[1] = { id: 'legend-b', family: 'pinguino', level: 3, mutation: 'crowned' };
     expect(moveOrMerge(board, 0, 1).action).toBe('swap');
