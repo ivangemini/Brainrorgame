@@ -26,6 +26,7 @@ let platformPaused = false;
 
 const applyPause = (): void => {
   if (!game || !gameSceneCreated) return;
+  platform.gameplayStop();
   game.sound.pauseAll();
   game.scene.pause('game');
 };
@@ -34,6 +35,7 @@ const applyResume = (): void => {
   if (!game || !gameSceneCreated) return;
   game.scene.resume('game');
   game.sound.resumeAll();
+  platform.gameplayStart();
 };
 
 platform.setLifecycleHandlers({
@@ -56,10 +58,14 @@ game = new Phaser.Game(createGameConfig('game-root', {
       gameSceneCreated = true;
       platform.loadingReady();
       if (platformPaused) applyPause();
+      else platform.gameplayStart();
     });
   }
 }));
 
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => game?.destroy(true));
+  import.meta.hot.dispose(() => {
+    platform.gameplayStop();
+    game?.destroy(true);
+  });
 }
