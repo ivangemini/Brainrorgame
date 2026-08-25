@@ -19,7 +19,7 @@ export interface CrewSynergyState {
   readonly attackIntervalMultiplier: number;
   readonly incomingDamageMultiplier: number;
   readonly squadDamageMultiplier: number;
-  readonly pressureDamageMultiplier: number;
+  readonly coinRewardMultiplier: number;
 }
 
 export interface ActiveCrewSynergy {
@@ -59,14 +59,25 @@ const DEFINITIONS: Readonly<Record<CreatureFamily, CrewSynergyDefinition>> = {
     name: 'Quasar Lock',
     shortLabel: 'LOCK',
     accentColor: 0xc57dff,
-    effect: 'Boss and Chaos Gate damage'
+    effect: 'Coin bounty from combat'
   }
 };
 
 const ATTACK_INTERVAL_BY_TIER = [1, 0.97, 0.94, 0.9] as const;
 const INCOMING_DAMAGE_BY_TIER = [1, 0.96, 0.91, 0.85] as const;
 const SQUAD_DAMAGE_BY_TIER = [1, 1.04, 1.08, 1.14] as const;
-const PRESSURE_DAMAGE_BY_TIER = [1, 1.08, 1.16, 1.25] as const;
+const COIN_REWARD_BY_TIER = [1, 1.05, 1.1, 1.18] as const;
+
+const EMPTY_STATE: CrewSynergyState = {
+  familyPower: { pinguino: 0, toastodilo: 0, lampalotl: 0, dishnail: 0 },
+  tiers: { pinguino: 0, toastodilo: 0, lampalotl: 0, dishnail: 0 },
+  attackIntervalMultiplier: 1,
+  incomingDamageMultiplier: 1,
+  squadDamageMultiplier: 1,
+  coinRewardMultiplier: 1
+};
+
+let currentState: CrewSynergyState = EMPTY_STATE;
 
 export function evaluateCrewSynergies(board: BoardState): CrewSynergyState {
   const familyPower: Record<CreatureFamily, number> = {
@@ -94,8 +105,21 @@ export function evaluateCrewSynergies(board: BoardState): CrewSynergyState {
     attackIntervalMultiplier: ATTACK_INTERVAL_BY_TIER[tiers.pinguino],
     incomingDamageMultiplier: INCOMING_DAMAGE_BY_TIER[tiers.toastodilo],
     squadDamageMultiplier: SQUAD_DAMAGE_BY_TIER[tiers.lampalotl],
-    pressureDamageMultiplier: PRESSURE_DAMAGE_BY_TIER[tiers.dishnail]
+    coinRewardMultiplier: COIN_REWARD_BY_TIER[tiers.dishnail]
   };
+}
+
+export function syncCrewSynergyState(board: BoardState): CrewSynergyState {
+  currentState = evaluateCrewSynergies(board);
+  return currentState;
+}
+
+export function getCurrentCrewSynergyState(): CrewSynergyState {
+  return currentState;
+}
+
+export function resetCrewSynergyState(): void {
+  currentState = EMPTY_STATE;
 }
 
 export function getActiveCrewSynergies(state: CrewSynergyState): readonly ActiveCrewSynergy[] {
