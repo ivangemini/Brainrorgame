@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createStarterBoard } from './board';
 import {
+  ACHIEVEMENTS,
   COLLECTION_KEYS,
   achievementProgress,
   backfillCollectionProgress,
@@ -23,6 +24,13 @@ describe('collection progression', () => {
     expect(COLLECTION_KEYS).toContain('mochimoth-3');
     expect(COLLECTION_KEYS).toContain('routeraptor-3');
     expect(COLLECTION_KEYS).toContain('vendinguana-3');
+  });
+
+  it('keeps a long-tail achievement ladder beyond the first-session goals', () => {
+    expect(ACHIEVEMENTS).toHaveLength(15);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === 'fusion-overdrive' && achievement.target === 150)).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === 'fortress-janitor' && achievement.target === 300)).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === 'boss-nightmare' && achievement.target === 20)).toBe(true);
   });
 
   it('backfills lower tiers and minimum legacy stats', () => {
@@ -52,5 +60,15 @@ describe('collection progression', () => {
     expect(first.claimed).toBe(true);
     expect(first.reward.coins).toBe(50);
     expect(second.claimed).toBe(false);
+  });
+
+  it('derives codex mastery achievements from discoveries without another persisted counter', () => {
+    let progress = createDefaultCollectionProgress();
+    for (const key of COLLECTION_KEYS.slice(0, 7)) progress = discoverCreature(progress, key);
+    const scout = achievementProgress(progress, 'codex-scout');
+    expect(scout).toMatchObject({ current: 7, target: 7, ready: true, claimed: false });
+
+    for (const key of COLLECTION_KEYS.slice(7)) progress = discoverCreature(progress, key);
+    expect(achievementProgress(progress, 'codex-complete')).toMatchObject({ current: 21, target: 21, ready: true });
   });
 });

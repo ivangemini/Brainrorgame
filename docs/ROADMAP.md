@@ -85,6 +85,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Progression-gated seven-family recruit pool: 4 starters -> Mochimoth Ch3 -> Routeraptor Ch6 -> Vendinguana Ch11
 - [x] Persistent Anomaly Hunt on normal Recruit with mutation safety net by pull 18 and Crown Signal hard guarantee by pull 70
 - [x] Recruit HUD exposes both Anomaly Hunt counters with guarantee and secret-result reveal feedback
+- [x] Bounded Recruit analytics expose pre-roll Anomaly Charge / Crown Signal plus guarantee and secret outcome flags
 - [x] Merge-stable crew-family synergy power with Tier I / II / III thresholds
 - [x] Pinguino haste, Toastodilo armor, Lampalotl damage, Dishnail bounty, Mochimoth sustain, Routeraptor energy and Vendinguana boss-break identities
 - [x] Active crew synergy labels with tier-change pulse above the merge board
@@ -118,8 +119,10 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Typed privacy-safe analytics event contract and gameplay funnel instrumentation
 - [x] Analytics agent skill and vendor-independent PlatformAdapter sink
 - [x] Chaos Codex collection with discovered / hidden creature forms
-- [x] Chaos Codex paginated for the full 21-form roster without overlapping achievements
-- [x] Lifetime stats + six claimable achievements
+- [x] Chaos Codex paginated for the full 21-form roster
+- [x] Fifteen claimable achievements spanning short-, medium- and long-tail merge/recruit/defeat/boss/Core Lab/Codex mastery goals
+- [x] Independent achievement pagination keeps the expanded mastery ladder readable without crowding creature cards
+- [x] Codex mastery goals derive directly from discovered forms without a redundant persisted counter
 - [x] Conservative collection backfill for legacy saves
 - [x] Yandex SDK adapter foundation: loader, LoadingAPI, lifecycle, local/cloud save arbitration
 - [x] Yandex fullscreen/rewarded ad API behind PlatformAdapter with safe callback semantics

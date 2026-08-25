@@ -10,10 +10,19 @@ export type LifetimeEvent = 'merge' | 'recruit' | 'defeat' | 'boss' | 'upgrade';
 export type AchievementId =
   | 'first-fusion'
   | 'merge-maniac'
+  | 'fusion-factory'
+  | 'fusion-overdrive'
   | 'weird-recruiter'
+  | 'anomaly-scout'
+  | 'anomaly-obsessed'
   | 'wave-cleaner'
+  | 'chaos-cleaner'
+  | 'fortress-janitor'
   | 'boss-breaker'
-  | 'core-engineer';
+  | 'boss-nightmare'
+  | 'core-engineer'
+  | 'codex-scout'
+  | 'codex-complete';
 
 export interface LifetimeStats {
   readonly merges: number;
@@ -34,11 +43,13 @@ export interface AchievementReward {
   readonly coreShards: number;
 }
 
+export type AchievementMetric = keyof LifetimeStats | 'discoveries';
+
 export interface AchievementDefinition {
   readonly id: AchievementId;
   readonly name: string;
   readonly description: string;
-  readonly stat: keyof LifetimeStats;
+  readonly metric: AchievementMetric;
   readonly target: number;
   readonly reward: AchievementReward;
 }
@@ -50,12 +61,21 @@ export interface AchievementClaimResult {
 }
 
 export const ACHIEVEMENTS: readonly AchievementDefinition[] = [
-  { id: 'first-fusion', name: 'FIRST FUSION', description: 'Complete 1 merge', stat: 'merges', target: 1, reward: { coins: 50, coreShards: 0 } },
-  { id: 'merge-maniac', name: 'MERGE MANIAC', description: 'Complete 10 merges', stat: 'merges', target: 10, reward: { coins: 0, coreShards: 1 } },
-  { id: 'weird-recruiter', name: 'WEIRD RECRUITER', description: 'Recruit 10 weirdos', stat: 'recruits', target: 10, reward: { coins: 100, coreShards: 0 } },
-  { id: 'wave-cleaner', name: 'WAVE CLEANER', description: 'Defeat 20 targets', stat: 'defeats', target: 20, reward: { coins: 150, coreShards: 0 } },
-  { id: 'boss-breaker', name: 'BOSS BREAKER', description: 'Defeat 5 bosses', stat: 'bosses', target: 5, reward: { coins: 0, coreShards: 2 } },
-  { id: 'core-engineer', name: 'CORE ENGINEER', description: 'Buy 3 Core Lab upgrades', stat: 'upgrades', target: 3, reward: { coins: 0, coreShards: 1 } }
+  { id: 'first-fusion', name: 'FIRST FUSION', description: 'Complete 1 merge', metric: 'merges', target: 1, reward: { coins: 50, coreShards: 0 } },
+  { id: 'merge-maniac', name: 'MERGE MANIAC', description: 'Complete 10 merges', metric: 'merges', target: 10, reward: { coins: 0, coreShards: 1 } },
+  { id: 'fusion-factory', name: 'FUSION FACTORY', description: 'Complete 50 merges', metric: 'merges', target: 50, reward: { coins: 250, coreShards: 0 } },
+  { id: 'fusion-overdrive', name: 'FUSION OVERDRIVE', description: 'Complete 150 merges', metric: 'merges', target: 150, reward: { coins: 0, coreShards: 3 } },
+  { id: 'weird-recruiter', name: 'WEIRD RECRUITER', description: 'Recruit 10 weirdos', metric: 'recruits', target: 10, reward: { coins: 100, coreShards: 0 } },
+  { id: 'anomaly-scout', name: 'ANOMALY SCOUT', description: 'Recruit 50 weirdos', metric: 'recruits', target: 50, reward: { coins: 300, coreShards: 0 } },
+  { id: 'anomaly-obsessed', name: 'ANOMALY OBSESSED', description: 'Recruit 150 weirdos', metric: 'recruits', target: 150, reward: { coins: 0, coreShards: 3 } },
+  { id: 'wave-cleaner', name: 'WAVE CLEANER', description: 'Defeat 20 targets', metric: 'defeats', target: 20, reward: { coins: 150, coreShards: 0 } },
+  { id: 'chaos-cleaner', name: 'CHAOS CLEANER', description: 'Defeat 100 targets', metric: 'defeats', target: 100, reward: { coins: 350, coreShards: 0 } },
+  { id: 'fortress-janitor', name: 'FORTRESS JANITOR', description: 'Defeat 300 targets', metric: 'defeats', target: 300, reward: { coins: 0, coreShards: 4 } },
+  { id: 'boss-breaker', name: 'BOSS BREAKER', description: 'Defeat 5 bosses', metric: 'bosses', target: 5, reward: { coins: 0, coreShards: 2 } },
+  { id: 'boss-nightmare', name: 'BOSS NIGHTMARE', description: 'Defeat 20 bosses', metric: 'bosses', target: 20, reward: { coins: 0, coreShards: 4 } },
+  { id: 'core-engineer', name: 'CORE ENGINEER', description: 'Buy 3 Core Lab upgrades', metric: 'upgrades', target: 3, reward: { coins: 0, coreShards: 1 } },
+  { id: 'codex-scout', name: 'CODEX SCOUT', description: 'Discover 7 creature forms', metric: 'discoveries', target: 7, reward: { coins: 200, coreShards: 0 } },
+  { id: 'codex-complete', name: 'CODEX COMPLETE', description: 'Discover all 21 forms', metric: 'discoveries', target: 21, reward: { coins: 0, coreShards: 5 } }
 ] as const;
 
 export function createDefaultCollectionProgress(board?: BoardState): CollectionProgress {
@@ -122,7 +142,9 @@ export function recordLifetimeEvent(progress: CollectionProgress, event: Lifetim
 
 export function achievementProgress(progress: CollectionProgress, id: AchievementId): { current: number; target: number; ready: boolean; claimed: boolean } {
   const definition = getAchievement(id);
-  const current = progress.stats[definition.stat];
+  const current = definition.metric === 'discoveries'
+    ? progress.discovered.length
+    : progress.stats[definition.metric];
   const claimed = progress.claimedAchievements.includes(id);
   return { current: Math.min(current, definition.target), target: definition.target, ready: current >= definition.target && !claimed, claimed };
 }

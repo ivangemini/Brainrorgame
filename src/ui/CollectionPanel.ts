@@ -10,6 +10,7 @@ import {
 } from '../systems/collectionProgression';
 
 const CREATURES_PER_PAGE = 8;
+const ACHIEVEMENTS_PER_PAGE = 6;
 
 export class CollectionPanel {
   private overlay!: Phaser.GameObjects.Rectangle;
@@ -20,8 +21,12 @@ export class CollectionPanel {
   private pageText!: Phaser.GameObjects.Text;
   private prevButton!: Phaser.GameObjects.Container;
   private nextButton!: Phaser.GameObjects.Container;
+  private achievementPageText!: Phaser.GameObjects.Text;
+  private achievementPrevButton!: Phaser.GameObjects.Container;
+  private achievementNextButton!: Phaser.GameObjects.Container;
   private opened = false;
   private page = 0;
+  private achievementPage = 0;
   private latestProgress: CollectionProgress | null = null;
 
   public constructor(
@@ -73,13 +78,19 @@ export class CollectionPanel {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: '#bfefff', stroke: '#171a37', strokeThickness: 4
     }).setOrigin(0.5);
     const achievementLabel = this.scene.add.text(-420, 89, 'ACHIEVEMENTS', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#ffd984' });
+    this.achievementPrevButton = this.createAchievementPageButton(292, 105, '‹', () => this.changeAchievementPage(-1));
+    this.achievementPageText = this.scene.add.text(350, 105, '1 / 3', {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '14px', color: '#bfefff'
+    }).setOrigin(0.5);
+    this.achievementNextButton = this.createAchievementPageButton(408, 105, '›', () => this.changeAchievementPage(1));
 
     this.cardsRoot = this.scene.add.container(0, 0);
     this.achievementsRoot = this.scene.add.container(0, 0);
     this.root = this.scene.add.container(540, 960, [
       blocker, panel, icon, title, this.titleCount, closeBg, close, closeHit,
       collectionLabel, rarityLegend, this.prevButton, this.nextButton, this.pageText,
-      ascensionNote, achievementLabel, this.cardsRoot, this.achievementsRoot
+      ascensionNote, achievementLabel, this.achievementPrevButton, this.achievementPageText, this.achievementNextButton,
+      this.cardsRoot, this.achievementsRoot
     ]).setDepth(1850).setVisible(false);
   }
 
@@ -89,6 +100,8 @@ export class CollectionPanel {
     const creatures = getAllCreatures();
     const maxPage = Math.max(0, Math.ceil(creatures.length / CREATURES_PER_PAGE) - 1);
     this.page = Math.min(this.page, maxPage);
+    const maxAchievementPage = Math.max(0, Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PER_PAGE) - 1);
+    this.achievementPage = Math.min(this.achievementPage, maxAchievementPage);
     this.titleCount.setText(`${progress.discovered.length} / ${creatures.length} discovered`);
     this.renderCreatureCards(progress);
     this.renderAchievements(progress);
@@ -138,6 +151,18 @@ export class CollectionPanel {
     return button;
   }
 
+  private createAchievementPageButton(x: number, y: number, label: string, onPress: () => void): Phaser.GameObjects.Container {
+    const bg = this.scene.add.circle(0, 0, 21, 0x28345b, 0.98).setStrokeStyle(2, 0x9defff, 0.3);
+    const text = this.scene.add.text(0, -1, label, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '23px', color: '#eaffff' }).setOrigin(0.5);
+    const button = this.scene.add.container(x, y, [bg, text]);
+    button.setSize(48, 48).setInteractive({ useHandCursor: true });
+    button.on('pointerdown', () => {
+      this.scene.tweens.add({ targets: button, scaleX: 0.88, scaleY: 0.88, duration: 65, yoyo: true, ease: 'Quad.Out' });
+      onPress();
+    });
+    return button;
+  }
+
   private changePage(direction: number): void {
     const creatures = getAllCreatures();
     const maxPage = Math.max(0, Math.ceil(creatures.length / CREATURES_PER_PAGE) - 1);
@@ -145,6 +170,14 @@ export class CollectionPanel {
     if (next === this.page) return;
     this.page = next;
     if (this.latestProgress) this.renderCreatureCards(this.latestProgress);
+  }
+
+  private changeAchievementPage(direction: number): void {
+    const maxPage = Math.max(0, Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PER_PAGE) - 1);
+    const next = Phaser.Math.Clamp(this.achievementPage + direction, 0, maxPage);
+    if (next === this.achievementPage) return;
+    this.achievementPage = next;
+    if (this.latestProgress) this.renderAchievements(this.latestProgress);
   }
 
   private renderCreatureCards(progress: CollectionProgress): void {
@@ -183,7 +216,14 @@ export class CollectionPanel {
 
   private renderAchievements(progress: CollectionProgress): void {
     this.achievementsRoot.removeAll(true);
-    ACHIEVEMENTS.forEach((achievement, index) => {
+    const pageCount = Math.max(1, Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PER_PAGE));
+    const start = this.achievementPage * ACHIEVEMENTS_PER_PAGE;
+    const visible = ACHIEVEMENTS.slice(start, start + ACHIEVEMENTS_PER_PAGE);
+    this.achievementPageText.setText(`${this.achievementPage + 1} / ${pageCount}`);
+    this.achievementPrevButton.setAlpha(this.achievementPage > 0 ? 1 : 0.28);
+    this.achievementNextButton.setAlpha(this.achievementPage < pageCount - 1 ? 1 : 0.28);
+
+    visible.forEach((achievement, index) => {
       const status = achievementProgress(progress, achievement.id);
       const y = 156 + index * 88;
       const row = this.scene.add.graphics();
