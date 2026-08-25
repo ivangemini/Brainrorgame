@@ -42,6 +42,7 @@ export class BootScene extends Phaser.Scene {
     this.load.svg('ui-offline-cache', 'assets/ui/offline-cache.svg', { width: 260, height: 260 });
     this.load.svg('ui-daily-orbit', 'assets/ui/daily-orbit.svg', { width: 96, height: 96 });
     this.load.svg('ui-chaos-codex', 'assets/ui/chaos-codex.svg', { width: 96, height: 96 });
+    this.load.svg('ui-revive-bolt', 'assets/ui/revive-bolt.svg', { width: 250, height: 250 });
   }
 
   public create(): void {

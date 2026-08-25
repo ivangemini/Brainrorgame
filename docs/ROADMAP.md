@@ -85,6 +85,10 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Conservative collection backfill for pre-v5 saves
 - [x] Yandex SDK adapter foundation: loader, LoadingAPI, lifecycle, local/cloud save arbitration
 - [x] Yandex fullscreen/rewarded ad API behind PlatformAdapter with safe callback semantics
-- [ ] Player-facing rewarded/interstitial placements and ad economy balance
+- [x] Optional rewarded offline double while base earnings stay free
+- [x] Optional rewarded fortress revive with always-available free retry
+- [x] Chapter-break interstitial policy with first-session and frequency protection
+- [x] Placement-level ad analytics contract
+- [ ] Expand creature/boss content toward retention MVP targets
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass

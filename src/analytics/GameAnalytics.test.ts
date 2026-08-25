@@ -40,6 +40,20 @@ describe('GameAnalytics', () => {
     }
   });
 
+  it('records monetization placement and rewarded outcome', () => {
+    const sink = new CaptureSink();
+    const analytics = new GameAnalytics(sink, () => 1000);
+    analytics.rewardedAdResult('offline_double', true);
+    analytics.interstitialRequest('chapter_break', 3);
+    analytics.interstitialComplete('chapter_break', 3);
+
+    expect(sink.events).toEqual([
+      { name: 'rewarded_ad_result', elapsedMs: 0, placement: 'offline_double', rewarded: true },
+      { name: 'interstitial_ad_request', elapsedMs: 0, placement: 'chapter_break', completedChapter: 3 },
+      { name: 'interstitial_ad_complete', elapsedMs: 0, placement: 'chapter_break', completedChapter: 3 }
+    ]);
+  });
+
   it('never propagates sink failures into gameplay', () => {
     const sink: AnalyticsSink = {
       trackEvent: () => {

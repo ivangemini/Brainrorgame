@@ -5,6 +5,7 @@ import { getCreature, type CreatureFamily } from '../content/creatures';
 import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { createGameSave, type GameSave } from '../state/save';
+import { shouldRequestChapterInterstitial } from '../systems/adPolicy';
 import {
   claimAchievement,
   createDefaultCollectionProgress,
@@ -55,11 +56,13 @@ import { DailyPanel } from '../ui/DailyPanel';
 import { GameHud } from '../ui/GameHud';
 import { MetaUpgradePanel } from '../ui/MetaUpgradePanel';
 import { OfflineRewardPanel } from '../ui/OfflineRewardPanel';
+import { RevivePanel } from '../ui/RevivePanel';
 import { BoardView } from '../views/BoardView';
 import { BossView } from '../views/BossView';
 import { EnemyView } from '../views/EnemyView';
 
 const RECRUIT_COST = 20;
+const REWARDED_REVIVE_HP = 60;
 
 export class GameScene extends Phaser.Scene {
   private board: BoardState = createStarterBoard();
@@ -73,6 +76,7 @@ export class GameScene extends Phaser.Scene {
   private offlinePanel!: OfflineRewardPanel;
   private dailyPanel!: DailyPanel;
   private collectionPanel!: CollectionPanel;
+  private revivePanel!: RevivePanel;
   private boardView!: BoardView;
   private bossView!: BossView;
   private enemyView!: EnemyView;
@@ -93,6 +97,9 @@ export class GameScene extends Phaser.Scene {
   private recruitSerial = 0;
   private savePending = false;
   private lastForegroundAt = Date.now();
+  private readonly sessionStartedAt = Date.now();
+  private lastInterstitialRequestAt: number | null = null;
+  private reviveUsedThisEncounter = false;
 
   private readonly visibilityHandler = (): void => {
     if (document.visibilityState === 'hidden') {
@@ -139,13 +146,22 @@ export class GameScene extends Phaser.Scene {
       () => this.toggleCollectionPanel()
     );
     this.metaPanel = new MetaUpgradePanel(this, (id) => this.buyMetaUpgrade(id));
-    this.offlinePanel = new OfflineRewardPanel(this, () => this.audio.reward());
+    this.offlinePanel = new OfflineRewardPanel(
+      this,
+      () => this.audio.reward(),
+      (reward) => this.doubleOfflineReward(reward)
+    );
     this.dailyPanel = new DailyPanel(
       this,
       () => this.claimDailyCalendarReward(),
       (id) => this.claimDailyMissionReward(id)
     );
     this.collectionPanel = new CollectionPanel(this, (id) => this.claimAchievementReward(id));
+    this.revivePanel = new RevivePanel(
+      this,
+      () => this.tryRewardedRevive(),
+      () => this.freeRetryEncounter()
+    );
     this.boardView = new BoardView(
       this,
       this.fx,
@@ -160,6 +176,7 @@ export class GameScene extends Phaser.Scene {
     this.offlinePanel.create();
     this.dailyPanel.create();
     this.collectionPanel.create();
+    this.revivePanel.create();
     this.bossView.create();
     this.enemyView.create();
     this.boardView.createFrame();
@@ -368,6 +385,27 @@ export class GameScene extends Phaser.Scene {
   }
 
   private advanceEncounter(wasBoss: boolean): void {
+    if (wasBoss && this.shouldShowChapterInterstitial()) {
+      void this.showChapterInterstitialThenAdvance();
+      return;
+    }
+    this.finishAdvanceEncounter(wasBoss);
+  }
+
+  private async showChapterInterstitialThenAdvance(): Promise<void> {
+    const completedChapter = this.chapter;
+    this.lastInterstitialRequestAt = Date.now();
+    this.analytics.interstitialRequest('chapter_break', completedChapter);
+    try {
+      await this.platform.showInterstitial();
+    } catch {
+      // Ad availability must never block progression.
+    }
+    this.analytics.interstitialComplete('chapter_break', completedChapter);
+    this.finishAdvanceEncounter(true);
+  }
+
+  private finishAdvanceEncounter(wasBoss: boolean): void {
     const next = nextEncounter(this.chapter, this.encounterStep);
     this.chapter = next.chapter;
     this.encounterStep = next.step;
@@ -377,6 +415,7 @@ export class GameScene extends Phaser.Scene {
     this.baseHp = Math.min(100, this.baseHp + (wasBoss ? 20 : 4));
     this.targetAlive = true;
     this.resolvingBoard = false;
+    this.reviveUsedThisEncounter = false;
     this.targetAttackClock = 0;
     this.attackClocks.clear();
     this.presentEncounter(false);
@@ -388,32 +427,70 @@ export class GameScene extends Phaser.Scene {
     this.persistNow();
   }
 
+  private shouldShowChapterInterstitial(): boolean {
+    const now = Date.now();
+    return shouldRequestChapterInterstitial({
+      completedChapter: this.chapter,
+      sessionElapsedMs: now - this.sessionStartedAt,
+      sinceLastRequestMs: this.lastInterstitialRequestAt === null ? null : now - this.lastInterstitialRequestAt
+    });
+  }
+
   private loseEncounter(): void {
     if (!this.targetAlive) return;
     this.analytics.fortressFailed(this.encounter.kind, this.chapter, this.encounterStep);
     this.targetAlive = false;
     this.resolvingBoard = true;
+    this.targetAttackClock = 0;
+    this.attackClocks.clear();
     const banner = this.add.text(540, 920, 'FORTRESS CRACKED!', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '62px', color: '#dff9ff', stroke: '#30446f', strokeThickness: 12
     }).setOrigin(0.5).setDepth(1400).setScale(0.5);
     this.tweens.add({ targets: banner, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.Out' });
     this.fx.flashScreen(0x74dfff, 0.22, 420);
-    this.time.delayedCall(1250, () => {
+    this.time.delayedCall(720, () => {
       banner.destroy();
-      this.baseHp = 100;
-      this.targetHp = this.targetHpMax;
-      this.targetAlive = true;
-      this.resolvingBoard = false;
-      this.targetAttackClock = 0;
-      this.attackClocks.clear();
-      this.presentEncounter(true);
-      this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
-      this.persistNow();
+      this.revivePanel.show(!this.reviveUsedThisEncounter);
     });
   }
 
+  private async tryRewardedRevive(): Promise<boolean> {
+    if (this.reviveUsedThisEncounter) return false;
+    const rewarded = await this.platform.showRewarded()
+      .then((result) => result.rewarded)
+      .catch(() => false);
+    this.analytics.rewardedAdResult('fortress_revive', rewarded);
+    if (!rewarded) return false;
+
+    this.reviveUsedThisEncounter = true;
+    this.baseHp = REWARDED_REVIVE_HP;
+    this.targetAlive = true;
+    this.resolvingBoard = false;
+    this.targetAttackClock = 0;
+    this.attackClocks.clear();
+    this.presentEncounter(true);
+    this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
+    this.audio.reward();
+    this.fx.showHint('REVIVED • ENEMY DAMAGE KEPT', 1015, '#bffaff');
+    this.persistNow();
+    return true;
+  }
+
+  private freeRetryEncounter(): void {
+    this.baseHp = 100;
+    this.targetHp = this.targetHpMax;
+    this.targetAlive = true;
+    this.resolvingBoard = false;
+    this.targetAttackClock = 0;
+    this.attackClocks.clear();
+    this.presentEncounter(true);
+    this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
+    this.fx.showHint('RETRY — FULL ENEMY HP', 1015, '#c7f7ff');
+    this.persistNow();
+  }
+
   private toggleMetaPanel(): void {
-    if (this.offlinePanel.isOpen()) return;
+    if (this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
     this.audio.button();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
@@ -422,7 +499,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleDailyPanel(): void {
-    if (this.offlinePanel.isOpen()) return;
+    if (this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
     this.audio.button();
     this.daily = rollDailyState(this.daily);
     this.dailyPanel.update(this.daily);
@@ -434,7 +511,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleCollectionPanel(): void {
-    if (this.offlinePanel.isOpen()) return;
+    if (this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
     this.audio.button();
     this.collectionPanel.update(this.collection);
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
@@ -473,6 +550,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.coins += result.reward.coins;
     this.coreShards += result.reward.coreShards;
+    this.analytics.achievementClaim(id, result.reward.coins, result.reward.coreShards);
     this.audio.reward();
     const rewardLabel = result.reward.coreShards > 0
       ? `ACHIEVEMENT +${result.reward.coreShards} CORE SHARD${result.reward.coreShards === 1 ? '' : 'S'}`
@@ -534,6 +612,7 @@ export class GameScene extends Phaser.Scene {
 
   private applyOfflineReward(reward: OfflineReward): void {
     if (reward.coins <= 0) return;
+    const reviveFlowActive = this.revivePanel.isOpen();
     this.coins += reward.coins;
     this.analytics.offlineReward(reward.coins, reward.rewardedSeconds, this.chapter);
     this.syncUi();
@@ -541,7 +620,22 @@ export class GameScene extends Phaser.Scene {
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
-    this.offlinePanel.show(reward);
+    if (!reviveFlowActive) this.offlinePanel.show(reward);
+  }
+
+  private async doubleOfflineReward(reward: OfflineReward): Promise<boolean> {
+    const rewarded = await this.platform.showRewarded()
+      .then((result) => result.rewarded)
+      .catch(() => false);
+    this.analytics.rewardedAdResult('offline_double', rewarded);
+    if (!rewarded) return false;
+
+    this.coins += reward.coins;
+    this.syncUi();
+    this.persistNow();
+    this.audio.reward();
+    this.fx.showHint(`OFFLINE BONUS +${reward.coins}`, 1015, '#fff0a6');
+    return true;
   }
 
   private presentEncounter(initial: boolean): void {
@@ -632,6 +726,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isBlockingPanelOpen(): boolean {
-    return this.metaPanel.isOpen() || this.offlinePanel.isOpen() || this.dailyPanel.isOpen() || this.collectionPanel.isOpen();
+    return this.metaPanel.isOpen()
+      || this.offlinePanel.isOpen()
+      || this.dailyPanel.isOpen()
+      || this.collectionPanel.isOpen()
+      || this.revivePanel.isOpen();
   }
 }
