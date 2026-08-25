@@ -43,11 +43,11 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 
 ## Phase 4 — distribution
 
-- CrazyGames adapter/build.
-- Poki adapter/build.
-- Playgama adapter/build.
-- GameDistribution adapter/build.
-- Creative/store-page A/B asset variants.
+- [x] CrazyGames adapter/build foundation.
+- [ ] Poki adapter/build.
+- [ ] Playgama adapter/build.
+- [ ] GameDistribution adapter/build.
+- [ ] Creative/store-page A/B asset variants.
 
 ## Phase 5 — live ops
 
@@ -120,6 +120,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Conservative collection backfill for legacy saves
 - [x] Yandex SDK adapter foundation: loader, LoadingAPI, lifecycle, local/cloud save arbitration
 - [x] Yandex fullscreen/rewarded ad API behind PlatformAdapter with safe callback semantics
+- [x] CrazyGames HTML5 SDK v3 adapter: dynamic loader, loading/gameplay lifecycle, ads and Data Module saves
+- [x] CrazyGames production host detection plus `?platform=crazygames` localhost QA route
 - [x] Optional rewarded offline double while base earnings stay free
 - [x] Optional rewarded fortress revive with always-available free retry
 - [x] Chapter-break interstitial policy with first-session and frequency protection
@@ -131,5 +133,5 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
 - [x] Retention MVP content target reached: creatures 21 / 20–30 target, bosses 6 / 4–6 target
 - [x] Mutations / rarity system
-- [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
+- [ ] Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass
