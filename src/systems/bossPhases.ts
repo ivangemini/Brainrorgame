@@ -14,6 +14,8 @@ export interface BossPhaseState {
   readonly enrage: boolean;
 }
 
+let currentState: BossPhaseState | null = null;
+
 export function getBossPhaseState(
   profile: BossPhaseProfile,
   currentHp: number,
@@ -61,6 +63,35 @@ export function getBossPhaseState(
     label: weak ? profile.weakLabel : profile.enrageLabel,
     enrage: true
   };
+}
+
+export function syncBossPhaseRuntime(
+  profile: BossPhaseProfile,
+  currentHp: number,
+  maxHp: number
+): BossPhaseState {
+  currentState = getBossPhaseState(profile, currentHp, maxHp);
+  return currentState;
+}
+
+export function clearBossPhaseRuntime(): void {
+  currentState = null;
+}
+
+export function getCurrentBossPhaseState(): BossPhaseState | null {
+  return currentState;
+}
+
+export function currentBossIncomingDamageMultiplier(): number {
+  return currentState?.incomingDamageMultiplier ?? 1;
+}
+
+export function currentBossAttackIntervalMultiplier(): number {
+  return currentState?.attackIntervalMultiplier ?? 1;
+}
+
+export function currentBossOutgoingDamageMultiplier(): number {
+  return currentState?.outgoingDamageMultiplier ?? 1;
 }
 
 export function applyBossIncomingDamage(amount: number, state: BossPhaseState): number {
