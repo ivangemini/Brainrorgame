@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
@@ -72,6 +73,18 @@ export class GameAnalytics {
 
   public achievementClaim(achievement: AchievementId, coins: number, coreShards: number): void {
     this.send({ name: 'achievement_claim', elapsedMs: this.elapsed(), achievement, coins, coreShards });
+  }
+
+  public rewardedAdResult(placement: RewardedPlacement, rewarded: boolean): void {
+    this.send({ name: 'rewarded_ad_result', elapsedMs: this.elapsed(), placement, rewarded });
+  }
+
+  public interstitialRequest(placement: InterstitialPlacement, completedChapter: number): void {
+    this.send({ name: 'interstitial_ad_request', elapsedMs: this.elapsed(), placement, completedChapter });
+  }
+
+  public interstitialComplete(placement: InterstitialPlacement, completedChapter: number): void {
+    this.send({ name: 'interstitial_ad_complete', elapsedMs: this.elapsed(), placement, completedChapter });
   }
 
   private elapsed(): number {
