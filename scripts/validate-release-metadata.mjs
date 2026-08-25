@@ -29,4 +29,3 @@ if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log(`release metadata OK: ${data.title.en} / ${data.title.ru}; ${data.creatives.length} creatives`);
