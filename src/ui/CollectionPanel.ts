@@ -1,4 +1,4 @@
-import type * as Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { getAllCreatures } from '../content/creatures';
 import { getMutationDefinition, type MutationId } from '../content/mutations';
 import {
