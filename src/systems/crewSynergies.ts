@@ -38,34 +38,13 @@ export interface ActiveCrewSynergy {
 }
 
 const DEFINITIONS: Readonly<Record<CreatureFamily, CrewSynergyDefinition>> = {
-  pinguino: {
-    id: 'slipstream-relay', family: 'pinguino', name: 'Slipstream Relay', shortLabel: 'RELAY',
-    accentColor: 0x64d8ff, effect: 'Squad attack cadence'
-  },
-  toastodilo: {
-    id: 'crust-bastion', family: 'toastodilo', name: 'Crust Bastion', shortLabel: 'BASTION',
-    accentColor: 0xffbd4d, effect: 'Fortress damage resistance'
-  },
-  lampalotl: {
-    id: 'neon-cascade', family: 'lampalotl', name: 'Neon Cascade', shortLabel: 'CASCADE',
-    accentColor: 0xff86d7, effect: 'Squad projectile damage'
-  },
-  dishnail: {
-    id: 'quasar-lock', family: 'dishnail', name: 'Quasar Lock', shortLabel: 'LOCK',
-    accentColor: 0xc57dff, effect: 'Coin bounty from combat'
-  },
-  mochimoth: {
-    id: 'mochi-cushion', family: 'mochimoth', name: 'Mochi Cushion', shortLabel: 'CUSHION',
-    accentColor: 0xff9acb, effect: 'Additional fortress damage smoothing'
-  },
-  routeraptor: {
-    id: 'packet-flock', family: 'routeraptor', name: 'Packet Flock', shortLabel: 'PACKET',
-    accentColor: 0x42dfe8, effect: 'Chaos Energy generation'
-  },
-  vendinguana: {
-    id: 'price-breaker', family: 'vendinguana', name: 'Price Breaker', shortLabel: 'BREAKER',
-    accentColor: 0xffb858, effect: 'Bonus damage against bosses'
-  }
+  pinguino: { id: 'slipstream-relay', family: 'pinguino', name: 'Slipstream Relay', shortLabel: 'RLY', accentColor: 0x64d8ff, effect: 'Squad attack cadence' },
+  toastodilo: { id: 'crust-bastion', family: 'toastodilo', name: 'Crust Bastion', shortLabel: 'BST', accentColor: 0xffbd4d, effect: 'Fortress damage resistance' },
+  lampalotl: { id: 'neon-cascade', family: 'lampalotl', name: 'Neon Cascade', shortLabel: 'CSC', accentColor: 0xff86d7, effect: 'Squad projectile damage' },
+  dishnail: { id: 'quasar-lock', family: 'dishnail', name: 'Quasar Lock', shortLabel: 'LCK', accentColor: 0xc57dff, effect: 'Coin bounty from combat' },
+  mochimoth: { id: 'mochi-cushion', family: 'mochimoth', name: 'Mochi Cushion', shortLabel: 'MCH', accentColor: 0xff9acb, effect: 'Additional fortress damage smoothing' },
+  routeraptor: { id: 'packet-flock', family: 'routeraptor', name: 'Packet Flock', shortLabel: 'NET', accentColor: 0x42dfe8, effect: 'Chaos Energy generation' },
+  vendinguana: { id: 'price-breaker', family: 'vendinguana', name: 'Price Breaker', shortLabel: 'BRK', accentColor: 0xffb858, effect: 'Bonus damage against bosses' }
 };
 
 const ATTACK_INTERVAL_BY_TIER = [1, 0.97, 0.94, 0.9] as const;
@@ -82,7 +61,6 @@ const EMPTY_POWER: Record<CreatureFamily, number> = {
 const EMPTY_TIERS: Record<CreatureFamily, CrewSynergyTier> = {
   pinguino: 0, toastodilo: 0, lampalotl: 0, dishnail: 0, mochimoth: 0, routeraptor: 0, vendinguana: 0
 };
-
 const EMPTY_STATE: CrewSynergyState = {
   familyPower: EMPTY_POWER,
   tiers: EMPTY_TIERS,
@@ -102,11 +80,9 @@ export function evaluateCrewSynergies(board: BoardState): CrewSynergyState {
     if (!unit) continue;
     familyPower[unit.family] += unitPower(unit.level);
   }
-
   const tiers = Object.fromEntries(
     (Object.keys(familyPower) as CreatureFamily[]).map((family) => [family, tierForPower(familyPower[family])])
   ) as Record<CreatureFamily, CrewSynergyTier>;
-
   return {
     familyPower,
     tiers,
@@ -119,18 +95,9 @@ export function evaluateCrewSynergies(board: BoardState): CrewSynergyState {
   };
 }
 
-export function syncCrewSynergyState(board: BoardState): CrewSynergyState {
-  currentState = evaluateCrewSynergies(board);
-  return currentState;
-}
-
-export function getCurrentCrewSynergyState(): CrewSynergyState {
-  return currentState;
-}
-
-export function resetCrewSynergyState(): void {
-  currentState = EMPTY_STATE;
-}
+export function syncCrewSynergyState(board: BoardState): CrewSynergyState { currentState = evaluateCrewSynergies(board); return currentState; }
+export function getCurrentCrewSynergyState(): CrewSynergyState { return currentState; }
+export function resetCrewSynergyState(): void { currentState = EMPTY_STATE; }
 
 export function getActiveCrewSynergies(state: CrewSynergyState): readonly ActiveCrewSynergy[] {
   const active: ActiveCrewSynergy[] = [];
@@ -142,14 +109,8 @@ export function getActiveCrewSynergies(state: CrewSynergyState): readonly Active
   return active;
 }
 
-export function getCrewSynergyDefinition(family: CreatureFamily): CrewSynergyDefinition {
-  return DEFINITIONS[family];
-}
-
-export function unitPower(level: 1 | 2 | 3): number {
-  return 2 ** (level - 1);
-}
-
+export function getCrewSynergyDefinition(family: CreatureFamily): CrewSynergyDefinition { return DEFINITIONS[family]; }
+export function unitPower(level: 1 | 2 | 3): number { return 2 ** (level - 1); }
 export function tierForPower(power: number): CrewSynergyTier {
   if (power >= 8) return 3;
   if (power >= 4) return 2;
