@@ -55,6 +55,10 @@ export const RECRUIT_MUTATION_RATES = {
   legendary: 0.005
 } as const;
 
+const RARE_START = 0.80;
+const EPIC_START = 0.95;
+const LEGENDARY_START = 0.995;
+
 export function getMutationDefinition(id: MutationId): MutationDefinition {
   const found = MUTATIONS.find((mutation) => mutation.id === id);
   if (!found) throw new Error(`Unknown mutation: ${id}`);
@@ -75,9 +79,9 @@ export function isMutationId(value: unknown): value is MutationId {
 
 export function rollMutation(roll: number): MutationId {
   const normalized = Number.isFinite(roll) ? Math.min(0.999999999, Math.max(0, roll)) : 0;
-  if (normalized < RECRUIT_MUTATION_RATES.common) return 'none';
-  if (normalized < RECRUIT_MUTATION_RATES.common + RECRUIT_MUTATION_RATES.rare) return 'charged';
-  if (normalized < RECRUIT_MUTATION_RATES.common + RECRUIT_MUTATION_RATES.rare + RECRUIT_MUTATION_RATES.epic) return 'prismatic';
+  if (normalized < RARE_START) return 'none';
+  if (normalized < EPIC_START) return 'charged';
+  if (normalized < LEGENDARY_START) return 'prismatic';
   return 'crowned';
 }
 
