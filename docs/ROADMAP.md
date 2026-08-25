@@ -79,6 +79,9 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Active crew synergy labels with tier-change pulse above the merge board
 - [x] Encounter-local Chaos Energy with four synergy-gated active combat abilities
 - [x] Active ability cooldowns, tier scaling, combat UI and mutation/Core Lab stacking
+- [x] Two inter-wave Chaos Draft checkpoints per chapter with deterministic three-card offers
+- [x] Six temporary chapter perks spanning offense, cadence, defense, economy, sustain and Chaos Energy
+- [x] Reload-safe draft reconstruction without free offer rerolls
 - [x] Four-tier mutation rarity: Common / Rare Charged / Epic Prismatic / Legendary Crowned
 - [x] Mutation roll rates, combat modifiers, merge inheritance and rarity-promotion rules
 - [x] Project-owned mutation secondary-silhouette overlays with animated board presentation
@@ -87,9 +90,10 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
-- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7 -> v8
+- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7 -> v8 -> v9
 - [x] v6 -> v7 mutation migration preserving legacy boards as Common
 - [x] v7 -> v8 encounter migration preserving historical boss HP at the new boss step
+- [x] v8 -> v9 Chaos Draft migration preserving old progression with an empty chapter build
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
 - [x] Capped offline coin progression on reload/background resume
