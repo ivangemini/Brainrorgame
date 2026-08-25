@@ -10,6 +10,7 @@ const DESIGN_HEIGHT = 1920;
 export interface GameBootstrapData {
   readonly platform: PlatformAdapter;
   readonly initialSave: GameSave | null;
+  readonly onPostBoot?: (game: Phaser.Game) => void;
 }
 
 export function createGameConfig(parent: string, bootstrap: GameBootstrapData): Phaser.Types.Core.GameConfig {
@@ -27,6 +28,9 @@ export function createGameConfig(parent: string, bootstrap: GameBootstrapData): 
       preBoot: (game) => {
         game.registry.set('platform', bootstrap.platform);
         game.registry.set('initialSave', bootstrap.initialSave);
+      },
+      postBoot: (game) => {
+        bootstrap.onPostBoot?.(game);
       }
     },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: DESIGN_WIDTH, height: DESIGN_HEIGHT },
