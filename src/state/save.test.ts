@@ -1,32 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { createStarterBoard } from '../systems/board';
+import { createDefaultCollectionProgress } from '../systems/collectionProgression';
 import { createDefaultDailyState } from '../systems/dailyRetention';
 import { createDefaultMetaUpgradeLevels } from '../systems/metaProgression';
 import { createGameSave, parseGameSave } from './save';
 
 function makeSnapshot() {
+  const board = createStarterBoard();
   return {
     coins: 140,
     coreShards: 3,
     upgrades: { power: 2, armor: 1, bounty: 0 },
     daily: createDefaultDailyState(Date.parse('2026-08-25T12:00:00.000Z')),
+    collection: createDefaultCollectionProgress(board),
     baseHp: 77,
     chapter: 3,
     encounterStep: 2 as const,
     targetHpMax: 800,
     targetHp: 520,
     recruitSerial: 4,
-    board: createStarterBoard()
+    board
   };
 }
 
 describe('game save', () => {
-  it('round-trips a valid v4 snapshot', () => {
+  it('round-trips a valid v5 snapshot', () => {
     const save = createGameSave(makeSnapshot(), 12345);
     expect(parseGameSave(save)).toEqual(save);
   });
 
-  it('migrates v2 saves through v3 to v4 and preserves progression', () => {
+  it('migrates v2 saves through v5 and preserves progression', () => {
     const oldSave = {
       version: 2,
       updatedAt: Date.parse('2026-08-24T12:00:00.000Z'),
@@ -40,14 +43,15 @@ describe('game save', () => {
       board: createStarterBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(4);
+    expect(migrated?.version).toBe(5);
     expect(migrated?.coreShards).toBe(3);
     expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
     expect(migrated?.daily.streak).toBe(0);
-    expect(migrated?.daily.lastRewardClaimDayKey).toBeNull();
+    expect(migrated?.collection.discovered).toEqual(['pinguino-1', 'toastodilo-1']);
+    expect(migrated?.collection.stats.bosses).toBe(3);
   });
 
-  it('migrates v3 saves with a fresh daily state', () => {
+  it('migrates v3 saves with fresh daily state and collection backfill', () => {
     const oldSave = {
       version: 3,
       updatedAt: Date.parse('2026-08-25T08:00:00.000Z'),
@@ -63,20 +67,55 @@ describe('game save', () => {
       board: createStarterBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(4);
+    expect(migrated?.version).toBe(5);
     expect(migrated?.daily.dayKey).toBe('2026-08-25');
     expect(migrated?.daily.counters).toEqual({ merge: 0, defeat: 0, recruit: 0 });
+    expect(migrated?.collection.stats.bosses).toBe(5);
+    expect(migrated?.collection.stats.upgrades).toBe(6);
   });
 
-  it('clamps upgrade levels and target HP to supported maximums', () => {
+  it('migrates v4 saves without losing daily data', () => {
+    const snapshot = makeSnapshot();
+    const oldSave = {
+      version: 4,
+      updatedAt: Date.parse('2026-08-25T09:00:00.000Z'),
+      coins: snapshot.coins,
+      coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades,
+      daily: snapshot.daily,
+      baseHp: snapshot.baseHp,
+      chapter: snapshot.chapter,
+      encounterStep: snapshot.encounterStep,
+      targetHpMax: snapshot.targetHpMax,
+      targetHp: snapshot.targetHp,
+      recruitSerial: snapshot.recruitSerial,
+      board: snapshot.board
+    };
+    const migrated = parseGameSave(oldSave);
+    expect(migrated?.version).toBe(5);
+    expect(migrated?.daily).toEqual(snapshot.daily);
+    expect(migrated?.collection.stats.recruits).toBe(snapshot.recruitSerial);
+  });
+
+  it('clamps upgrade levels, collection stats and target HP to supported maximums', () => {
     const save = createGameSave(makeSnapshot(), 12345);
     const parsed = parseGameSave({
       ...save,
       targetHp: 9999,
-      upgrades: { power: 999, armor: 999, bounty: 999 }
+      upgrades: { power: 999, armor: 999, bounty: 999 },
+      collection: {
+        ...save.collection,
+        stats: { merges: 2_000_000_000, recruits: 0, defeats: 0, bosses: 0, upgrades: 0 }
+      }
     });
     expect(parsed?.targetHp).toBe(800);
     expect(parsed?.upgrades).toEqual({ power: 10, armor: 8, bounty: 10 });
+    expect(parsed?.collection.stats.merges).toBe(1_000_000_000);
+  });
+
+  it('rejects malformed collection data', () => {
+    const save = createGameSave(makeSnapshot());
+    expect(parseGameSave({ ...save, collection: { ...save.collection, discovered: ['copied-meme'] } })).toBeNull();
   });
 
   it('rejects malformed daily state', () => {

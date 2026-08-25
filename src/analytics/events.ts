@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
 
@@ -79,6 +80,13 @@ export type GameAnalyticsEvent =
       readonly elapsedMs: number;
       readonly mission: DailyMissionId;
       readonly coins: number;
+    }
+  | {
+      readonly name: 'achievement_claim';
+      readonly elapsedMs: number;
+      readonly achievement: AchievementId;
+      readonly coins: number;
+      readonly coreShards: number;
     };
 
 export interface AnalyticsSink {

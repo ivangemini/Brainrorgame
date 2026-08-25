@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
 import type { AnalyticsSink, EncounterKind, GameAnalyticsEvent } from './events';
@@ -67,6 +68,10 @@ export class GameAnalytics {
 
   public dailyMissionClaim(mission: DailyMissionId, coins: number): void {
     this.send({ name: 'daily_mission_claim', elapsedMs: this.elapsed(), mission, coins });
+  }
+
+  public achievementClaim(achievement: AchievementId, coins: number, coreShards: number): void {
+    this.send({ name: 'achievement_claim', elapsedMs: this.elapsed(), achievement, coins, coreShards });
   }
 
   private elapsed(): number {
