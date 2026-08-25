@@ -20,9 +20,9 @@ interface AbilityButtonView {
 
 const POSITIONS: Readonly<Record<ActiveAbilityId, readonly [number, number]>> = {
   'slipstream-burst': [88, 470],
-  'crust-mend': [88, 660],
-  'neon-nova': [992, 470],
-  'quasar-lock': [992, 660]
+  'crust-guard': [88, 660],
+  'neon-overdrive': [992, 470],
+  'quasar-jackpot': [992, 660]
 };
 
 export class ActiveAbilityBar {
@@ -52,8 +52,6 @@ export class ActiveAbilityBar {
   public update(
     state: ActiveAbilityRuntimeState,
     tiers: Readonly<Record<CreatureFamily, CrewSynergyTier>>,
-    baseHp: number,
-    targetAlive: boolean,
     combatEnabled: boolean
   ): void {
     const cooldownSignature = ACTIVE_ABILITY_IDS
@@ -62,16 +60,13 @@ export class ActiveAbilityBar {
     const tierSignature = ACTIVE_ABILITY_IDS
       .map((id) => `${id}:${tiers[getActiveAbilityDefinition(id).family]}`)
       .join('|');
-    const signature = [
-      state.energy,
+    const effectSignature = [
       Math.ceil(state.hasteRemainingMs / 100),
-      Math.ceil(state.stunRemainingMs / 100),
-      baseHp,
-      targetAlive ? 1 : 0,
-      combatEnabled ? 1 : 0,
-      cooldownSignature,
-      tierSignature
-    ].join('::');
+      Math.ceil(state.guardRemainingMs / 100),
+      Math.ceil(state.overdriveRemainingMs / 100),
+      Math.ceil(state.jackpotRemainingMs / 100)
+    ].join('|');
+    const signature = [state.energy, combatEnabled ? 1 : 0, effectSignature, cooldownSignature, tierSignature].join('::');
     if (signature === this.lastSignature) return;
     this.lastSignature = signature;
 
@@ -81,10 +76,8 @@ export class ActiveAbilityBar {
       if (!view) continue;
       const definition = getActiveAbilityDefinition(id);
       const tier = tiers[definition.family];
-      const reason = combatEnabled
-        ? canCastActiveAbility(id, state, tier, baseHp, targetAlive)
-        : 'no-target';
-      this.drawButton(view, state, tier, reason === null && combatEnabled);
+      const reason = canCastActiveAbility(id, state, tier, combatEnabled);
+      this.drawButton(view, state, tier, reason === null);
     }
   }
 
@@ -138,7 +131,9 @@ export class ActiveAbilityBar {
 
     const effects: string[] = [];
     if (state.hasteRemainingMs > 0) effects.push(`HASTE ${(state.hasteRemainingMs / 1000).toFixed(1)}s`);
-    if (state.stunRemainingMs > 0) effects.push(`LOCK ${(state.stunRemainingMs / 1000).toFixed(1)}s`);
+    if (state.guardRemainingMs > 0) effects.push(`GUARD ${(state.guardRemainingMs / 1000).toFixed(1)}s`);
+    if (state.overdriveRemainingMs > 0) effects.push(`NOVA ${(state.overdriveRemainingMs / 1000).toFixed(1)}s`);
+    if (state.jackpotRemainingMs > 0) effects.push(`JACK ${(state.jackpotRemainingMs / 1000).toFixed(1)}s`);
     const suffix = effects.length > 0 ? `  •  ${effects.join('  •  ')}` : '';
     this.energyText.setText(`CHAOS ENERGY ${state.energy} / ${MAX_COMBAT_ENERGY}${suffix}`);
   }
@@ -172,6 +167,8 @@ export class ActiveAbilityBar {
       view.meta.setText(`${(cooldownMs / 1000).toFixed(1)}s`).setColor('#aebbd4');
     } else if (state.energy < definition.energyCost) {
       view.meta.setText(`${definition.energyCost}E`).setColor('#8fa4c5');
+    } else if (!ready) {
+      view.meta.setText('WAIT').setColor('#8fa4c5');
     } else {
       view.meta.setText(`TIER ${this.roman(tier)} • ${definition.energyCost}E`).setColor('#e9fbff');
     }
