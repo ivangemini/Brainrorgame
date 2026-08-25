@@ -22,10 +22,13 @@ describe('onboarding', () => {
     expect(state).toEqual({ step: 'complete', completedAt: 40 });
   });
 
-  it('blocks combat only until the first successful merge', () => {
+  it('blocks combat until merge and recruit are both demonstrated', () => {
     const initial = createDefaultOnboardingState();
+    const recruitStep = advanceOnboarding(initial, 'merged');
+    const fightStep = advanceOnboarding(recruitStep, 'recruited');
     expect(blocksCombatForOnboarding(initial)).toBe(true);
-    expect(blocksCombatForOnboarding(advanceOnboarding(initial, 'merged'))).toBe(false);
+    expect(blocksCombatForOnboarding(recruitStep)).toBe(true);
+    expect(blocksCombatForOnboarding(fightStep)).toBe(false);
   });
 
   it('keeps completed onboarding immutable', () => {
