@@ -3,6 +3,7 @@ import {
   currentActiveHasteMultiplier,
   recordCrewAttackEnergy
 } from '../systems/activeAbilities';
+import { getCurrentChaosPerkMultipliers } from '../systems/chaosDraft';
 import { getCurrentCrewSynergyState } from '../systems/crewSynergies';
 
 export const MUTATION_IDS = ['none', 'charged', 'prismatic', 'crowned'] as const;
@@ -112,21 +113,25 @@ export function ascendMutationPair(a: MutationId, b: MutationId): MutationId | n
 
 export function mutatedDamage(baseDamage: number, mutation: MutationId): number {
   const synergy = getCurrentCrewSynergyState();
+  const perks = getCurrentChaosPerkMultipliers();
   recordCrewAttackEnergy();
   return Math.max(1, Math.round(
     baseDamage
     * getMutationDefinition(mutation).damageMultiplier
     * synergy.squadDamageMultiplier
+    * perks.squadDamageMultiplier
     * currentActiveDamageMultiplier()
   ));
 }
 
 export function mutatedAttackMs(baseAttackMs: number, mutation: MutationId): number {
   const synergy = getCurrentCrewSynergyState();
+  const perks = getCurrentChaosPerkMultipliers();
   return Math.max(180, Math.round(
     baseAttackMs
     * getMutationDefinition(mutation).attackIntervalMultiplier
     * synergy.attackIntervalMultiplier
+    * perks.attackIntervalMultiplier
     * currentActiveHasteMultiplier()
   ));
 }
