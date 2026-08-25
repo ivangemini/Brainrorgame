@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import type { EliteModifierId } from '../content/eliteModifiers';
 import type { GameFx } from '../presentation/GameFx';
-import type { WaveEncounterSpec } from '../systems/encounters';
+import { WAVES_PER_CHAPTER, type WaveEncounterSpec } from '../systems/encounters';
 
 export class EnemyView {
   private title!: Phaser.GameObjects.Text;
@@ -13,6 +13,7 @@ export class EnemyView {
   private accentColor = 0x78e8ff;
   private displaySize = 410;
   private eliteId: EliteModifierId | null = null;
+  private gauntlet = false;
 
   public constructor(private readonly scene: Phaser.Scene, private readonly fx: GameFx) {}
 
@@ -48,20 +49,30 @@ export class EnemyView {
   public show(spec: WaveEncounterSpec, waveNumber: number): void {
     this.scene.tweens.killTweensOf(this.enemy);
     this.eliteId = spec.elite?.id ?? null;
+    this.gauntlet = spec.gauntlet;
     this.accentColor = spec.elite?.accentColor ?? spec.accentColor;
     this.displaySize = spec.displaySize;
     this.title
       .setText(spec.name.toUpperCase())
-      .setColor(spec.elite ? this.cssColor(spec.elite.accentColor) : '#f7fbff')
+      .setColor(spec.elite ? this.cssColor(spec.elite.accentColor) : this.gauntlet ? '#fff0a6' : '#f7fbff')
       .setVisible(true)
       .setAlpha(1);
+    const badgeText = spec.elite
+      ? `ELITE • ${spec.elite.name}`
+      : this.gauntlet
+        ? `CHAOS GATE • ${WAVES_PER_CHAPTER} / ${WAVES_PER_CHAPTER}`
+        : `WAVE ${waveNumber} / ${WAVES_PER_CHAPTER}`;
+    const badgeColor = spec.elite ? '#fffaf0' : this.gauntlet ? '#ffe7a0' : '#b9c9ff';
+    const badgeBackground = spec.elite
+      ? `${this.cssColor(spec.elite.accentColor)}cc`
+      : this.gauntlet ? '#59321cdd' : '#182342cc';
     this.waveBadge
-      .setText(spec.elite ? `ELITE • ${spec.elite.name}` : `WAVE ${waveNumber} / 3`)
-      .setColor(spec.elite ? '#fffaf0' : '#b9c9ff')
-      .setBackgroundColor(spec.elite ? `${this.cssColor(spec.elite.accentColor)}cc` : '#182342cc')
+      .setText(badgeText)
+      .setColor(badgeColor)
+      .setBackgroundColor(badgeBackground)
       .setVisible(true)
       .setAlpha(1);
-    this.shadow.setVisible(true).setAlpha(1);
+    this.shadow.setVisible(true).setAlpha(this.gauntlet ? 1 : 0.92).setScale(this.gauntlet ? 1.08 : 1);
     this.enemy
       .setTexture(spec.texture)
       .setPosition(540, 575)
@@ -74,18 +85,18 @@ export class EnemyView {
 
     const targetScaleX = this.enemy.scaleX;
     const targetScaleY = this.enemy.scaleY;
-    this.enemy.setScale(targetScaleX * 0.74, targetScaleY * 0.74);
+    this.enemy.setScale(targetScaleX * (this.gauntlet ? 0.67 : 0.74), targetScaleY * (this.gauntlet ? 0.67 : 0.74));
     this.scene.tweens.add({
       targets: this.enemy,
       scaleX: targetScaleX,
       scaleY: targetScaleY,
-      duration: spec.elite ? 390 : 330,
+      duration: spec.elite || this.gauntlet ? 390 : 330,
       ease: 'Back.Out',
       onComplete: () => {
         this.scene.tweens.add({
           targets: this.enemy,
-          y: 588,
-          duration: spec.elite ? 820 + Phaser.Math.Between(0, 150) : 1050 + Phaser.Math.Between(0, 220),
+          y: this.gauntlet ? 592 : 588,
+          duration: spec.elite ? 820 + Phaser.Math.Between(0, 150) : this.gauntlet ? 900 : 1050 + Phaser.Math.Between(0, 220),
           yoyo: true,
           repeat: -1,
           ease: 'Sine.InOut'
@@ -93,11 +104,12 @@ export class EnemyView {
       }
     });
 
-    if (spec.elite) {
+    if (spec.elite || this.gauntlet) {
       this.scene.time.delayedCall(80, () => {
         if (!this.enemy.visible) return;
-        this.fx.flashRing(540, 575, spec.elite?.accentColor ?? this.accentColor);
-        this.fx.burst(540, 575, spec.elite?.accentColor ?? this.accentColor, 12, 150);
+        const color = spec.elite?.accentColor ?? spec.projectileColor;
+        this.fx.flashRing(540, 575, color);
+        this.fx.burst(540, 575, color, this.gauntlet ? 16 : 12, this.gauntlet ? 185 : 150);
       });
     }
   }
@@ -105,6 +117,7 @@ export class EnemyView {
   public hide(): void {
     if (this.enemy) this.scene.tweens.killTweensOf(this.enemy);
     this.eliteId = null;
+    this.gauntlet = false;
     this.title?.setVisible(false);
     this.waveBadge?.setVisible(false);
     this.shadow?.setVisible(false);
@@ -120,13 +133,14 @@ export class EnemyView {
     this.hpBar.fillRoundedRect(205, 842, 670, 58, 29);
     this.hpBar.fillStyle(ratio > 0.32 ? this.accentColor : 0xff6784, 1);
     this.hpBar.fillRoundedRect(213, 850, 654 * ratio, 42, 21);
-    this.hpBar.lineStyle(4, 0xdaf9ff, 0.42);
+    this.hpBar.lineStyle(this.gauntlet ? 6 : 4, this.gauntlet ? 0xffdf91 : 0xdaf9ff, this.gauntlet ? 0.62 : 0.42);
     this.hpBar.strokeRoundedRect(205, 842, 670, 58, 29);
     this.hpText.setText(`${current} / ${max}`);
   }
 
   public targetPoint(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(540 + Phaser.Math.Between(-72, 72), 565 + Phaser.Math.Between(-62, 72));
+    const spread = this.gauntlet ? 84 : 72;
+    return new Phaser.Math.Vector2(540 + Phaser.Math.Between(-spread, spread), 565 + Phaser.Math.Between(-62, 72));
   }
 
   public hit(color: number): void {
@@ -139,7 +153,13 @@ export class EnemyView {
       yoyo: true,
       ease: 'Quad.Out'
     });
-    this.fx.burst(this.enemy.x + Phaser.Math.Between(-75, 75), this.enemy.y + Phaser.Math.Between(-60, 60), color, 4, 72);
+    this.fx.burst(
+      this.enemy.x + Phaser.Math.Between(-75, 75),
+      this.enemy.y + Phaser.Math.Between(-60, 60),
+      color,
+      this.gauntlet ? 6 : 4,
+      this.gauntlet ? 92 : 72
+    );
   }
 
   public telegraph(onImpact: () => void): void {
@@ -161,11 +181,12 @@ export class EnemyView {
 
   public defeat(reward: number, onComplete: () => void): void {
     this.scene.tweens.killTweensOf(this.enemy);
-    const banner = this.scene.add.text(540, 420, this.eliteId ? 'ELITE CRUSHED!' : 'WAVE CRUSHED!', {
+    const bannerLabel = this.eliteId ? 'ELITE CRUSHED!' : this.gauntlet ? 'GATE BROKEN!' : 'WAVE CRUSHED!';
+    const banner = this.scene.add.text(540, 420, bannerLabel, {
       fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '55px',
+      fontSize: this.gauntlet ? '61px' : '55px',
       color: '#fff5a8',
-      stroke: '#56305f',
+      stroke: this.gauntlet ? '#713b29' : '#56305f',
       strokeThickness: 10
     }).setOrigin(0.5).setDepth(1200).setScale(0.35);
     const rewardText = this.scene.add.text(540, 485, `+${reward} COINS`, {
@@ -176,19 +197,19 @@ export class EnemyView {
       strokeThickness: 7
     }).setOrigin(0.5).setDepth(1200).setAlpha(0);
 
-    this.scene.tweens.add({ targets: banner, scaleX: 1, scaleY: 1, duration: 280, ease: 'Back.Out' });
+    this.scene.tweens.add({ targets: banner, scaleX: 1, scaleY: 1, duration: this.gauntlet ? 330 : 280, ease: 'Back.Out' });
     this.scene.tweens.add({ targets: rewardText, alpha: 1, y: 505, duration: 300, delay: 110, ease: 'Quad.Out' });
     this.scene.tweens.add({
       targets: this.enemy,
       y: 650,
       angle: Phaser.Math.Between(-16, 16),
-      scaleX: this.enemy.scaleX * 0.58,
-      scaleY: this.enemy.scaleY * 0.58,
+      scaleX: this.enemy.scaleX * (this.gauntlet ? 0.48 : 0.58),
+      scaleY: this.enemy.scaleY * (this.gauntlet ? 0.48 : 0.58),
       alpha: 0,
-      duration: 520,
+      duration: this.gauntlet ? 610 : 520,
       ease: 'Back.In'
     });
-    this.scene.time.delayedCall(920, () => {
+    this.scene.time.delayedCall(this.gauntlet ? 1040 : 920, () => {
       banner.destroy();
       rewardText.destroy();
       onComplete();
@@ -201,13 +222,14 @@ export class EnemyView {
   }
 
   private telegraphStandard(onImpact: () => void): void {
-    const ring = this.scene.add.circle(this.enemy.x, this.enemy.y + 20, 86, this.accentColor, 0.07)
-      .setStrokeStyle(9, this.accentColor, 0.78)
+    const radius = this.gauntlet ? 104 : 86;
+    const ring = this.scene.add.circle(this.enemy.x, this.enemy.y + 20, radius, this.accentColor, 0.07)
+      .setStrokeStyle(this.gauntlet ? 12 : 9, this.accentColor, this.gauntlet ? 0.88 : 0.78)
       .setDepth(700)
       .setScale(0.6);
-    this.scene.tweens.add({ targets: ring, scaleX: 1.9, scaleY: 1.9, alpha: 0.1, duration: 520, ease: 'Cubic.Out' });
-    this.scene.tweens.add({ targets: this.enemy, y: this.enemy.y - 20, scaleX: this.enemy.scaleX * 1.04, scaleY: this.enemy.scaleY * 0.96, duration: 250, ease: 'Back.Out' });
-    this.scene.time.delayedCall(540, () => {
+    this.scene.tweens.add({ targets: ring, scaleX: this.gauntlet ? 2.05 : 1.9, scaleY: this.gauntlet ? 2.05 : 1.9, alpha: 0.1, duration: this.gauntlet ? 580 : 520, ease: 'Cubic.Out' });
+    this.scene.tweens.add({ targets: this.enemy, y: this.enemy.y - (this.gauntlet ? 28 : 20), scaleX: this.enemy.scaleX * 1.04, scaleY: this.enemy.scaleY * 0.96, duration: 250, ease: 'Back.Out' });
+    this.scene.time.delayedCall(this.gauntlet ? 600 : 540, () => {
       ring.destroy();
       onImpact();
       this.recover();
