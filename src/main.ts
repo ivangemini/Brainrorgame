@@ -20,18 +20,18 @@ async function initializePlatform(): Promise<PlatformAdapter> {
 
 const platform = await initializePlatform();
 const initialSave = await loadGameSave(platform);
-const game = new Phaser.Game(createGameConfig('game-root', { platform, initialSave }));
+let game: Phaser.Game | null = null;
 let gameSceneCreated = false;
 let platformPaused = false;
 
 const applyPause = (): void => {
-  if (!gameSceneCreated) return;
+  if (!game || !gameSceneCreated) return;
   game.sound.pauseAll();
   game.scene.pause('game');
 };
 
 const applyResume = (): void => {
-  if (!gameSceneCreated) return;
+  if (!game || !gameSceneCreated) return;
   game.scene.resume('game');
   game.sound.resumeAll();
 };
@@ -47,15 +47,19 @@ platform.setLifecycleHandlers({
   }
 });
 
-game.events.once(Phaser.Core.Events.READY, () => {
-  const gameScene = game.scene.getScene('game');
-  gameScene.events.once(Phaser.Scenes.Events.CREATE, () => {
-    gameSceneCreated = true;
-    platform.loadingReady();
-    if (platformPaused) applyPause();
-  });
-});
+game = new Phaser.Game(createGameConfig('game-root', {
+  platform,
+  initialSave,
+  onPostBoot: (bootedGame) => {
+    const gameScene = bootedGame.scene.getScene('game');
+    gameScene.events.once(Phaser.Scenes.Events.CREATE, () => {
+      gameSceneCreated = true;
+      platform.loadingReady();
+      if (platformPaused) applyPause();
+    });
+  }
+}));
 
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => game.destroy(true));
+  import.meta.hot.dispose(() => game?.destroy(true));
 }
