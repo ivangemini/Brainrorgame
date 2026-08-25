@@ -1,0 +1,188 @@
+import * as Phaser from 'phaser';
+import type { CreatureFamily } from '../content/creatures';
+import {
+  ACTIVE_ABILITY_IDS,
+  MAX_COMBAT_ENERGY,
+  canCastActiveAbility,
+  getActiveAbilityDefinition,
+  type ActiveAbilityId,
+  type ActiveAbilityRuntimeState
+} from '../systems/activeAbilities';
+import type { CrewSynergyTier } from '../systems/crewSynergies';
+
+interface AbilityButtonView {
+  readonly id: ActiveAbilityId;
+  readonly container: Phaser.GameObjects.Container;
+  readonly plate: Phaser.GameObjects.Graphics;
+  readonly label: Phaser.GameObjects.Text;
+  readonly meta: Phaser.GameObjects.Text;
+}
+
+const POSITIONS: Readonly<Record<ActiveAbilityId, readonly [number, number]>> = {
+  'slipstream-burst': [88, 470],
+  'crust-guard': [88, 660],
+  'neon-overdrive': [992, 470],
+  'quasar-jackpot': [992, 660]
+};
+
+export class ActiveAbilityBar {
+  private readonly buttons = new Map<ActiveAbilityId, AbilityButtonView>();
+  private energyBar!: Phaser.GameObjects.Graphics;
+  private energyText!: Phaser.GameObjects.Text;
+  private lastSignature = '';
+
+  public constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly onCast: (id: ActiveAbilityId) => void
+  ) {}
+
+  public create(): void {
+    this.energyBar = this.scene.add.graphics().setDepth(920);
+    this.energyText = this.scene.add.text(540, 928, 'CHAOS ENERGY 0 / 100', {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '17px',
+      color: '#eafaff',
+      stroke: '#11182f',
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(922);
+
+    for (const id of ACTIVE_ABILITY_IDS) this.createButton(id);
+  }
+
+  public update(
+    state: ActiveAbilityRuntimeState,
+    tiers: Readonly<Record<CreatureFamily, CrewSynergyTier>>,
+    combatEnabled: boolean
+  ): void {
+    const cooldownSignature = ACTIVE_ABILITY_IDS
+      .map((id) => `${id}:${Math.ceil(state.cooldowns[id] / 100)}`)
+      .join('|');
+    const tierSignature = ACTIVE_ABILITY_IDS
+      .map((id) => `${id}:${tiers[getActiveAbilityDefinition(id).family]}`)
+      .join('|');
+    const effectSignature = [
+      Math.ceil(state.hasteRemainingMs / 100),
+      Math.ceil(state.guardRemainingMs / 100),
+      Math.ceil(state.overdriveRemainingMs / 100),
+      Math.ceil(state.jackpotRemainingMs / 100)
+    ].join('|');
+    const signature = [state.energy, combatEnabled ? 1 : 0, effectSignature, cooldownSignature, tierSignature].join('::');
+    if (signature === this.lastSignature) return;
+    this.lastSignature = signature;
+
+    this.drawEnergy(state);
+    for (const id of ACTIVE_ABILITY_IDS) {
+      const view = this.buttons.get(id);
+      if (!view) continue;
+      const definition = getActiveAbilityDefinition(id);
+      const tier = tiers[definition.family];
+      const reason = canCastActiveAbility(id, state, tier, combatEnabled);
+      this.drawButton(view, state, tier, reason === null);
+    }
+  }
+
+  private createButton(id: ActiveAbilityId): void {
+    const definition = getActiveAbilityDefinition(id);
+    const [x, y] = POSITIONS[id];
+    const plate = this.scene.add.graphics();
+    const label = this.scene.add.text(0, -3, definition.shortLabel, {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '16px',
+      color: '#f7fbff',
+      stroke: '#10172c',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+    const meta = this.scene.add.text(0, 61, `${definition.energyCost}E`, {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '14px',
+      color: '#b6c4df',
+      stroke: '#10172c',
+      strokeThickness: 4
+    }).setOrigin(0.5);
+    const container = this.scene.add.container(x, y, [plate, label, meta])
+      .setDepth(930)
+      .setSize(112, 138)
+      .setInteractive({ useHandCursor: true });
+    container.on('pointerdown', () => {
+      this.scene.tweens.add({
+        targets: container,
+        scaleX: 0.9,
+        scaleY: 0.9,
+        duration: 70,
+        yoyo: true,
+        ease: 'Quad.Out'
+      });
+      this.onCast(id);
+    });
+    this.buttons.set(id, { id, container, plate, label, meta });
+  }
+
+  private drawEnergy(state: ActiveAbilityRuntimeState): void {
+    const ratio = Phaser.Math.Clamp(state.energy / MAX_COMBAT_ENERGY, 0, 1);
+    this.energyBar.clear();
+    this.energyBar.fillStyle(0x0b1329, 0.88);
+    this.energyBar.fillRoundedRect(260, 910, 560, 40, 20);
+    this.energyBar.lineStyle(3, 0x9ddfff, 0.34);
+    this.energyBar.strokeRoundedRect(260, 910, 560, 40, 20);
+    if (ratio > 0) {
+      this.energyBar.fillStyle(ratio >= 0.8 ? 0xffd46e : 0x66e4ff, 0.96);
+      this.energyBar.fillRoundedRect(268, 918, 544 * ratio, 24, 12);
+    }
+
+    const effects: string[] = [];
+    if (state.hasteRemainingMs > 0) effects.push(`HASTE ${(state.hasteRemainingMs / 1000).toFixed(1)}s`);
+    if (state.guardRemainingMs > 0) effects.push(`GUARD ${(state.guardRemainingMs / 1000).toFixed(1)}s`);
+    if (state.overdriveRemainingMs > 0) effects.push(`NOVA ${(state.overdriveRemainingMs / 1000).toFixed(1)}s`);
+    if (state.jackpotRemainingMs > 0) effects.push(`JACK ${(state.jackpotRemainingMs / 1000).toFixed(1)}s`);
+    const suffix = effects.length > 0 ? `  •  ${effects.join('  •  ')}` : '';
+    this.energyText.setText(`CHAOS ENERGY ${state.energy} / ${MAX_COMBAT_ENERGY}${suffix}`);
+  }
+
+  private drawButton(
+    view: AbilityButtonView,
+    state: ActiveAbilityRuntimeState,
+    tier: CrewSynergyTier,
+    ready: boolean
+  ): void {
+    const definition = getActiveAbilityDefinition(view.id);
+    const cooldownMs = state.cooldowns[view.id];
+    const activeFamily = tier > 0;
+    const fillColor = ready ? definition.accentColor : 0x17213c;
+    const borderAlpha = activeFamily ? (ready ? 0.95 : 0.48) : 0.2;
+
+    view.plate.clear();
+    view.plate.fillStyle(fillColor, ready ? 0.34 : 0.9);
+    view.plate.fillCircle(0, 0, 50);
+    view.plate.lineStyle(5, activeFamily ? definition.accentColor : 0x65728d, borderAlpha);
+    view.plate.strokeCircle(0, 0, 50);
+    if (ready) {
+      view.plate.lineStyle(2, 0xffffff, 0.55);
+      view.plate.strokeCircle(0, 0, 42);
+    }
+
+    view.label.setColor(activeFamily ? '#f7fbff' : '#7a879f');
+    if (!activeFamily) {
+      view.meta.setText('NEED TIER I').setColor('#6f7c96');
+    } else if (cooldownMs > 0) {
+      view.meta.setText(`${(cooldownMs / 1000).toFixed(1)}s`).setColor('#aebbd4');
+    } else if (state.energy < definition.energyCost) {
+      view.meta.setText(`${definition.energyCost}E`).setColor('#8fa4c5');
+    } else if (!ready) {
+      view.meta.setText('WAIT').setColor('#8fa4c5');
+    } else {
+      view.meta.setText(`TIER ${this.roman(tier)} • ${definition.energyCost}E`).setColor('#e9fbff');
+    }
+    view.container.setAlpha(targetAlpha(activeFamily, ready));
+  }
+
+  private roman(tier: CrewSynergyTier): string {
+    if (tier === 3) return 'III';
+    if (tier === 2) return 'II';
+    return 'I';
+  }
+}
+
+function targetAlpha(activeFamily: boolean, ready: boolean): number {
+  if (!activeFamily) return 0.48;
+  return ready ? 1 : 0.76;
+}

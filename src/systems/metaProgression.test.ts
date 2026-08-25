@@ -1,4 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  beginActiveAbilityEncounter,
+  recordCrewAttackEnergy,
+  resetActiveAbilityRuntime,
+  tryCastCurrentActiveAbility
+} from './activeAbilities';
 import type { BoardState } from './board';
 import { resetCrewSynergyState, syncCrewSynergyState } from './crewSynergies';
 import {
@@ -11,7 +17,10 @@ import {
   squadDamageMultiplier
 } from './metaProgression';
 
-afterEach(() => resetCrewSynergyState());
+afterEach(() => {
+  resetCrewSynergyState();
+  resetActiveAbilityRuntime();
+});
 
 describe('meta progression', () => {
   it('makes the first permanent upgrade available after one boss', () => {
@@ -49,6 +58,25 @@ describe('meta progression', () => {
     expect(incomingDamageMultiplier({ power: 0, armor: 0, bounty: 0 })).toBeCloseTo(0.85);
     expect(incomingDamageMultiplier({ power: 0, armor: 8, bounty: 0 })).toBeCloseTo(0.442);
     expect(coinRewardMultiplier({ power: 0, armor: 0, bounty: 4 })).toBeCloseTo(1.652);
+  });
+
+  it('stacks temporary Guard and Jackpot windows with passive and permanent progression', () => {
+    const board: BoardState = [
+      { id: 't3a', family: 'toastodilo', level: 3, mutation: 'none' },
+      { id: 't3b', family: 'toastodilo', level: 3, mutation: 'none' },
+      { id: 'd3a', family: 'dishnail', level: 3, mutation: 'none' },
+      { id: 'd3b', family: 'dishnail', level: 3, mutation: 'none' },
+      null, null, null, null, null, null, null, null
+    ];
+    syncCrewSynergyState(board);
+    beginActiveAbilityEncounter('test-meta-active');
+    for (let index = 0; index < 100; index += 1) recordCrewAttackEnergy();
+    expect(tryCastCurrentActiveAbility('crust-guard', 3).cast).toBe(true);
+    for (let index = 0; index < 100; index += 1) recordCrewAttackEnergy();
+    expect(tryCastCurrentActiveAbility('quasar-jackpot', 3).cast).toBe(true);
+
+    expect(incomingDamageMultiplier({ power: 0, armor: 0, bounty: 0 })).toBeCloseTo(0.493);
+    expect(coinRewardMultiplier({ power: 0, armor: 0, bounty: 4 })).toBeCloseTo(2.9736);
   });
 
   it('accelerates core rewards every five chapters with a cap', () => {

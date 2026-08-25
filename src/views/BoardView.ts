@@ -2,8 +2,21 @@ import * as Phaser from 'phaser';
 import { getCreature } from '../content/creatures';
 import { getMutationDefinition } from '../content/mutations';
 import type { GameFx } from '../presentation/GameFx';
+import {
+  getActiveAbilityDefinition,
+  getCurrentActiveAbilityRuntime,
+  isActiveAbilityCombatActive,
+  tickCurrentActiveAbilityRuntime,
+  tryCastCurrentActiveAbility,
+  type ActiveAbilityId
+} from '../systems/activeAbilities';
 import type { BoardState, BoardUnit } from '../systems/board';
-import { getActiveCrewSynergies, syncCrewSynergyState } from '../systems/crewSynergies';
+import {
+  getActiveCrewSynergies,
+  getCurrentCrewSynergyState,
+  syncCrewSynergyState
+} from '../systems/crewSynergies';
+import { ActiveAbilityBar } from '../ui/ActiveAbilityBar';
 
 const COLUMNS = 4;
 const ROWS = 3;
@@ -17,6 +30,7 @@ interface UnitViewMeta { readonly slot: number; readonly unitId: string; }
 export class BoardView {
   private readonly unitViews = new Map<number, Phaser.GameObjects.Container>();
   private synergyText!: Phaser.GameObjects.Text;
+  private abilityBar: ActiveAbilityBar | null = null;
   private lastSynergySignature = '';
 
   public constructor(
@@ -44,6 +58,13 @@ export class BoardView {
       slot.lineStyle(3, 0xa7dbff, 0.14); slot.strokeRoundedRect(position.x - SLOT_SIZE / 2, position.y - SLOT_SIZE / 2, SLOT_SIZE, SLOT_SIZE, 46);
       slot.fillStyle(0xc7ecff, 0.045); slot.fillCircle(position.x - 42, position.y - 50, 48);
     }
+
+    this.abilityBar = new ActiveAbilityBar(this.scene, (id) => this.castAbility(id));
+    this.abilityBar.create();
+    this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.updateAbilities, this);
+    this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.updateAbilities, this);
+    });
   }
 
   public render(board: BoardState, pulseSlot = -1): void {
@@ -80,6 +101,37 @@ export class BoardView {
     this.scene.tweens.add({ targets: view, y: origin.y - 14, scaleX: 1.04, scaleY: 0.96, duration: 80, yoyo: true, ease: 'Quad.Out' }); return origin;
   }
 
+  private updateAbilities(_time: number, delta: number): void {
+    const runtime = tickCurrentActiveAbilityRuntime(delta);
+    this.abilityBar?.update(runtime, getCurrentCrewSynergyState().tiers, isActiveAbilityCombatActive());
+  }
+
+  private castAbility(id: ActiveAbilityId): void {
+    const definition = getActiveAbilityDefinition(id);
+    const synergy = getCurrentCrewSynergyState();
+    const tier = synergy.tiers[definition.family];
+    const result = tryCastCurrentActiveAbility(id, tier);
+    if (!result.cast) {
+      const message = result.reason === 'locked'
+        ? `${definition.shortLabel} NEEDS ${definition.family.toUpperCase()} TIER I`
+        : result.reason === 'energy'
+          ? `NEED ${definition.energyCost} CHAOS ENERGY`
+          : result.reason === 'cooldown'
+            ? `${definition.shortLabel} RECHARGING`
+            : 'ABILITY OFFLINE';
+      this.fx.showHint(message, 1015, '#a9b8d6');
+      this.abilityBar?.update(getCurrentActiveAbilityRuntime(), synergy.tiers, isActiveAbilityCombatActive());
+      return;
+    }
+
+    const color = `#${definition.accentColor.toString(16).padStart(6, '0')}`;
+    this.fx.showHint(`${definition.name.toUpperCase()} ACTIVE`, 1015, color);
+    this.fx.flashRing(540, 930, definition.accentColor);
+    this.fx.burst(540, 930, definition.accentColor, 14, 165);
+    this.scene.cameras.main.shake(90, 0.0022);
+    this.abilityBar?.update(result.state, synergy.tiers, isActiveAbilityCombatActive());
+  }
+
   private renderSynergies(board: BoardState): void {
     if (!this.synergyText) return;
     const state = syncCrewSynergyState(board);
@@ -89,6 +141,7 @@ export class BoardView {
       : 'NO ACTIVE SYNERGY';
     const signature = active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
     this.synergyText.setText(label).setColor(active.length > 0 ? '#c8f6ff' : '#7587a8');
+    this.abilityBar?.update(getCurrentActiveAbilityRuntime(), state.tiers, isActiveAbilityCombatActive());
     if (signature !== this.lastSynergySignature && this.lastSynergySignature !== '') {
       this.scene.tweens.killTweensOf(this.synergyText);
       this.synergyText.setScale(1.08).setAlpha(0.55);
