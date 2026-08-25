@@ -41,6 +41,7 @@ export class BootScene extends Phaser.Scene {
     this.load.svg('upgrade-bounty-coil', 'assets/ui/bounty-coil.svg', { width: 160, height: 160 });
     this.load.svg('ui-offline-cache', 'assets/ui/offline-cache.svg', { width: 260, height: 260 });
     this.load.svg('ui-daily-orbit', 'assets/ui/daily-orbit.svg', { width: 96, height: 96 });
+    this.load.svg('ui-chaos-codex', 'assets/ui/chaos-codex.svg', { width: 96, height: 96 });
   }
 
   public create(): void {
