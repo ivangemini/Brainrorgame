@@ -13,12 +13,15 @@ export class GameHud {
   private upgradeButton!: Phaser.GameObjects.Container;
   private dailyButton!: Phaser.GameObjects.Container;
   private dailyDot!: Phaser.GameObjects.Arc;
+  private collectionButton!: Phaser.GameObjects.Container;
+  private collectionDot!: Phaser.GameObjects.Arc;
 
   public constructor(
     private readonly scene: Phaser.Scene,
     private readonly onRecruit: () => void,
     private readonly onUpgrades: () => void,
-    private readonly onDaily: () => void
+    private readonly onDaily: () => void,
+    private readonly onCollection: () => void
   ) {}
 
   public create(): void {
@@ -34,11 +37,11 @@ export class GameHud {
     this.chapterText = this.scene.add.text(102, 137, 'CHAPTER 1', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '21px', color: '#b9c9ff'
     });
-    this.coinsText = this.scene.add.text(732, 91, '120', {
+    this.coinsText = this.scene.add.text(720, 91, '120', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '44px', color: '#fff3a8', stroke: '#5a3415', strokeThickness: 7
-    });
-    this.scene.add.circle(688, 119, 25, 0xffd55e).setStrokeStyle(6, 0xfff0a6, 1);
-    this.scene.add.circle(688, 119, 10, 0xf5a623);
+    }).setOrigin(1, 0);
+    this.scene.add.circle(676, 119, 25, 0xffd55e).setStrokeStyle(6, 0xfff0a6, 1);
+    this.scene.add.circle(676, 119, 10, 0xf5a623);
     this.baseText = this.scene.add.text(100, 180, 'FORTRESS 100', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '27px', color: '#9ff4ff'
     });
@@ -46,6 +49,7 @@ export class GameHud {
     this.coreText = this.scene.add.text(716, 172, '0', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '28px', color: '#bffaff', stroke: '#25375a', strokeThickness: 5
     });
+    this.createCollectionButton();
     this.createDailyButton();
     this.createUpgradeButton();
     this.createRecruitButton();
@@ -57,7 +61,8 @@ export class GameHud {
     baseHp: number,
     chapter: number,
     step: EncounterStep,
-    dailyReady: boolean
+    dailyReady: boolean,
+    collectionReady: boolean
   ): void {
     this.coinsText.setText(`${coins}`);
     this.coreText.setText(`${coreShards}`);
@@ -67,6 +72,19 @@ export class GameHud {
     this.encounterText.setText(step === BOSS_STEP ? `BOSS ${chapter}` : `WAVE ${step + 1} / 3`);
     this.encounterText.setColor(step === BOSS_STEP ? '#fff0a6' : '#f7fbff');
     this.dailyDot.setVisible(dailyReady);
+    this.collectionDot.setVisible(collectionReady);
+  }
+
+  private createCollectionButton(): void {
+    const halo = this.scene.add.circle(0, 0, 38, 0x253b61, 0.96).setStrokeStyle(3, 0x9defff, 0.42);
+    const icon = this.scene.add.image(0, 0, 'ui-chaos-codex').setDisplaySize(62, 62);
+    this.collectionDot = this.scene.add.circle(25, -25, 10, 0xffc84d).setStrokeStyle(3, 0xffffff, 0.9);
+    this.collectionButton = this.scene.add.container(878, 112, [halo, icon, this.collectionDot]);
+    this.collectionButton.setSize(82, 82).setInteractive({ useHandCursor: true });
+    this.collectionButton.on('pointerdown', () => {
+      this.scene.tweens.add({ targets: this.collectionButton, scaleX: 0.92, scaleY: 0.92, duration: 75, yoyo: true, ease: 'Quad.Out' });
+      this.onCollection();
+    });
   }
 
   private createDailyButton(): void {
