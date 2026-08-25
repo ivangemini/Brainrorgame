@@ -5,9 +5,9 @@ export const MAX_COMBAT_ENERGY = 100 as const;
 
 export const ACTIVE_ABILITY_IDS = [
   'slipstream-burst',
-  'crust-mend',
-  'neon-nova',
-  'quasar-lock'
+  'crust-guard',
+  'neon-overdrive',
+  'quasar-jackpot'
 ] as const;
 export type ActiveAbilityId = (typeof ACTIVE_ABILITY_IDS)[number];
 
@@ -27,16 +27,21 @@ export interface ActiveAbilityRuntimeState {
   readonly cooldowns: Readonly<Record<ActiveAbilityId, number>>;
   readonly hasteRemainingMs: number;
   readonly hasteMultiplier: number;
-  readonly stunRemainingMs: number;
+  readonly guardRemainingMs: number;
+  readonly guardMultiplier: number;
+  readonly overdriveRemainingMs: number;
+  readonly overdriveMultiplier: number;
+  readonly jackpotRemainingMs: number;
+  readonly jackpotMultiplier: number;
 }
 
 export type ActiveAbilityEffect =
-  | { readonly kind: 'haste'; readonly durationMs: number; readonly attackIntervalMultiplier: number }
-  | { readonly kind: 'heal'; readonly amount: number }
-  | { readonly kind: 'burst'; readonly damage: number }
-  | { readonly kind: 'stun'; readonly durationMs: number };
+  | { readonly kind: 'haste'; readonly durationMs: number; readonly multiplier: number }
+  | { readonly kind: 'guard'; readonly durationMs: number; readonly multiplier: number }
+  | { readonly kind: 'overdrive'; readonly durationMs: number; readonly multiplier: number }
+  | { readonly kind: 'jackpot'; readonly durationMs: number; readonly multiplier: number };
 
-export type AbilityBlockReason = 'locked' | 'energy' | 'cooldown' | 'full-fortress' | 'no-target';
+export type AbilityBlockReason = 'locked' | 'energy' | 'cooldown' | 'no-target';
 
 export interface ActiveAbilityCastResult {
   readonly cast: boolean;
@@ -56,32 +61,32 @@ const DEFINITIONS: Readonly<Record<ActiveAbilityId, ActiveAbilityDefinition>> = 
     cooldownMs: 14_000,
     accentColor: 0x64d8ff
   },
-  'crust-mend': {
-    id: 'crust-mend',
+  'crust-guard': {
+    id: 'crust-guard',
     family: 'toastodilo',
-    name: 'Crust Mend',
-    shortLabel: 'MEND',
-    description: 'Instantly repairs the fortress.',
+    name: 'Crust Guard',
+    shortLabel: 'GUARD',
+    description: 'Temporarily reduces fortress damage taken.',
     energyCost: 38,
-    cooldownMs: 17_000,
+    cooldownMs: 16_000,
     accentColor: 0xffbd4d
   },
-  'neon-nova': {
-    id: 'neon-nova',
+  'neon-overdrive': {
+    id: 'neon-overdrive',
     family: 'lampalotl',
-    name: 'Neon Nova',
+    name: 'Neon Overdrive',
     shortLabel: 'NOVA',
-    description: 'Deals an instant percentage burst to the current target.',
+    description: 'Temporarily amplifies all crew projectile damage.',
     energyCost: 50,
     cooldownMs: 16_000,
     accentColor: 0xff86d7
   },
-  'quasar-lock': {
-    id: 'quasar-lock',
+  'quasar-jackpot': {
+    id: 'quasar-jackpot',
     family: 'dishnail',
-    name: 'Quasar Lock',
-    shortLabel: 'LOCK',
-    description: 'Freezes the enemy attack clock for a short duration.',
+    name: 'Quasar Jackpot',
+    shortLabel: 'JACK',
+    description: 'Temporarily amplifies encounter coin rewards.',
     energyCost: 46,
     cooldownMs: 18_000,
     accentColor: 0xc57dff
@@ -90,10 +95,16 @@ const DEFINITIONS: Readonly<Record<ActiveAbilityId, ActiveAbilityDefinition>> = 
 
 const HASTE_DURATION_MS = [0, 4_000, 4_600, 5_200] as const;
 const HASTE_MULTIPLIER = [1, 0.78, 0.72, 0.66] as const;
-const FORTRESS_HEAL = [0, 18, 26, 36] as const;
-const NOVA_MAX_HP_RATIO = [0, 0.10, 0.135, 0.17] as const;
-const NOVA_MIN_DAMAGE = [0, 24, 36, 52] as const;
-const STUN_DURATION_MS = [0, 2_200, 3_000, 3_900] as const;
+const GUARD_DURATION_MS = [0, 4_800, 5_400, 6_000] as const;
+const GUARD_MULTIPLIER = [1, 0.78, 0.68, 0.58] as const;
+const OVERDRIVE_DURATION_MS = [0, 4_000, 4_600, 5_200] as const;
+const OVERDRIVE_MULTIPLIER = [1, 1.25, 1.38, 1.55] as const;
+const JACKPOT_DURATION_MS = [0, 5_000, 5_800, 6_600] as const;
+const JACKPOT_MULTIPLIER = [1, 1.30, 1.50, 1.80] as const;
+
+let currentState = createActiveAbilityRuntimeState();
+let combatActive = false;
+let currentEncounterKey = '';
 
 export function createActiveAbilityRuntimeState(energy = 0): ActiveAbilityRuntimeState {
   return {
@@ -101,7 +112,12 @@ export function createActiveAbilityRuntimeState(energy = 0): ActiveAbilityRuntim
     cooldowns: emptyCooldowns(),
     hasteRemainingMs: 0,
     hasteMultiplier: 1,
-    stunRemainingMs: 0
+    guardRemainingMs: 0,
+    guardMultiplier: 1,
+    overdriveRemainingMs: 0,
+    overdriveMultiplier: 1,
+    jackpotRemainingMs: 0,
+    jackpotMultiplier: 1
   };
 }
 
@@ -114,12 +130,20 @@ export function tickActiveAbilityRuntime(
     ACTIVE_ABILITY_IDS.map((id) => [id, Math.max(0, state.cooldowns[id] - delta)])
   ) as Record<ActiveAbilityId, number>;
   const hasteRemainingMs = Math.max(0, state.hasteRemainingMs - delta);
+  const guardRemainingMs = Math.max(0, state.guardRemainingMs - delta);
+  const overdriveRemainingMs = Math.max(0, state.overdriveRemainingMs - delta);
+  const jackpotRemainingMs = Math.max(0, state.jackpotRemainingMs - delta);
   return {
     ...state,
     cooldowns,
     hasteRemainingMs,
     hasteMultiplier: hasteRemainingMs > 0 ? state.hasteMultiplier : 1,
-    stunRemainingMs: Math.max(0, state.stunRemainingMs - delta)
+    guardRemainingMs,
+    guardMultiplier: guardRemainingMs > 0 ? state.guardMultiplier : 1,
+    overdriveRemainingMs,
+    overdriveMultiplier: overdriveRemainingMs > 0 ? state.overdriveMultiplier : 1,
+    jackpotRemainingMs,
+    jackpotMultiplier: jackpotRemainingMs > 0 ? state.jackpotMultiplier : 1
   };
 }
 
@@ -131,15 +155,6 @@ export function gainCombatEnergy(
   return { ...state, energy: clampEnergy(state.energy + amount) };
 }
 
-export function energyGainForUnitAttack(level: 1 | 2 | 3): number {
-  return level;
-}
-
-export function energyGainForFortressHit(damage: number): number {
-  if (!Number.isFinite(damage) || damage <= 0) return 0;
-  return Math.min(8, Math.max(3, Math.ceil(damage / 4)));
-}
-
 export function getActiveAbilityDefinition(id: ActiveAbilityId): ActiveAbilityDefinition {
   return DEFINITIONS[id];
 }
@@ -148,19 +163,10 @@ export function getAllActiveAbilityDefinitions(): readonly ActiveAbilityDefiniti
   return ACTIVE_ABILITY_IDS.map((id) => DEFINITIONS[id]);
 }
 
-export function currentActiveHasteMultiplier(state: ActiveAbilityRuntimeState): number {
-  return state.hasteRemainingMs > 0 ? state.hasteMultiplier : 1;
-}
-
-export function isTargetStunned(state: ActiveAbilityRuntimeState): boolean {
-  return state.stunRemainingMs > 0;
-}
-
 export function canCastActiveAbility(
   id: ActiveAbilityId,
   state: ActiveAbilityRuntimeState,
   tier: CrewSynergyTier,
-  baseHp: number,
   targetAlive: boolean
 ): AbilityBlockReason | null {
   const definition = getActiveAbilityDefinition(id);
@@ -168,7 +174,6 @@ export function canCastActiveAbility(
   if (!targetAlive) return 'no-target';
   if (state.cooldowns[id] > 0) return 'cooldown';
   if (state.energy < definition.energyCost) return 'energy';
-  if (id === 'crust-mend' && baseHp >= 100) return 'full-fortress';
   return null;
 }
 
@@ -176,11 +181,9 @@ export function castActiveAbility(
   id: ActiveAbilityId,
   state: ActiveAbilityRuntimeState,
   tier: CrewSynergyTier,
-  targetHpMax: number,
-  baseHp: number,
   targetAlive: boolean
 ): ActiveAbilityCastResult {
-  const reason = canCastActiveAbility(id, state, tier, baseHp, targetAlive);
+  const reason = canCastActiveAbility(id, state, tier, targetAlive);
   if (reason) return { cast: false, state, effect: null, reason };
 
   const definition = getActiveAbilityDefinition(id);
@@ -193,34 +196,116 @@ export function castActiveAbility(
 
   if (id === 'slipstream-burst') {
     const durationMs = HASTE_DURATION_MS[tier];
-    const attackIntervalMultiplier = HASTE_MULTIPLIER[tier];
+    const multiplier = HASTE_MULTIPLIER[tier];
     next = {
       ...next,
       hasteRemainingMs: Math.max(next.hasteRemainingMs, durationMs),
-      hasteMultiplier: Math.min(next.hasteMultiplier, attackIntervalMultiplier)
+      hasteMultiplier: Math.min(next.hasteMultiplier, multiplier)
     };
-    effect = { kind: 'haste', durationMs, attackIntervalMultiplier };
-  } else if (id === 'crust-mend') {
-    effect = { kind: 'heal', amount: FORTRESS_HEAL[tier] };
-  } else if (id === 'neon-nova') {
-    const safeMaxHp = Math.max(1, Number.isFinite(targetHpMax) ? targetHpMax : 1);
-    const damage = Math.max(NOVA_MIN_DAMAGE[tier], Math.round(safeMaxHp * NOVA_MAX_HP_RATIO[tier]));
-    effect = { kind: 'burst', damage };
+    effect = { kind: 'haste', durationMs, multiplier };
+  } else if (id === 'crust-guard') {
+    const durationMs = GUARD_DURATION_MS[tier];
+    const multiplier = GUARD_MULTIPLIER[tier];
+    next = {
+      ...next,
+      guardRemainingMs: Math.max(next.guardRemainingMs, durationMs),
+      guardMultiplier: Math.min(next.guardMultiplier, multiplier)
+    };
+    effect = { kind: 'guard', durationMs, multiplier };
+  } else if (id === 'neon-overdrive') {
+    const durationMs = OVERDRIVE_DURATION_MS[tier];
+    const multiplier = OVERDRIVE_MULTIPLIER[tier];
+    next = {
+      ...next,
+      overdriveRemainingMs: Math.max(next.overdriveRemainingMs, durationMs),
+      overdriveMultiplier: Math.max(next.overdriveMultiplier, multiplier)
+    };
+    effect = { kind: 'overdrive', durationMs, multiplier };
   } else {
-    const durationMs = STUN_DURATION_MS[tier];
-    next = { ...next, stunRemainingMs: Math.max(next.stunRemainingMs, durationMs) };
-    effect = { kind: 'stun', durationMs };
+    const durationMs = JACKPOT_DURATION_MS[tier];
+    const multiplier = JACKPOT_MULTIPLIER[tier];
+    next = {
+      ...next,
+      jackpotRemainingMs: Math.max(next.jackpotRemainingMs, durationMs),
+      jackpotMultiplier: Math.max(next.jackpotMultiplier, multiplier)
+    };
+    effect = { kind: 'jackpot', durationMs, multiplier };
   }
 
   return { cast: true, state: next, effect, reason: null };
 }
 
+export function beginActiveAbilityEncounter(key: string): void {
+  if (key === currentEncounterKey) return;
+  currentEncounterKey = key;
+  currentState = createActiveAbilityRuntimeState();
+  combatActive = true;
+}
+
+export function setActiveAbilityCombatActive(active: boolean): void {
+  combatActive = active;
+}
+
+export function isActiveAbilityCombatActive(): boolean {
+  return combatActive;
+}
+
+export function getCurrentActiveAbilityRuntime(): ActiveAbilityRuntimeState {
+  return currentState;
+}
+
+export function tickCurrentActiveAbilityRuntime(deltaMs: number): ActiveAbilityRuntimeState {
+  currentState = tickActiveAbilityRuntime(currentState, deltaMs);
+  return currentState;
+}
+
+export function recordCrewAttackEnergy(): void {
+  if (!combatActive) return;
+  currentState = gainCombatEnergy(currentState, 1);
+}
+
+export function recordFortressHitEnergy(): void {
+  if (!combatActive) return;
+  currentState = gainCombatEnergy(currentState, 4);
+}
+
+export function tryCastCurrentActiveAbility(
+  id: ActiveAbilityId,
+  tier: CrewSynergyTier
+): ActiveAbilityCastResult {
+  const result = castActiveAbility(id, currentState, tier, combatActive);
+  if (result.cast) currentState = result.state;
+  return result;
+}
+
+export function currentActiveHasteMultiplier(): number {
+  return currentState.hasteRemainingMs > 0 ? currentState.hasteMultiplier : 1;
+}
+
+export function currentActiveGuardMultiplier(): number {
+  return currentState.guardRemainingMs > 0 ? currentState.guardMultiplier : 1;
+}
+
+export function currentActiveDamageMultiplier(): number {
+  return currentState.overdriveRemainingMs > 0 ? currentState.overdriveMultiplier : 1;
+}
+
+export function currentActiveRewardMultiplier(): number {
+  return currentState.jackpotRemainingMs > 0 ? currentState.jackpotMultiplier : 1;
+}
+
+export function resetActiveAbilityRuntime(): void {
+  currentState = createActiveAbilityRuntimeState();
+  combatActive = false;
+  currentEncounterKey = '';
+}
+
 function emptyCooldowns(): Record<ActiveAbilityId, number> {
   return {
     'slipstream-burst': 0,
-    'crust-mend': 0,
-    'neon-nova': 0,
-    'quasar-lock': 0
+    'crust-guard': 0,
+    'neon-overdrive': 0,
+    'quasar-jackpot': 0
   };
 }
 
