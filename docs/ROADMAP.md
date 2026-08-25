@@ -72,6 +72,10 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Real-time auto combat for waves and boss
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop
 - [x] Data-driven rotating boss roster with distinct idle, telegraph and defeat choreography
+- [x] Three-phase boss combat with HP-derived 70% / 40% transitions
+- [x] Boss shield and weak-point windows with per-boss vulnerability profiles
+- [x] Phase III enrage scaling for boss cadence and fortress damage
+- [x] Reload-safe boss phase reconstruction directly from persisted boss HP
 - [x] Recruit currency sink and encounter reward loop
 - [x] Four-way recruit pool with balanced / heavy / rapid-fire / artillery family identities
 - [x] Merge-stable crew-family synergy power with Tier I / II / III thresholds
