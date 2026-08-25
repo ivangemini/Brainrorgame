@@ -7,6 +7,18 @@ import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { createGameSave, type GameSave } from '../state/save';
 import { shouldRequestChapterInterstitial } from '../systems/adPolicy';
+import { setActiveAbilityCombatActive } from '../systems/activeAbilities';
+import {
+  addChaosPerk,
+  chaosDraftCheckpointForStep,
+  getChaosPerkDefinition,
+  getChaosPerkOffers,
+  getCurrentChaosPerkMultipliers,
+  needsChaosDraft,
+  resetCurrentChaosPerks,
+  syncCurrentChaosPerks,
+  type ChaosPerkId
+} from '../systems/chaosDraft';
 import {
   claimAchievement,
   createDefaultCollectionProgress,
@@ -60,6 +72,7 @@ import {
   type OnboardingState
 } from '../systems/onboarding';
 import { calculateOfflineReward, type OfflineReward } from '../systems/offlineProgression';
+import { ChaosDraftPanel } from '../ui/ChaosDraftPanel';
 import { CollectionPanel } from '../ui/CollectionPanel';
 import { DailyPanel } from '../ui/DailyPanel';
 import { GameHud } from '../ui/GameHud';
@@ -87,6 +100,7 @@ export class GameScene extends Phaser.Scene {
   private dailyPanel!: DailyPanel;
   private collectionPanel!: CollectionPanel;
   private revivePanel!: RevivePanel;
+  private chaosDraftPanel!: ChaosDraftPanel;
   private onboardingCoach!: OnboardingCoach;
   private boardView!: BoardView;
   private bossView!: BossView;
@@ -97,6 +111,7 @@ export class GameScene extends Phaser.Scene {
   private daily: DailyRetentionState = createDefaultDailyState();
   private collection: CollectionProgress = createDefaultCollectionProgress(this.board);
   private onboarding: OnboardingState = createDefaultOnboardingState();
+  private chaosPerks: readonly ChaosPerkId[] = [];
   private baseHp = 100;
   private chapter = 1;
   private encounterStep: EncounterStep = 0;
@@ -141,6 +156,7 @@ export class GameScene extends Phaser.Scene {
       this.restoreSave(initialSave);
       initialOfflineReward = calculateOfflineReward(initialSave.updatedAt, Date.now(), this.chapter, this.upgrades);
     }
+    syncCurrentChaosPerks(this.chaosPerks);
 
     this.analytics = new GameAnalytics(this.platform);
     this.analytics.sessionStart(initialSave !== null, this.chapter);
@@ -174,6 +190,7 @@ export class GameScene extends Phaser.Scene {
       () => this.tryRewardedRevive(),
       () => this.freeRetryEncounter()
     );
+    this.chaosDraftPanel = new ChaosDraftPanel(this, (id) => this.selectChaosPerk(id));
     this.boardView = new BoardView(
       this,
       this.fx,
@@ -190,6 +207,7 @@ export class GameScene extends Phaser.Scene {
     this.dailyPanel.create();
     this.collectionPanel.create();
     this.revivePanel.create();
+    this.chaosDraftPanel.create();
     this.bossView.create();
     this.enemyView.create();
     this.boardView.createFrame();
@@ -198,7 +216,14 @@ export class GameScene extends Phaser.Scene {
     this.onboardingCoach.update(this.onboarding);
     this.daily = rollDailyState(this.daily);
     this.presentEncounter(true);
-    this.startInitialFunnelTelemetry();
+    const resumeDraft = isOnboardingComplete(this.onboarding) && needsChaosDraft(this.encounterStep, this.chaosPerks.length);
+    if (resumeDraft) {
+      this.resolvingBoard = true;
+      setActiveAbilityCombatActive(false);
+      this.time.delayedCall(220, () => this.showChaosDraft());
+    } else {
+      this.startInitialFunnelTelemetry();
+    }
     this.metaPanel.update(this.coreShards, this.upgrades);
     this.dailyPanel.update(this.daily);
     this.collectionPanel.update(this.collection);
@@ -210,7 +235,7 @@ export class GameScene extends Phaser.Scene {
 
     if (initialOfflineReward && initialOfflineReward.coins > 0) {
       this.applyOfflineReward(initialOfflineReward);
-    } else if (isOnboardingComplete(this.onboarding)) {
+    } else if (isOnboardingComplete(this.onboarding) && !resumeDraft) {
       this.time.delayedCall(550, () => this.fx.showHint('DRAG TWINS TO MERGE', 1355));
     }
   }
@@ -395,6 +420,7 @@ export class GameScene extends Phaser.Scene {
     this.analytics.encounterComplete(this.encounter.kind, this.chapter, this.encounterStep, this.baseHp);
     this.targetAlive = false;
     this.resolvingBoard = true;
+    setActiveAbilityCombatActive(false);
     this.targetAttackClock = 0;
     const isBoss = this.encounterStep === BOSS_STEP;
     const coinReward = Math.max(1, Math.round(this.encounter.reward * coinRewardMultiplier(this.upgrades)));
@@ -450,19 +476,67 @@ export class GameScene extends Phaser.Scene {
   }
 
   private finishAdvanceEncounter(wasBoss: boolean): void {
+    const extraHeal = wasBoss ? 0 : getCurrentChaosPerkMultipliers().waveHealBonus;
+    if (wasBoss) {
+      this.chaosPerks = [];
+      resetCurrentChaosPerks();
+    }
+
     const next = nextEncounter(this.chapter, this.encounterStep);
     this.chapter = next.chapter;
     this.encounterStep = next.step;
     this.encounter = getEncounterSpec(this.chapter, this.encounterStep);
     this.targetHpMax = this.encounter.hp;
     this.targetHp = this.targetHpMax;
-    this.baseHp = Math.min(100, this.baseHp + (wasBoss ? 20 : 4));
+    this.baseHp = Math.min(100, this.baseHp + (wasBoss ? 20 : 4 + extraHeal));
     this.targetAlive = true;
     this.resolvingBoard = false;
     this.reviveUsedThisEncounter = false;
     this.targetAttackClock = 0;
     this.attackClocks.clear();
     this.presentEncounter(false);
+
+    if (isOnboardingComplete(this.onboarding) && needsChaosDraft(this.encounterStep, this.chaosPerks.length)) {
+      this.resolvingBoard = true;
+      setActiveAbilityCombatActive(false);
+      this.persistNow();
+      this.time.delayedCall(180, () => this.showChaosDraft());
+      return;
+    }
+
+    this.activateCurrentEncounter();
+  }
+
+  private showChaosDraft(): void {
+    const checkpoint = chaosDraftCheckpointForStep(this.encounterStep);
+    if (checkpoint === null || !needsChaosDraft(this.encounterStep, this.chaosPerks.length)) {
+      this.activateCurrentEncounter();
+      return;
+    }
+    setActiveAbilityCombatActive(false);
+    const offers = getChaosPerkOffers(this.chapter, checkpoint, this.chaosPerks);
+    this.chaosDraftPanel.show(this.chapter, checkpoint, offers, this.chaosPerks);
+  }
+
+  private selectChaosPerk(id: ChaosPerkId): void {
+    if (!this.chaosDraftPanel.isOpen()) return;
+    const previousLength = this.chaosPerks.length;
+    this.chaosPerks = addChaosPerk(this.chaosPerks, id);
+    if (this.chaosPerks.length === previousLength) return;
+    syncCurrentChaosPerks(this.chaosPerks);
+    this.chaosDraftPanel.hide();
+    const definition = getChaosPerkDefinition(id);
+    this.audio.reward();
+    this.fx.flashRing(540, 950, definition.accentColor);
+    this.fx.burst(540, 950, definition.accentColor, 18, 190);
+    this.fx.showHint(`${definition.name.toUpperCase()} • CHAPTER PERK`, 1015, `#${definition.accentColor.toString(16).padStart(6, '0')}`);
+    this.activateCurrentEncounter();
+  }
+
+  private activateCurrentEncounter(): void {
+    this.targetAlive = true;
+    this.resolvingBoard = false;
+    setActiveAbilityCombatActive(true);
     this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
     const label = this.encounter.kind === 'boss'
       ? `BOSS ${this.chapter} INCOMING`
@@ -485,6 +559,7 @@ export class GameScene extends Phaser.Scene {
     this.analytics.fortressFailed(this.encounter.kind, this.chapter, this.encounterStep);
     this.targetAlive = false;
     this.resolvingBoard = true;
+    setActiveAbilityCombatActive(false);
     this.targetAttackClock = 0;
     this.attackClocks.clear();
     const banner = this.add.text(540, 920, 'FORTRESS CRACKED!', {
@@ -510,6 +585,7 @@ export class GameScene extends Phaser.Scene {
     this.baseHp = REWARDED_REVIVE_HP;
     this.targetAlive = true;
     this.resolvingBoard = false;
+    setActiveAbilityCombatActive(true);
     this.targetAttackClock = 0;
     this.attackClocks.clear();
     this.presentEncounter(true);
@@ -525,6 +601,7 @@ export class GameScene extends Phaser.Scene {
     this.targetHp = this.targetHpMax;
     this.targetAlive = true;
     this.resolvingBoard = false;
+    setActiveAbilityCombatActive(true);
     this.targetAttackClock = 0;
     this.attackClocks.clear();
     this.presentEncounter(true);
@@ -534,7 +611,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleMetaPanel(): void {
-    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
     this.audio.button();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
@@ -543,7 +620,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleDailyPanel(): void {
-    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
     this.audio.button();
     this.daily = rollDailyState(this.daily);
     this.dailyPanel.update(this.daily);
@@ -555,7 +632,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleCollectionPanel(): void {
-    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
     this.audio.button();
     this.collectionPanel.update(this.collection);
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
@@ -657,6 +734,7 @@ export class GameScene extends Phaser.Scene {
   private applyOfflineReward(reward: OfflineReward): void {
     if (reward.coins <= 0) return;
     const reviveFlowActive = this.revivePanel.isOpen();
+    const draftPending = needsChaosDraft(this.encounterStep, this.chaosPerks.length);
     this.coins += reward.coins;
     this.analytics.offlineReward(reward.coins, reward.rewardedSeconds, this.chapter);
     this.syncUi();
@@ -664,7 +742,7 @@ export class GameScene extends Phaser.Scene {
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
-    if (!reviveFlowActive && isOnboardingComplete(this.onboarding)) this.offlinePanel.show(reward);
+    if (!reviveFlowActive && !draftPending && isOnboardingComplete(this.onboarding)) this.offlinePanel.show(reward);
   }
 
   private async doubleOfflineReward(reward: OfflineReward): Promise<boolean> {
@@ -715,11 +793,13 @@ export class GameScene extends Phaser.Scene {
 
   private startInitialFunnelTelemetry(): void {
     if (isOnboardingComplete(this.onboarding)) {
+      setActiveAbilityCombatActive(true);
       this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
       return;
     }
     this.analytics.onboardingStep(this.onboarding.step);
     if (this.onboarding.step === 'fight') {
+      setActiveAbilityCombatActive(true);
       this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
     }
   }
@@ -741,6 +821,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.analytics.onboardingStep(next.step);
       if (next.step === 'fight') {
+        setActiveAbilityCombatActive(true);
         this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
         this.fx.showHint('AUTO-FIRE ONLINE!', 1015, '#fff0a6');
       }
@@ -756,6 +837,8 @@ export class GameScene extends Phaser.Scene {
     this.daily = rollDailyState(save.daily);
     this.collection = save.collection;
     this.onboarding = save.onboarding;
+    this.chaosPerks = save.chaosPerks;
+    syncCurrentChaosPerks(this.chaosPerks);
     this.baseHp = save.baseHp;
     this.chapter = save.chapter;
     this.encounterStep = save.encounterStep;
@@ -788,7 +871,8 @@ export class GameScene extends Phaser.Scene {
       targetHpMax: this.targetHpMax,
       targetHp: this.targetHp,
       recruitSerial: this.recruitSerial,
-      board: this.board
+      board: this.board,
+      chaosPerks: this.chaosPerks
     });
     void this.platform.save(save).catch(() => undefined);
   }
@@ -811,6 +895,7 @@ export class GameScene extends Phaser.Scene {
       || this.offlinePanel.isOpen()
       || this.dailyPanel.isOpen()
       || this.collectionPanel.isOpen()
-      || this.revivePanel.isOpen();
+      || this.revivePanel.isOpen()
+      || this.chaosDraftPanel.isOpen();
   }
 }

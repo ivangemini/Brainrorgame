@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import { getCurrentChaosPerkMultipliers } from './chaosDraft';
 import type { CrewSynergyTier } from './crewSynergies';
 
 export const MAX_COMBAT_ENERGY = 100 as const;
@@ -261,12 +262,12 @@ export function tickCurrentActiveAbilityRuntime(deltaMs: number): ActiveAbilityR
 
 export function recordCrewAttackEnergy(): void {
   if (!combatActive) return;
-  currentState = gainCombatEnergy(currentState, 1);
+  currentState = gainCombatEnergy(currentState, getCurrentChaosPerkMultipliers().energyGainMultiplier);
 }
 
 export function recordFortressHitEnergy(): void {
   if (!combatActive) return;
-  currentState = gainCombatEnergy(currentState, 4);
+  currentState = gainCombatEnergy(currentState, 4 * getCurrentChaosPerkMultipliers().energyGainMultiplier);
 }
 
 export function tryCastCurrentActiveAbility(
@@ -311,5 +312,5 @@ function emptyCooldowns(): Record<ActiveAbilityId, number> {
 
 function clampEnergy(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(MAX_COMBAT_ENERGY, Math.round(value)));
+  return Math.max(0, Math.min(MAX_COMBAT_ENERGY, value));
 }

@@ -135,7 +135,7 @@ export class ActiveAbilityBar {
     if (state.overdriveRemainingMs > 0) effects.push(`NOVA ${(state.overdriveRemainingMs / 1000).toFixed(1)}s`);
     if (state.jackpotRemainingMs > 0) effects.push(`JACK ${(state.jackpotRemainingMs / 1000).toFixed(1)}s`);
     const suffix = effects.length > 0 ? `  •  ${effects.join('  •  ')}` : '';
-    this.energyText.setText(`CHAOS ENERGY ${state.energy} / ${MAX_COMBAT_ENERGY}${suffix}`);
+    this.energyText.setText(`CHAOS ENERGY ${Math.floor(state.energy)} / ${MAX_COMBAT_ENERGY}${suffix}`);
   }
 
   private drawButton(

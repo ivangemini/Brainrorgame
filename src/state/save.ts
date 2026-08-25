@@ -3,6 +3,10 @@ import { isMutationId } from '../content/mutations';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import type { BoardState, BoardUnit } from '../systems/board';
 import {
+  isChaosPerkId,
+  type ChaosPerkId
+} from '../systems/chaosDraft';
+import {
   backfillCollectionProgress,
   isAchievementId,
   isCollectionKey,
@@ -23,7 +27,7 @@ import {
   type OnboardingState
 } from '../systems/onboarding';
 
-export const SAVE_VERSION = 8 as const;
+export const SAVE_VERSION = 9 as const;
 
 type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
@@ -86,11 +90,16 @@ export interface GameSaveV7 extends Omit<GameSaveV6, 'version' | 'board'> {
 }
 
 export interface GameSaveV8 extends Omit<GameSaveV7, 'version' | 'encounterStep'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 8;
   readonly encounterStep: EncounterStep;
 }
 
-export type GameSave = GameSaveV8;
+export interface GameSaveV9 extends Omit<GameSaveV8, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly chaosPerks: readonly ChaosPerkId[];
+}
+
+export type GameSave = GameSaveV9;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -106,6 +115,7 @@ export interface GameSaveSnapshot {
   readonly targetHp: number;
   readonly recruitSerial: number;
   readonly board: BoardState;
+  readonly chaosPerks: readonly ChaosPerkId[];
 }
 
 interface CommonProgressFields {
@@ -133,7 +143,7 @@ interface V5ProgressFields extends V4ProgressFields {
 type BoardParser = (value: unknown) => BoardState | null;
 type StepParser = (value: unknown) => EncounterStep | null;
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV8 {
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV9 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -149,7 +159,8 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     targetHpMax: snapshot.targetHpMax,
     targetHp: snapshot.targetHp,
     recruitSerial: snapshot.recruitSerial,
-    board: cloneBoard(snapshot.board)
+    board: cloneBoard(snapshot.board),
+    chaosPerks: [...snapshot.chaosPerks]
   };
 }
 
@@ -172,7 +183,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v5 = v4 ? migrateV4ToV5(v4) : null;
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
-    return v7 ? migrateV7ToV8(v7) : null;
+    const v8 = v7 ? migrateV7ToV8(v7) : null;
+    return v8 ? migrateV8ToV9(v8) : null;
   }
   if (value.version === 2) {
     const v3 = migrateV2ToV3(value);
@@ -180,36 +192,63 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v5 = v4 ? migrateV4ToV5(v4) : null;
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
-    return v7 ? migrateV7ToV8(v7) : null;
+    const v8 = v7 ? migrateV7ToV8(v7) : null;
+    return v8 ? migrateV8ToV9(v8) : null;
   }
   if (value.version === 3) {
     const v4 = migrateV3ToV4(value);
     const v5 = v4 ? migrateV4ToV5(v4) : null;
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
-    return v7 ? migrateV7ToV8(v7) : null;
+    const v8 = v7 ? migrateV7ToV8(v7) : null;
+    return v8 ? migrateV8ToV9(v8) : null;
   }
   if (value.version === 4) {
     const v5 = migrateV4ToV5(value);
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
-    return v7 ? migrateV7ToV8(v7) : null;
+    const v8 = v7 ? migrateV7ToV8(v7) : null;
+    return v8 ? migrateV8ToV9(v8) : null;
   }
   if (value.version === 5) {
     const v6 = migrateV5ToV6(value);
     const v7 = v6 ? migrateV6ToV7(v6) : null;
-    return v7 ? migrateV7ToV8(v7) : null;
+    const v8 = v7 ? migrateV7ToV8(v7) : null;
+    return v8 ? migrateV8ToV9(v8) : null;
   }
   if (value.version === 6) {
     const v7 = migrateV6ToV7(value);
-    return v7 ? migrateV7ToV8(v7) : null;
+    const v8 = v7 ? migrateV7ToV8(v7) : null;
+    return v8 ? migrateV8ToV9(v8) : null;
   }
-  if (value.version === 7) return migrateV7ToV8(value);
+  if (value.version === 7) {
+    const v8 = migrateV7ToV8(value);
+    return v8 ? migrateV8ToV9(v8) : null;
+  }
+  if (value.version === 8) return migrateV8ToV9(value);
   if (value.version !== SAVE_VERSION) return null;
 
   const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
+  const chaosPerks = parseChaosPerks(value.chaosPerks);
+  if (!v5 || !chaosPerks || !isValidOnboardingState(value.onboarding)) return null;
+  return {
+    version: SAVE_VERSION,
+    ...v5,
+    onboarding: cloneOnboarding(value.onboarding),
+    chaosPerks
+  };
+}
+
+function migrateV8ToV9(value: unknown): GameSaveV9 | null {
+  if (!isRecord(value)) return null;
+  const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
   if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
-  return { version: SAVE_VERSION, ...v5, onboarding: cloneOnboarding(value.onboarding) };
+  return {
+    version: SAVE_VERSION,
+    ...v5,
+    onboarding: cloneOnboarding(value.onboarding),
+    chaosPerks: []
+  };
 }
 
 function migrateV7ToV8(value: unknown): GameSaveV8 | null {
@@ -217,7 +256,7 @@ function migrateV7ToV8(value: unknown): GameSaveV8 | null {
   const v5 = parseV5Fields(value, parseCurrentBoard, parseLegacyEncounterStep);
   if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
   return {
-    version: SAVE_VERSION,
+    version: 8,
     ...v5,
     encounterStep: v5.encounterStep === 3 ? BOSS_STEP : v5.encounterStep,
     onboarding: cloneOnboarding(value.onboarding)
@@ -349,6 +388,16 @@ function parseCommonFields(value: Record<string, unknown>, boardParser: BoardPar
     recruitSerial: Math.max(0, Math.floor(value.recruitSerial)),
     board
   };
+}
+
+function parseChaosPerks(value: unknown): readonly ChaosPerkId[] | null {
+  if (!Array.isArray(value) || value.length > 2) return null;
+  const perks: ChaosPerkId[] = [];
+  for (const id of value) {
+    if (!isChaosPerkId(id) || perks.includes(id)) return null;
+    perks.push(id);
+  }
+  return perks;
 }
 
 function parseCollection(value: unknown): CollectionProgress | null {
