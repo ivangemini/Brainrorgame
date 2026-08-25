@@ -10,7 +10,12 @@ import {
   type EliteModifierDefinition
 } from '../content/eliteModifiers';
 import { getEnemyForWave, scaleEnemy, type EnemyWaveNumber } from '../content/enemies';
-import { applyWorldPressure, getWorldEnergyGainMultiplier } from '../content/worlds';
+import {
+  applyWorldPressure,
+  getWorldEnergyGainMultiplier,
+  getWorldForChapter,
+  isWorldFinalChapter
+} from '../content/worlds';
 import { beginActiveAbilityEncounter } from './activeAbilities';
 import {
   currentBossAttackIntervalMultiplier,
@@ -86,6 +91,9 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
     const boss = getBossForChapter(safeChapter);
     const mutated = applyChapterMutator(scaleBoss(boss, safeChapter), mutator);
     const scaled = applyWorldPressure(mutated, safeChapter, 1200);
+    const worldBonus = isWorldFinalChapter(safeChapter)
+      ? getWorldForChapter(safeChapter).completionCoins
+      : 0;
     return {
       kind: 'boss',
       id: boss.id,
@@ -98,7 +106,7 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
       get attackMs(): number {
         return Math.max(1200, Math.round(scaled.attackMs * currentBossAttackIntervalMultiplier()));
       },
-      reward: scaled.reward,
+      reward: scaled.reward + worldBonus,
       accentColor: boss.accentColor,
       projectileColor: boss.projectileColor,
       displaySize: boss.displaySize,
