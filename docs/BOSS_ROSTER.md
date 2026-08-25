@@ -38,6 +38,20 @@ The boss roster is original project IP. Each chapter selects one boss determinis
 - Mutation hooks: sour-candy, cosmic-orbit, crystal-dome variants.
 - IP-distance check: generic confectionery/dispenser/cephalopod motifs only; no branded candy or protected character design.
 
+## Kettlestar Volcanissimo
+
+- Visual joke: a giant enamel tea kettle that believes its pressure gauge is a volcanic core.
+- Silhouette: broad rounded kettle body, oversized side spout, loop handle and a jagged steam-crown lid.
+- Material: teal enamel metal, warm brass/orange lid, glowing pressure glass and soft white steam.
+- Face/personality: anxious pressure-monster stare; visibly trying not to explode.
+- Gameplay role: pressure-burst boss; slightly lighter body than the tank boss with heavier mid-cadence fortress hits.
+- Signature read: three long steam lanes open into a fan before the pressure blast lands, so the warning shape is readable without color.
+- Signature defeat: body compresses inward like a crushed kettle, then rebounds flat and vents away.
+- Mutation hooks: black-steam, aurora boiler, molten brass and crystal-pressure variants.
+- IP-distance check: original generic kettle/pressure/volcano construction; no branded appliance shape, logo, named meme or franchise cues.
+
 ## Rotation and pacing
 
-Chapters rotate through the roster in order and then repeat. HP scales exponentially by each boss profile; damage, attack cadence and rewards use bounded chapter progression so boss identity remains legible without forcing ad-driven pain spikes. First-session chapter one remains Fridgino Maximo to preserve the existing onboarding and difficulty baseline.
+Chapters rotate through the four-boss roster in order and then repeat. HP scales exponentially by each boss profile; damage, attack cadence and rewards use bounded chapter progression so boss identity remains legible without forcing ad-driven pain spikes. First-session chapter one remains Fridgino Maximo to preserve the existing onboarding and difficulty baseline.
+
+The fourth boss enters first at chapter 4 with about 930 HP, 17 fortress damage and a 3595 ms base attack interval after chapter scaling. That keeps the new pressure profile stronger than the opening bosses without creating a reward or cadence discontinuity before the roster loops back to Fridgino in chapter 5.
