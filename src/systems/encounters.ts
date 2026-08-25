@@ -1,5 +1,10 @@
 import { getBossForChapter, scaleBoss, type BossPresentation } from '../content/bosses';
 import {
+  applyChapterMutator,
+  getChapterMutator,
+  type ChapterMutatorDefinition
+} from '../content/chapterMutators';
+import {
   applyEliteModifier,
   getEliteModifierForWave,
   type EliteModifierDefinition
@@ -22,6 +27,7 @@ interface EncounterSpecBase {
   readonly accentColor: number;
   readonly projectileColor: number;
   readonly displaySize: number;
+  readonly mutator: ChapterMutatorDefinition | null;
 }
 
 export interface WaveEncounterSpec extends EncounterSpecBase {
@@ -66,9 +72,10 @@ export function isBossStep(step: EncounterStep): boolean {
 
 export function getEncounterSpec(chapter: number, step: EncounterStep): EncounterSpec {
   const safeChapter = Math.max(1, Math.floor(chapter));
+  const mutator = getChapterMutator(safeChapter);
   if (step === BOSS_STEP) {
     const boss = getBossForChapter(safeChapter);
-    const scaled = scaleBoss(boss, safeChapter);
+    const scaled = applyChapterMutator(scaleBoss(boss, safeChapter), mutator);
     return {
       kind: 'boss',
       id: boss.id,
@@ -81,7 +88,8 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
       accentColor: boss.accentColor,
       projectileColor: boss.projectileColor,
       displaySize: boss.displaySize,
-      presentation: boss.presentation
+      presentation: boss.presentation,
+      mutator
     };
   }
 
@@ -94,21 +102,29 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
   const eliteScaled = elite ? applyEliteModifier(base, elite) : { ...base, displayScale: 1 };
   const pressure = LATE_WAVE_PRESSURE[step];
   const gauntlet = step === GAUNTLET_STEP;
+  const pressured = {
+    hp: Math.max(1, Math.round(eliteScaled.hp * pressure.hp)),
+    damage: Math.max(1, Math.round(eliteScaled.damage * pressure.damage)),
+    attackMs: Math.max(1450, Math.round(eliteScaled.attackMs * pressure.attackMs)),
+    reward: Math.max(1, Math.round(eliteScaled.reward * pressure.reward))
+  };
+  const mutated = applyChapterMutator(pressured, mutator);
   return {
     kind: 'wave',
     id: enemy.id,
     name: gauntlet ? `Chaos Gate ${enemy.name}` : enemy.name,
     texture: enemy.texture,
-    hp: Math.max(1, Math.round(eliteScaled.hp * pressure.hp)),
-    damage: Math.max(1, Math.round(eliteScaled.damage * pressure.damage)),
-    attackMs: Math.max(1450, Math.round(eliteScaled.attackMs * pressure.attackMs)),
-    reward: Math.max(1, Math.round(eliteScaled.reward * pressure.reward)),
+    hp: mutated.hp,
+    damage: mutated.damage,
+    attackMs: mutated.attackMs,
+    reward: mutated.reward,
     accentColor: elite?.accentColor ?? enemy.accentColor,
     projectileColor: elite?.projectileColor ?? enemy.projectileColor,
     displaySize: Math.round(enemy.displaySize * eliteScaled.displayScale * pressure.display),
     elite,
     waveNumber,
-    gauntlet
+    gauntlet,
+    mutator
   };
 }
 
