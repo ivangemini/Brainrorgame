@@ -22,6 +22,8 @@ const EN = {
   'common.maxed': 'MAXED',
   'common.coins': 'COINS',
   'common.core': 'CORE',
+  'common.shard': 'SHARD',
+  'common.shards': 'SHARDS',
   'common.level': 'LEVEL {current} / {max}',
   'daily.title': 'DAILY CHAOS',
   'daily.streak': 'STREAK {current} / 7',
@@ -36,7 +38,12 @@ const EN = {
   'lab.title': 'CORE LAB',
   'lab.subtitle': 'PERMANENT UPGRADES',
   'lab.hint': 'Bosses drop Core Shards. Effects apply instantly.',
-  'codex.discovered': '{current} / {total} discovered'
+  'codex.title': 'CHAOS CODEX',
+  'codex.discovered': '{current} / {total} discovered',
+  'codex.discoveries': 'DISCOVERIES',
+  'codex.forms': 'FORMS {start}–{end} / {total}  •  PAGE {page}/{pages}',
+  'codex.ascend': 'T3 TWINS • SAME RARITY → ASCEND',
+  'codex.achievements': 'ACHIEVEMENTS'
 } as const;
 
 export type TranslationKey = keyof typeof EN;
@@ -63,6 +70,8 @@ const RU: Dictionary = {
   'common.maxed': 'МАКС.',
   'common.coins': 'МОНЕТ',
   'common.core': 'ЯДРО',
+  'common.shard': 'ОСКОЛОК',
+  'common.shards': 'ОСКОЛКОВ',
   'common.level': 'УРОВЕНЬ {current} / {max}',
   'daily.title': 'ЕЖЕДНЕВНЫЙ ХАОС',
   'daily.streak': 'СЕРИЯ {current} / 7',
@@ -77,7 +86,12 @@ const RU: Dictionary = {
   'lab.title': 'ЛАБОРАТОРИЯ ЯДРА',
   'lab.subtitle': 'ПОСТОЯННЫЕ УЛУЧШЕНИЯ',
   'lab.hint': 'Боссы дают Осколки Ядра. Эффекты применяются сразу.',
-  'codex.discovered': 'открыто {current} / {total}'
+  'codex.title': 'КОДЕКС ХАОСА',
+  'codex.discovered': 'открыто {current} / {total}',
+  'codex.discoveries': 'ОТКРЫТЫЕ ФОРМЫ',
+  'codex.forms': 'ФОРМЫ {start}–{end} / {total}  •  СТР. {page}/{pages}',
+  'codex.ascend': 'ДВЕ T3 • ОДНА РЕДКОСТЬ → ВОЗНЕСЕНИЕ',
+  'codex.achievements': 'ДОСТИЖЕНИЯ'
 };
 
 const DICTIONARIES: Readonly<Record<SupportedLocale, Dictionary>> = { en: EN, ru: RU };
