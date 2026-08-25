@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
@@ -87,6 +88,24 @@ export type GameAnalyticsEvent =
       readonly achievement: AchievementId;
       readonly coins: number;
       readonly coreShards: number;
+    }
+  | {
+      readonly name: 'rewarded_ad_result';
+      readonly elapsedMs: number;
+      readonly placement: RewardedPlacement;
+      readonly rewarded: boolean;
+    }
+  | {
+      readonly name: 'interstitial_ad_request';
+      readonly elapsedMs: number;
+      readonly placement: InterstitialPlacement;
+      readonly completedChapter: number;
+    }
+  | {
+      readonly name: 'interstitial_ad_complete';
+      readonly elapsedMs: number;
+      readonly placement: InterstitialPlacement;
+      readonly completedChapter: number;
     };
 
 export interface AnalyticsSink {
