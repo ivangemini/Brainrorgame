@@ -5,6 +5,7 @@ import {
   type EliteModifierDefinition
 } from '../content/eliteModifiers';
 import { getEnemyForWave, scaleEnemy, type EnemyWaveNumber } from '../content/enemies';
+import { beginActiveAbilityEncounter } from './activeAbilities';
 
 export const WAVES_PER_CHAPTER = 5 as const;
 export const GAUNTLET_STEP = 4 as const;
@@ -67,6 +68,7 @@ export function isBossStep(step: EncounterStep): boolean {
 export function getEncounterSpec(chapter: number, step: EncounterStep): EncounterSpec {
   const safeChapter = Math.max(1, Math.floor(chapter));
   if (step === BOSS_STEP) {
+    beginActiveAbilityEncounter(`chapter:${safeChapter}:boss`);
     const boss = getBossForChapter(safeChapter);
     const scaled = scaleBoss(boss, safeChapter);
     return {
@@ -86,6 +88,7 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
   }
 
   const waveNumber = (step + 1) as EnemyWaveNumber;
+  beginActiveAbilityEncounter(`chapter:${safeChapter}:wave:${waveNumber}`);
   const enemy = getEnemyForWave(safeChapter, waveNumber);
   const base = scaleEnemy(enemy, safeChapter);
   const elite = waveNumber <= 3
