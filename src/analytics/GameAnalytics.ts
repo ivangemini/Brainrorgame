@@ -23,7 +23,11 @@ export class GameAnalytics {
     this.send({ name: 'session_start', elapsedMs: this.elapsed(), returning, chapter });
   }
 
-  public onboardingStep(step: Exclude<OnboardingStep, 'complete'>): void {
+  public onboardingStep(step: OnboardingStep): void {
+    if (step === 'complete') {
+      this.onboardingComplete();
+      return;
+    }
     this.send({ name: 'onboarding_step', elapsedMs: this.elapsed(), step });
   }
 
