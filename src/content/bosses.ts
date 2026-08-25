@@ -2,7 +2,9 @@ export type BossId =
   | 'fridgino-maximo'
   | 'magnetrono-mambissimo'
   | 'bubblotto-krakenino'
-  | 'kettlestar-volcanissimo';
+  | 'kettlestar-volcanissimo'
+  | 'serverino-stormzilla'
+  | 'washerzilla-drumissimo';
 export type BossTelegraphStyle = 'ring' | 'sweep' | 'orbit' | 'fan';
 export type BossDefeatStyle = 'melt' | 'spin' | 'pop' | 'implode';
 export type BossIdleStyle = 'float' | 'sway' | 'bob' | 'huff';
@@ -59,7 +61,7 @@ export interface ScaledBossStats {
   readonly reward: number;
 }
 
-const BOSSES: readonly BossDefinition[] = [
+const CORE_BOSSES: readonly BossDefinition[] = [
   {
     id: 'fridgino-maximo', name: 'Fridgino Maximo', texture: 'boss-fridgino', assetPath: 'assets/bosses/fridgino-maximo.svg',
     baseHp: 520, hpGrowth: 1.22, baseDamage: 9, damagePerChapter: 2, maxDamage: 26,
@@ -118,11 +120,47 @@ const BOSSES: readonly BossDefinition[] = [
   }
 ] as const;
 
+const WORLD_FINAL_BOSSES: readonly BossDefinition[] = [
+  {
+    id: 'serverino-stormzilla', name: 'Serverino Stormzilla', texture: 'boss-serverino', assetPath: 'assets/bosses/serverino-stormzilla.svg',
+    baseHp: 640, hpGrowth: 1.205, baseDamage: 10, damagePerChapter: 2, maxDamage: 30,
+    baseAttackMs: 3180, attackStepMs: 68, minAttackMs: 1820, baseReward: 145, rewardPerChapter: 28,
+    accentColor: 0x71f6ff, projectileColor: 0xff71d5, displaySize: 635,
+    presentation: { telegraphStyle: 'sweep', defeatStyle: 'spin', idleStyle: 'sway', defeatLabel: 'NETWORK DOWN!' },
+    phases: {
+      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.52, phaseThreeWeakRatio: 0.20,
+      shieldDamageTakenMultiplier: 0.54, weakDamageTakenMultiplier: 1.48,
+      phaseTwoAttackMultiplier: 0.84, phaseTwoDamageMultiplier: 1.08,
+      phaseThreeAttackMultiplier: 0.66, phaseThreeDamageMultiplier: 1.18,
+      shieldLabel: 'PACKET FIREWALL', weakLabel: 'SERVER CORE EXPOSED', enrageLabel: 'DDoS TEMPEST'
+    }
+  },
+  {
+    id: 'washerzilla-drumissimo', name: 'Washerzilla Drumissimo', texture: 'boss-washerzilla', assetPath: 'assets/bosses/washerzilla-drumissimo.svg',
+    baseHp: 760, hpGrowth: 1.20, baseDamage: 13, damagePerChapter: 2, maxDamage: 34,
+    baseAttackMs: 4050, attackStepMs: 72, minAttackMs: 2050, baseReward: 165, rewardPerChapter: 30,
+    accentColor: 0x8cf3dc, projectileColor: 0xffd46c, displaySize: 660,
+    presentation: { telegraphStyle: 'orbit', defeatStyle: 'pop', idleStyle: 'bob', defeatLabel: 'SPIN CYCLE BROKEN!' },
+    phases: {
+      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.57, phaseThreeWeakRatio: 0.24,
+      shieldDamageTakenMultiplier: 0.46, weakDamageTakenMultiplier: 1.38,
+      phaseTwoAttackMultiplier: 0.91, phaseTwoDamageMultiplier: 1.14,
+      phaseThreeAttackMultiplier: 0.76, phaseThreeDamageMultiplier: 1.28,
+      shieldLabel: 'DRUM LOCK', weakLabel: 'BEARING CORE OPEN', enrageLabel: 'MAX SPIN RAGE'
+    }
+  }
+] as const;
+
+const BOSSES: readonly BossDefinition[] = [...CORE_BOSSES, ...WORLD_FINAL_BOSSES];
+
 export function getAllBosses(): readonly BossDefinition[] { return BOSSES; }
 
 export function getBossForChapter(chapter: number): BossDefinition {
   const safeChapter = Math.max(1, Math.floor(chapter));
-  const boss = BOSSES[(safeChapter - 1) % BOSSES.length];
+  if (safeChapter === 10) return WORLD_FINAL_BOSSES[0] as BossDefinition;
+  if (safeChapter === 15) return WORLD_FINAL_BOSSES[1] as BossDefinition;
+  const pool = safeChapter > 15 ? BOSSES : CORE_BOSSES;
+  const boss = pool[(safeChapter - 1) % pool.length];
   if (!boss) throw new Error(`No boss configured for chapter ${chapter}`);
   return boss;
 }

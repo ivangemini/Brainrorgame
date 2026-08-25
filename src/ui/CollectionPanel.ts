@@ -1,4 +1,4 @@
-import type * as Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { getAllCreatures } from '../content/creatures';
 import { getMutationDefinition, type MutationId } from '../content/mutations';
 import {
@@ -9,13 +9,20 @@ import {
   type CollectionProgress
 } from '../systems/collectionProgression';
 
+const CREATURES_PER_PAGE = 8;
+
 export class CollectionPanel {
   private overlay!: Phaser.GameObjects.Rectangle;
   private root!: Phaser.GameObjects.Container;
   private cardsRoot!: Phaser.GameObjects.Container;
   private achievementsRoot!: Phaser.GameObjects.Container;
   private titleCount!: Phaser.GameObjects.Text;
+  private pageText!: Phaser.GameObjects.Text;
+  private prevButton!: Phaser.GameObjects.Container;
+  private nextButton!: Phaser.GameObjects.Container;
   private opened = false;
+  private page = 0;
+  private latestProgress: CollectionProgress | null = null;
 
   public constructor(
     private readonly scene: Phaser.Scene,
@@ -55,6 +62,13 @@ export class CollectionPanel {
       this.createRarityPill(55, -519, 'prismatic', 152),
       this.createRarityPill(258, -519, 'crowned', 190)
     ]);
+
+    this.prevButton = this.createPageButton(-335, -105, '‹', () => this.changePage(-1));
+    this.nextButton = this.createPageButton(335, -105, '›', () => this.changePage(1));
+    this.pageText = this.scene.add.text(0, -105, 'FORMS 1–8 / 21', {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: '#bfefff', stroke: '#171a37', strokeThickness: 4
+    }).setOrigin(0.5);
+
     const ascensionNote = this.scene.add.text(0, 53, 'T3 TWINS • SAME RARITY → ASCEND', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: '#bfefff', stroke: '#171a37', strokeThickness: 4
     }).setOrigin(0.5);
@@ -62,12 +76,20 @@ export class CollectionPanel {
 
     this.cardsRoot = this.scene.add.container(0, 0);
     this.achievementsRoot = this.scene.add.container(0, 0);
-    this.root = this.scene.add.container(540, 960, [blocker, panel, icon, title, this.titleCount, closeBg, close, closeHit, collectionLabel, rarityLegend, ascensionNote, achievementLabel, this.cardsRoot, this.achievementsRoot]).setDepth(1850).setVisible(false);
+    this.root = this.scene.add.container(540, 960, [
+      blocker, panel, icon, title, this.titleCount, closeBg, close, closeHit,
+      collectionLabel, rarityLegend, this.prevButton, this.nextButton, this.pageText,
+      ascensionNote, achievementLabel, this.cardsRoot, this.achievementsRoot
+    ]).setDepth(1850).setVisible(false);
   }
 
   public update(progress: CollectionProgress): void {
     if (!this.root) return;
-    this.titleCount.setText(`${progress.discovered.length} / ${getAllCreatures().length} discovered`);
+    this.latestProgress = progress;
+    const creatures = getAllCreatures();
+    const maxPage = Math.max(0, Math.ceil(creatures.length / CREATURES_PER_PAGE) - 1);
+    this.page = Math.min(this.page, maxPage);
+    this.titleCount.setText(`${progress.discovered.length} / ${creatures.length} discovered`);
     this.renderCreatureCards(progress);
     this.renderAchievements(progress);
   }
@@ -104,9 +126,39 @@ export class CollectionPanel {
     return this.scene.add.container(x, y, [bg, text]);
   }
 
+  private createPageButton(x: number, y: number, label: string, onPress: () => void): Phaser.GameObjects.Container {
+    const bg = this.scene.add.circle(0, 0, 28, 0x28345b, 0.98).setStrokeStyle(2, 0x9defff, 0.35);
+    const text = this.scene.add.text(0, -2, label, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '32px', color: '#eaffff' }).setOrigin(0.5);
+    const button = this.scene.add.container(x, y, [bg, text]);
+    button.setSize(64, 64).setInteractive({ useHandCursor: true });
+    button.on('pointerdown', () => {
+      this.scene.tweens.add({ targets: button, scaleX: 0.9, scaleY: 0.9, duration: 70, yoyo: true, ease: 'Quad.Out' });
+      onPress();
+    });
+    return button;
+  }
+
+  private changePage(direction: number): void {
+    const creatures = getAllCreatures();
+    const maxPage = Math.max(0, Math.ceil(creatures.length / CREATURES_PER_PAGE) - 1);
+    const next = Phaser.Math.Clamp(this.page + direction, 0, maxPage);
+    if (next === this.page) return;
+    this.page = next;
+    if (this.latestProgress) this.renderCreatureCards(this.latestProgress);
+  }
+
   private renderCreatureCards(progress: CollectionProgress): void {
     this.cardsRoot.removeAll(true);
-    getAllCreatures().forEach((creature, index) => {
+    const creatures = getAllCreatures();
+    const pageCount = Math.max(1, Math.ceil(creatures.length / CREATURES_PER_PAGE));
+    const start = this.page * CREATURES_PER_PAGE;
+    const visible = creatures.slice(start, start + CREATURES_PER_PAGE);
+    const end = Math.min(creatures.length, start + CREATURES_PER_PAGE);
+    this.pageText.setText(`FORMS ${start + 1}–${end} / ${creatures.length}  •  PAGE ${this.page + 1}/${pageCount}`);
+    this.prevButton.setAlpha(this.page > 0 ? 1 : 0.28);
+    this.nextButton.setAlpha(this.page < pageCount - 1 ? 1 : 0.28);
+
+    visible.forEach((creature, index) => {
       const column = index % 4;
       const row = Math.floor(index / 4);
       const x = -315 + column * 210;

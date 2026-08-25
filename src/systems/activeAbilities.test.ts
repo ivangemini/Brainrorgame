@@ -19,10 +19,13 @@ import {
   tryCastCurrentActiveAbility
 } from './activeAbilities';
 import { resetCurrentChaosPerks, syncCurrentChaosPerks } from './chaosDraft';
+import { resetCrewSynergyState, syncCrewSynergyState } from './crewSynergies';
+import type { BoardState } from './board';
 
 afterEach(() => {
   resetActiveAbilityRuntime();
   resetCurrentChaosPerks();
+  resetCrewSynergyState();
 });
 
 describe('active combat abilities', () => {
@@ -47,13 +50,19 @@ describe('active combat abilities', () => {
     expect(getCurrentActiveAbilityRuntime().energy).toBe(10);
   });
 
-  it('stacks biome energy pacing with Chaos Draft energy gain', () => {
+  it('stacks biome, Chaos Draft and Routeraptor energy multipliers', () => {
+    const board: BoardState = [
+      { id: 'r3a', family: 'routeraptor', level: 3, mutation: 'none' },
+      { id: 'r3b', family: 'routeraptor', level: 3, mutation: 'none' },
+      null, null, null, null, null, null, null, null, null, null
+    ];
+    syncCrewSynergyState(board);
     syncCurrentChaosPerks(['chaos-capacitor']);
-    beginActiveAbilityEncounter('neon-wave', 1.18);
+    beginActiveAbilityEncounter('neon-router-wave', 1.18);
     for (let index = 0; index < 4; index += 1) recordCrewAttackEnergy();
-    expect(getCurrentActiveAbilityRuntime().energy).toBeCloseTo(5.9);
+    expect(getCurrentActiveAbilityRuntime().energy).toBeCloseTo(7.552);
     recordFortressHitEnergy();
-    expect(getCurrentActiveAbilityRuntime().energy).toBeCloseTo(11.8);
+    expect(getCurrentActiveAbilityRuntime().energy).toBeCloseTo(15.104);
   });
 
   it('requires matching family synergy, an active target and enough energy', () => {

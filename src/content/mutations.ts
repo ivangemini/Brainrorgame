@@ -27,43 +27,13 @@ export interface MutationDefinition {
 }
 
 const MUTATIONS: readonly MutationDefinition[] = [
-  {
-    id: 'none', rarity: 'common', name: 'Stable', shortLabel: '',
-    description: 'Standard creature form.', rank: 0,
-    damageMultiplier: 1, attackIntervalMultiplier: 1,
-    accentColor: 0xb9c8e6, projectileColor: 0xffffff,
-    texture: null, assetPath: null
-  },
-  {
-    id: 'charged', rarity: 'rare', name: 'Charged', shortLabel: 'R',
-    description: 'Electric coil mutation: +8% damage and 6% faster attacks.', rank: 1,
-    damageMultiplier: 1.08, attackIntervalMultiplier: 0.94,
-    accentColor: 0x6cf5ff, projectileColor: 0x9dffff,
-    texture: 'mutation-charged-coil', assetPath: 'assets/mutations/charged-coil.svg'
-  },
-  {
-    id: 'prismatic', rarity: 'epic', name: 'Prismatic', shortLabel: 'E',
-    description: 'Crystal-wing mutation: +20% damage and 10% faster attacks.', rank: 2,
-    damageMultiplier: 1.20, attackIntervalMultiplier: 0.90,
-    accentColor: 0xd58cff, projectileColor: 0xe5a0ff,
-    texture: 'mutation-prismatic-wings', assetPath: 'assets/mutations/prismatic-wings.svg'
-  },
-  {
-    id: 'crowned', rarity: 'legendary', name: 'Crowned', shortLabel: 'L',
-    description: 'Chaos-crown mutation: +35% damage and 14% faster attacks.', rank: 3,
-    damageMultiplier: 1.35, attackIntervalMultiplier: 0.86,
-    accentColor: 0xffd86a, projectileColor: 0xffe999,
-    texture: 'mutation-chaos-crown', assetPath: 'assets/mutations/chaos-crown.svg'
-  }
+  { id: 'none', rarity: 'common', name: 'Stable', shortLabel: '', description: 'Standard creature form.', rank: 0, damageMultiplier: 1, attackIntervalMultiplier: 1, accentColor: 0xb9c8e6, projectileColor: 0xffffff, texture: null, assetPath: null },
+  { id: 'charged', rarity: 'rare', name: 'Charged', shortLabel: 'R', description: 'Electric coil mutation: +8% damage and 6% faster attacks.', rank: 1, damageMultiplier: 1.08, attackIntervalMultiplier: 0.94, accentColor: 0x6cf5ff, projectileColor: 0x9dffff, texture: 'mutation-charged-coil', assetPath: 'assets/mutations/charged-coil.svg' },
+  { id: 'prismatic', rarity: 'epic', name: 'Prismatic', shortLabel: 'E', description: 'Crystal-wing mutation: +20% damage and 10% faster attacks.', rank: 2, damageMultiplier: 1.20, attackIntervalMultiplier: 0.90, accentColor: 0xd58cff, projectileColor: 0xe5a0ff, texture: 'mutation-prismatic-wings', assetPath: 'assets/mutations/prismatic-wings.svg' },
+  { id: 'crowned', rarity: 'legendary', name: 'Crowned', shortLabel: 'L', description: 'Chaos-crown mutation: +35% damage and 14% faster attacks.', rank: 3, damageMultiplier: 1.35, attackIntervalMultiplier: 0.86, accentColor: 0xffd86a, projectileColor: 0xffe999, texture: 'mutation-chaos-crown', assetPath: 'assets/mutations/chaos-crown.svg' }
 ] as const;
 
-export const RECRUIT_MUTATION_RATES = {
-  common: 0.80,
-  rare: 0.15,
-  epic: 0.045,
-  legendary: 0.005
-} as const;
-
+export const RECRUIT_MUTATION_RATES = { common: 0.80, rare: 0.15, epic: 0.045, legendary: 0.005 } as const;
 const RARE_START = 0.80;
 const EPIC_START = 0.95;
 const LEGENDARY_START = 0.995;
@@ -73,18 +43,9 @@ export function getMutationDefinition(id: MutationId): MutationDefinition {
   if (!found) throw new Error(`Unknown mutation: ${id}`);
   return found;
 }
-
-export function getAllMutationDefinitions(): readonly MutationDefinition[] {
-  return MUTATIONS;
-}
-
-export function getMutationOverlayDefinitions(): readonly MutationDefinition[] {
-  return MUTATIONS.filter((mutation) => mutation.texture !== null && mutation.assetPath !== null);
-}
-
-export function isMutationId(value: unknown): value is MutationId {
-  return typeof value === 'string' && (MUTATION_IDS as readonly string[]).includes(value);
-}
+export function getAllMutationDefinitions(): readonly MutationDefinition[] { return MUTATIONS; }
+export function getMutationOverlayDefinitions(): readonly MutationDefinition[] { return MUTATIONS.filter((mutation) => mutation.texture !== null && mutation.assetPath !== null); }
+export function isMutationId(value: unknown): value is MutationId { return typeof value === 'string' && (MUTATION_IDS as readonly string[]).includes(value); }
 
 export function rollMutation(roll: number): MutationId {
   const normalized = Number.isFinite(roll) ? Math.min(0.999999999, Math.max(0, roll)) : 0;

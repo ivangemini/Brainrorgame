@@ -6,7 +6,9 @@ import {
   tryCastCurrentActiveAbility
 } from '../systems/activeAbilities';
 import type { BoardState } from '../systems/board';
+import { clearBossPhaseRuntime, syncBossPhaseRuntime } from '../systems/bossPhases';
 import { resetCrewSynergyState, syncCrewSynergyState } from '../systems/crewSynergies';
+import { getBossForChapter } from './bosses';
 import {
   ascendMutationPair,
   getAllMutationDefinitions,
@@ -19,6 +21,7 @@ import {
 afterEach(() => {
   resetCrewSynergyState();
   resetActiveAbilityRuntime();
+  clearBossPhaseRuntime();
 });
 
 describe('mutations and rarity', () => {
@@ -76,6 +79,22 @@ describe('mutations and rarity', () => {
     syncCrewSynergyState(board);
     expect(mutatedDamage(100, 'charged')).toBe(123);
     expect(mutatedAttackMs(1000, 'charged')).toBe(846);
+  });
+
+  it('keeps Vendinguana Price Breaker boss-only and stacks it with boss vulnerability', () => {
+    const board: BoardState = [
+      { id: 'v3a', family: 'vendinguana', level: 3, mutation: 'none' },
+      { id: 'v3b', family: 'vendinguana', level: 3, mutation: 'none' },
+      null, null, null, null, null, null, null, null, null, null
+    ];
+    syncCrewSynergyState(board);
+    expect(mutatedDamage(100, 'none')).toBe(100);
+
+    const boss = getBossForChapter(1);
+    syncBossPhaseRuntime(boss.phases, 1000, 1000);
+    expect(mutatedDamage(100, 'none')).toBe(130);
+    syncBossPhaseRuntime(boss.phases, 200, 1000);
+    expect(mutatedDamage(100, 'none')).toBe(Math.round(100 * 1.30 * boss.phases.weakDamageTakenMultiplier));
   });
 
   it('stacks active Overdrive and Slipstream Burst on top of passive crew bonuses', () => {

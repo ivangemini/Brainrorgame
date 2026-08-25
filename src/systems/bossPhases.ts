@@ -1,4 +1,5 @@
 import type { BossPhaseProfile } from '../content/bosses';
+import { getCurrentCrewSynergyState } from './crewSynergies';
 
 export type BossPhase = 1 | 2 | 3;
 export type BossPhaseWindow = 'open' | 'shield' | 'weak';
@@ -16,34 +17,18 @@ export interface BossPhaseState {
 
 let currentState: BossPhaseState | null = null;
 
-export function getBossPhaseState(
-  profile: BossPhaseProfile,
-  currentHp: number,
-  maxHp: number
-): BossPhaseState {
+export function getBossPhaseState(profile: BossPhaseProfile, currentHp: number, maxHp: number): BossPhaseState {
   const safeMax = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1);
   const safeHp = Math.max(0, Math.min(safeMax, Number.isFinite(currentHp) ? currentHp : safeMax));
   const hpRatio = safeHp / safeMax;
 
   if (hpRatio > profile.phaseTwoRatio) {
-    return {
-      phase: 1,
-      window: 'open',
-      hpRatio,
-      incomingDamageMultiplier: 1,
-      attackIntervalMultiplier: 1,
-      outgoingDamageMultiplier: 1,
-      label: 'PHASE I',
-      enrage: false
-    };
+    return { phase: 1, window: 'open', hpRatio, incomingDamageMultiplier: 1, attackIntervalMultiplier: 1, outgoingDamageMultiplier: 1, label: 'PHASE I', enrage: false };
   }
-
   if (hpRatio > profile.phaseThreeRatio) {
     const weak = hpRatio <= profile.phaseTwoWeakRatio;
     return {
-      phase: 2,
-      window: weak ? 'weak' : 'shield',
-      hpRatio,
+      phase: 2, window: weak ? 'weak' : 'shield', hpRatio,
       incomingDamageMultiplier: weak ? profile.weakDamageTakenMultiplier : profile.shieldDamageTakenMultiplier,
       attackIntervalMultiplier: profile.phaseTwoAttackMultiplier,
       outgoingDamageMultiplier: profile.phaseTwoDamageMultiplier,
@@ -51,12 +36,9 @@ export function getBossPhaseState(
       enrage: false
     };
   }
-
   const weak = hpRatio <= profile.phaseThreeWeakRatio;
   return {
-    phase: 3,
-    window: weak ? 'weak' : 'shield',
-    hpRatio,
+    phase: 3, window: weak ? 'weak' : 'shield', hpRatio,
     incomingDamageMultiplier: weak ? profile.weakDamageTakenMultiplier : profile.shieldDamageTakenMultiplier,
     attackIntervalMultiplier: profile.phaseThreeAttackMultiplier,
     outgoingDamageMultiplier: profile.phaseThreeDamageMultiplier,
@@ -65,34 +47,21 @@ export function getBossPhaseState(
   };
 }
 
-export function syncBossPhaseRuntime(
-  profile: BossPhaseProfile,
-  currentHp: number,
-  maxHp: number
-): BossPhaseState {
+export function syncBossPhaseRuntime(profile: BossPhaseProfile, currentHp: number, maxHp: number): BossPhaseState {
   currentState = getBossPhaseState(profile, currentHp, maxHp);
   return currentState;
 }
 
-export function clearBossPhaseRuntime(): void {
-  currentState = null;
-}
-
-export function getCurrentBossPhaseState(): BossPhaseState | null {
-  return currentState;
-}
+export function clearBossPhaseRuntime(): void { currentState = null; }
+export function getCurrentBossPhaseState(): BossPhaseState | null { return currentState; }
 
 export function currentBossIncomingDamageMultiplier(): number {
-  return currentState?.incomingDamageMultiplier ?? 1;
+  const phaseMultiplier = currentState?.incomingDamageMultiplier ?? 1;
+  return phaseMultiplier * (currentState ? getCurrentCrewSynergyState().bossDamageMultiplier : 1);
 }
 
-export function currentBossAttackIntervalMultiplier(): number {
-  return currentState?.attackIntervalMultiplier ?? 1;
-}
-
-export function currentBossOutgoingDamageMultiplier(): number {
-  return currentState?.outgoingDamageMultiplier ?? 1;
-}
+export function currentBossAttackIntervalMultiplier(): number { return currentState?.attackIntervalMultiplier ?? 1; }
+export function currentBossOutgoingDamageMultiplier(): number { return currentState?.outgoingDamageMultiplier ?? 1; }
 
 export function applyBossIncomingDamage(amount: number, state: BossPhaseState): number {
   const safeAmount = Math.max(0, Number.isFinite(amount) ? amount : 0);
