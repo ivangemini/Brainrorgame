@@ -23,10 +23,10 @@ class MemoryStorage implements GameDistributionStorageLike {
 function createHarness() {
   let emit: (event: GameDistributionEvent) => void = () => undefined;
   let completeAd: () => void = () => undefined;
-  const showAd = vi.fn((_type?: 'rewarded') => new Promise<unknown>((resolve) => {
+  const showAd = vi.fn(() => new Promise<unknown>((resolve) => {
     completeAd = () => resolve(undefined);
   }));
-  const preloadAd = vi.fn(async (_type: 'rewarded') => undefined);
+  const preloadAd = vi.fn(async () => undefined);
   const sdk: GameDistributionSdkLike = { showAd, preloadAd };
   const loader: GameDistributionLoaderLike = {
     load: async (onEvent) => {
@@ -41,7 +41,6 @@ function createHarness() {
     emit: (name: string) => emit({ name }),
     showAd,
     preloadAd,
-    completeAd,
     storage,
     refreshCompleteAd: () => completeAd
   };
