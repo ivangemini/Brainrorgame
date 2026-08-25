@@ -8,7 +8,17 @@ describe('PlaytestRecorder', () => {
     recorder.recordEvent({ name: 'session_start', elapsedMs: 0, returning: false, chapter: 1 });
     recorder.recordEvent({ name: 'onboarding_complete', elapsedMs: 54_000 });
     recorder.recordEvent({ name: 'merge', elapsedMs: 58_000, family: 'pinguino', resultingLevel: 2, mutation: 'none', chapter: 1 });
-    recorder.recordEvent({ name: 'recruit', elapsedMs: 63_000, family: 'lampalotl', mutation: 'none', coinsAfter: 100 });
+    recorder.recordEvent({
+      name: 'recruit',
+      elapsedMs: 63_000,
+      family: 'lampalotl',
+      mutation: 'none',
+      coinsAfter: 100,
+      anomalyChargeBefore: 0,
+      crownSignalBefore: 0,
+      guaranteed: false,
+      secret: false
+    });
     recorder.recordEvent({ name: 'encounter_start', elapsedMs: 65_000, kind: 'wave', chapter: 1, step: 0 });
     recorder.recordEvent({ name: 'encounter_complete', elapsedMs: 76_000, kind: 'wave', chapter: 1, step: 0, encounterDurationMs: 11_000, baseHpRemaining: 94 });
     recorder.recordEvent({ name: 'encounter_start', elapsedMs: 170_000, kind: 'boss', chapter: 1, step: 5 });
