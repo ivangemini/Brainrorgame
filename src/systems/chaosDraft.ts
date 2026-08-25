@@ -1,5 +1,4 @@
 import type { EncounterStep } from './encounters';
-import { getCurrentCrewSynergyState } from './crewSynergies';
 
 export const CHAOS_PERK_IDS = [
   'impact-jelly',
@@ -83,7 +82,7 @@ export function getCurrentChaosPerkMultipliers(): ChaosPerkMultipliers {
     attackIntervalMultiplier: has('tempo-worm') ? 0.92 : 1,
     incomingDamageMultiplier: has('fortress-foam') ? 0.88 : 1,
     coinRewardMultiplier: has('bounty-magnet') ? 1.18 : 1,
-    energyGainMultiplier: (has('chaos-capacitor') ? 1.25 : 1) * getCurrentCrewSynergyState().energyGainMultiplier,
+    energyGainMultiplier: has('chaos-capacitor') ? 1.25 : 1,
     waveHealBonus: has('repair-moss') ? 7 : 0
   };
 }
