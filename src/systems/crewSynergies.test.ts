@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createStarterBoard, moveOrMerge, type BoardState } from './board';
-import { evaluateCrewSynergies, tierForPower, unitPower } from './crewSynergies';
+import {
+  evaluateCrewSynergies,
+  getCurrentCrewSynergyState,
+  resetCrewSynergyState,
+  syncCrewSynergyState,
+  tierForPower,
+  unitPower
+} from './crewSynergies';
 
 describe('crew synergies', () => {
   it('derives merge-stable family power from creature tiers', () => {
@@ -20,7 +27,7 @@ describe('crew synergies', () => {
     expect(state.attackIntervalMultiplier).toBe(0.97);
     expect(state.incomingDamageMultiplier).toBe(0.96);
     expect(state.squadDamageMultiplier).toBe(1);
-    expect(state.pressureDamageMultiplier).toBe(1);
+    expect(state.coinRewardMultiplier).toBe(1);
   });
 
   it('does not punish a normal merge by reducing family power', () => {
@@ -48,6 +55,15 @@ describe('crew synergies', () => {
     expect(state.attackIntervalMultiplier).toBe(0.9);
     expect(state.incomingDamageMultiplier).toBe(0.91);
     expect(state.squadDamageMultiplier).toBe(1.08);
-    expect(state.pressureDamageMultiplier).toBe(1.25);
+    expect(state.coinRewardMultiplier).toBe(1.18);
+  });
+
+  it('keeps a resettable runtime snapshot for combat consumers', () => {
+    resetCrewSynergyState();
+    expect(getCurrentCrewSynergyState().tiers.pinguino).toBe(0);
+    const synced = syncCrewSynergyState(createStarterBoard());
+    expect(synced.tiers.pinguino).toBe(1);
+    expect(getCurrentCrewSynergyState()).toBe(synced);
+    resetCrewSynergyState();
   });
 });
