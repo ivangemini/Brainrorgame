@@ -3,6 +3,7 @@ import { getAllCreatures } from '../content/creatures';
 import {
   ACHIEVEMENTS,
   achievementProgress,
+  isCollectionKey,
   type AchievementId,
   type CollectionProgress
 } from '../systems/collectionProgression';
@@ -112,7 +113,7 @@ export class CollectionPanel {
       const row = Math.floor(index / 3);
       const x = -292 + column * 292;
       const y = -378 + row * 248;
-      const discovered = progress.discovered.includes(creature.key as never);
+      const discovered = isCollectionKey(creature.key) && progress.discovered.includes(creature.key);
 
       const bg = this.scene.add.graphics();
       bg.fillStyle(discovered ? 0x22264a : 0x101327, 0.98);
