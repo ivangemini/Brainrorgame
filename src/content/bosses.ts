@@ -1,176 +1,45 @@
 export type BossId =
-  | 'fridgino-maximo'
-  | 'magnetrono-mambissimo'
-  | 'bubblotto-krakenino'
-  | 'kettlestar-volcanissimo'
-  | 'serverino-stormzilla'
-  | 'washerzilla-drumissimo';
+  | 'fridgino-maximo' | 'magnetrono-mambissimo' | 'bubblotto-krakenino' | 'kettlestar-volcanissimo'
+  | 'serverino-stormzilla' | 'washerzilla-drumissimo' | 'vacuumoon-overlord' | 'blenderbehemoth-royale';
 export type BossTelegraphStyle = 'ring' | 'sweep' | 'orbit' | 'fan';
 export type BossDefeatStyle = 'melt' | 'spin' | 'pop' | 'implode';
 export type BossIdleStyle = 'float' | 'sway' | 'bob' | 'huff';
-
-export interface BossPresentation {
-  readonly telegraphStyle: BossTelegraphStyle;
-  readonly defeatStyle: BossDefeatStyle;
-  readonly idleStyle: BossIdleStyle;
-  readonly defeatLabel: string;
-}
-
+export interface BossPresentation { readonly telegraphStyle: BossTelegraphStyle; readonly defeatStyle: BossDefeatStyle; readonly idleStyle: BossIdleStyle; readonly defeatLabel: string; }
 export interface BossPhaseProfile {
-  readonly phaseTwoRatio: number;
-  readonly phaseThreeRatio: number;
-  readonly phaseTwoWeakRatio: number;
-  readonly phaseThreeWeakRatio: number;
-  readonly shieldDamageTakenMultiplier: number;
-  readonly weakDamageTakenMultiplier: number;
-  readonly phaseTwoAttackMultiplier: number;
-  readonly phaseTwoDamageMultiplier: number;
-  readonly phaseThreeAttackMultiplier: number;
-  readonly phaseThreeDamageMultiplier: number;
-  readonly shieldLabel: string;
-  readonly weakLabel: string;
-  readonly enrageLabel: string;
+  readonly phaseTwoRatio: number; readonly phaseThreeRatio: number; readonly phaseTwoWeakRatio: number; readonly phaseThreeWeakRatio: number;
+  readonly shieldDamageTakenMultiplier: number; readonly weakDamageTakenMultiplier: number;
+  readonly phaseTwoAttackMultiplier: number; readonly phaseTwoDamageMultiplier: number; readonly phaseThreeAttackMultiplier: number; readonly phaseThreeDamageMultiplier: number;
+  readonly shieldLabel: string; readonly weakLabel: string; readonly enrageLabel: string;
 }
-
 export interface BossDefinition {
-  readonly id: BossId;
-  readonly name: string;
-  readonly texture: string;
-  readonly assetPath: string;
-  readonly baseHp: number;
-  readonly hpGrowth: number;
-  readonly baseDamage: number;
-  readonly damagePerChapter: number;
-  readonly maxDamage: number;
-  readonly baseAttackMs: number;
-  readonly attackStepMs: number;
-  readonly minAttackMs: number;
-  readonly baseReward: number;
-  readonly rewardPerChapter: number;
-  readonly accentColor: number;
-  readonly projectileColor: number;
-  readonly displaySize: number;
-  readonly presentation: BossPresentation;
-  readonly phases: BossPhaseProfile;
+  readonly id: BossId; readonly name: string; readonly texture: string; readonly assetPath: string;
+  readonly baseHp: number; readonly hpGrowth: number; readonly baseDamage: number; readonly damagePerChapter: number; readonly maxDamage: number;
+  readonly baseAttackMs: number; readonly attackStepMs: number; readonly minAttackMs: number; readonly baseReward: number; readonly rewardPerChapter: number;
+  readonly accentColor: number; readonly projectileColor: number; readonly displaySize: number; readonly presentation: BossPresentation; readonly phases: BossPhaseProfile;
 }
-
-export interface ScaledBossStats {
-  readonly hp: number;
-  readonly damage: number;
-  readonly attackMs: number;
-  readonly reward: number;
-}
+export interface ScaledBossStats { readonly hp: number; readonly damage: number; readonly attackMs: number; readonly reward: number; }
 
 const CORE_BOSSES: readonly BossDefinition[] = [
-  {
-    id: 'fridgino-maximo', name: 'Fridgino Maximo', texture: 'boss-fridgino', assetPath: 'assets/bosses/fridgino-maximo.svg',
-    baseHp: 520, hpGrowth: 1.22, baseDamage: 9, damagePerChapter: 2, maxDamage: 26,
-    baseAttackMs: 3810, attackStepMs: 90, minAttackMs: 2100, baseReward: 110, rewardPerChapter: 25,
-    accentColor: 0x9cfbff, projectileColor: 0xff6d85, displaySize: 570,
-    presentation: { telegraphStyle: 'ring', defeatStyle: 'melt', idleStyle: 'float', defeatLabel: 'BOSS MELTED!' },
-    phases: {
-      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.55, phaseThreeWeakRatio: 0.23,
-      shieldDamageTakenMultiplier: 0.58, weakDamageTakenMultiplier: 1.36,
-      phaseTwoAttackMultiplier: 0.90, phaseTwoDamageMultiplier: 1.06,
-      phaseThreeAttackMultiplier: 0.78, phaseThreeDamageMultiplier: 1.14,
-      shieldLabel: 'FREEZER SHELL', weakLabel: 'COOLANT CORE OPEN', enrageLabel: 'ABSOLUTE ZERO RAGE'
-    }
-  },
-  {
-    id: 'magnetrono-mambissimo', name: 'Magnetrono Mambissimo', texture: 'boss-magnetrono', assetPath: 'assets/bosses/magnetrono-mambissimo.svg',
-    baseHp: 545, hpGrowth: 1.215, baseDamage: 8, damagePerChapter: 2, maxDamage: 25,
-    baseAttackMs: 3400, attackStepMs: 75, minAttackMs: 1950, baseReward: 110, rewardPerChapter: 25,
-    accentColor: 0xffaa5c, projectileColor: 0xff5cda, displaySize: 590,
-    presentation: { telegraphStyle: 'sweep', defeatStyle: 'spin', idleStyle: 'sway', defeatLabel: 'MAMBO SHORTED!' },
-    phases: {
-      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.54, phaseThreeWeakRatio: 0.24,
-      shieldDamageTakenMultiplier: 0.62, weakDamageTakenMultiplier: 1.42,
-      phaseTwoAttackMultiplier: 0.88, phaseTwoDamageMultiplier: 1.05,
-      phaseThreeAttackMultiplier: 0.73, phaseThreeDamageMultiplier: 1.12,
-      shieldLabel: 'POLARITY LOCK', weakLabel: 'MAGNET CORE EXPOSED', enrageLabel: 'MAMBO OVERDRIVE'
-    }
-  },
-  {
-    id: 'bubblotto-krakenino', name: 'Bubblotto Krakenino', texture: 'boss-bubblotto', assetPath: 'assets/bosses/bubblotto-krakenino.svg',
-    baseHp: 610, hpGrowth: 1.225, baseDamage: 11, damagePerChapter: 2, maxDamage: 28,
-    baseAttackMs: 4200, attackStepMs: 95, minAttackMs: 2250, baseReward: 110, rewardPerChapter: 25,
-    accentColor: 0x8df4ff, projectileColor: 0xb66cff, displaySize: 605,
-    presentation: { telegraphStyle: 'orbit', defeatStyle: 'pop', idleStyle: 'bob', defeatLabel: 'DOME POPPED!' },
-    phases: {
-      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.56, phaseThreeWeakRatio: 0.25,
-      shieldDamageTakenMultiplier: 0.50, weakDamageTakenMultiplier: 1.32,
-      phaseTwoAttackMultiplier: 0.93, phaseTwoDamageMultiplier: 1.10,
-      phaseThreeAttackMultiplier: 0.82, phaseThreeDamageMultiplier: 1.22,
-      shieldLabel: 'BUBBLE DOME', weakLabel: 'TENTACLE HEART OPEN', enrageLabel: 'KRAKEN PRESSURE'
-    }
-  },
-  {
-    id: 'kettlestar-volcanissimo', name: 'Kettlestar Volcanissimo', texture: 'boss-kettlestar', assetPath: 'assets/bosses/kettlestar-volcanissimo.svg',
-    baseHp: 500, hpGrowth: 1.23, baseDamage: 11, damagePerChapter: 2, maxDamage: 29,
-    baseAttackMs: 3850, attackStepMs: 85, minAttackMs: 2100, baseReward: 110, rewardPerChapter: 25,
-    accentColor: 0xffd36a, projectileColor: 0x72f4ef, displaySize: 620,
-    presentation: { telegraphStyle: 'fan', defeatStyle: 'implode', idleStyle: 'huff', defeatLabel: 'PRESSURE LOST!' },
-    phases: {
-      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.53, phaseThreeWeakRatio: 0.22,
-      shieldDamageTakenMultiplier: 0.57, weakDamageTakenMultiplier: 1.46,
-      phaseTwoAttackMultiplier: 0.89, phaseTwoDamageMultiplier: 1.08,
-      phaseThreeAttackMultiplier: 0.72, phaseThreeDamageMultiplier: 1.16,
-      shieldLabel: 'PRESSURE SHELL', weakLabel: 'VALVE CORE OPEN', enrageLabel: 'REDLINE BOIL'
-    }
-  }
-] as const;
-
+  { id:'fridgino-maximo',name:'Fridgino Maximo',texture:'boss-fridgino',assetPath:'assets/bosses/fridgino-maximo.svg',baseHp:520,hpGrowth:1.22,baseDamage:9,damagePerChapter:2,maxDamage:26,baseAttackMs:3810,attackStepMs:90,minAttackMs:2100,baseReward:110,rewardPerChapter:25,accentColor:0x9cfbff,projectileColor:0xff6d85,displaySize:570,presentation:{telegraphStyle:'ring',defeatStyle:'melt',idleStyle:'float',defeatLabel:'BOSS MELTED!'},phases:{phaseTwoRatio:.70,phaseThreeRatio:.40,phaseTwoWeakRatio:.55,phaseThreeWeakRatio:.23,shieldDamageTakenMultiplier:.58,weakDamageTakenMultiplier:1.36,phaseTwoAttackMultiplier:.90,phaseTwoDamageMultiplier:1.06,phaseThreeAttackMultiplier:.78,phaseThreeDamageMultiplier:1.14,shieldLabel:'FREEZER SHELL',weakLabel:'COOLANT CORE OPEN',enrageLabel:'ABSOLUTE ZERO RAGE'} },
+  { id:'magnetrono-mambissimo',name:'Magnetrono Mambissimo',texture:'boss-magnetrono',assetPath:'assets/bosses/magnetrono-mambissimo.svg',baseHp:545,hpGrowth:1.215,baseDamage:8,damagePerChapter:2,maxDamage:25,baseAttackMs:3400,attackStepMs:75,minAttackMs:1950,baseReward:110,rewardPerChapter:25,accentColor:0xffaa5c,projectileColor:0xff5cda,displaySize:590,presentation:{telegraphStyle:'sweep',defeatStyle:'spin',idleStyle:'sway',defeatLabel:'MAMBO SHORTED!'},phases:{phaseTwoRatio:.70,phaseThreeRatio:.40,phaseTwoWeakRatio:.54,phaseThreeWeakRatio:.24,shieldDamageTakenMultiplier:.62,weakDamageTakenMultiplier:1.42,phaseTwoAttackMultiplier:.88,phaseTwoDamageMultiplier:1.05,phaseThreeAttackMultiplier:.73,phaseThreeDamageMultiplier:1.12,shieldLabel:'POLARITY LOCK',weakLabel:'MAGNET CORE EXPOSED',enrageLabel:'MAMBO OVERDRIVE'} },
+  { id:'bubblotto-krakenino',name:'Bubblotto Krakenino',texture:'boss-bubblotto',assetPath:'assets/bosses/bubblotto-krakenino.svg',baseHp:610,hpGrowth:1.225,baseDamage:11,damagePerChapter:2,maxDamage:28,baseAttackMs:4200,attackStepMs:95,minAttackMs:2250,baseReward:110,rewardPerChapter:25,accentColor:0x8df4ff,projectileColor:0xb66cff,displaySize:605,presentation:{telegraphStyle:'orbit',defeatStyle:'pop',idleStyle:'bob',defeatLabel:'DOME POPPED!'},phases:{phaseTwoRatio:.70,phaseThreeRatio:.40,phaseTwoWeakRatio:.56,phaseThreeWeakRatio:.25,shieldDamageTakenMultiplier:.50,weakDamageTakenMultiplier:1.32,phaseTwoAttackMultiplier:.93,phaseTwoDamageMultiplier:1.10,phaseThreeAttackMultiplier:.82,phaseThreeDamageMultiplier:1.22,shieldLabel:'BUBBLE DOME',weakLabel:'TENTACLE HEART OPEN',enrageLabel:'KRAKEN PRESSURE'} },
+  { id:'kettlestar-volcanissimo',name:'Kettlestar Volcanissimo',texture:'boss-kettlestar',assetPath:'assets/bosses/kettlestar-volcanissimo.svg',baseHp:500,hpGrowth:1.23,baseDamage:11,damagePerChapter:2,maxDamage:29,baseAttackMs:3850,attackStepMs:85,minAttackMs:2100,baseReward:110,rewardPerChapter:25,accentColor:0xffd36a,projectileColor:0x72f4ef,displaySize:620,presentation:{telegraphStyle:'fan',defeatStyle:'implode',idleStyle:'huff',defeatLabel:'PRESSURE LOST!'},phases:{phaseTwoRatio:.70,phaseThreeRatio:.40,phaseTwoWeakRatio:.53,phaseThreeWeakRatio:.22,shieldDamageTakenMultiplier:.57,weakDamageTakenMultiplier:1.46,phaseTwoAttackMultiplier:.89,phaseTwoDamageMultiplier:1.08,phaseThreeAttackMultiplier:.72,phaseThreeDamageMultiplier:1.16,shieldLabel:'PRESSURE SHELL',weakLabel:'VALVE CORE OPEN',enrageLabel:'REDLINE BOIL'} }
+];
 const WORLD_FINAL_BOSSES: readonly BossDefinition[] = [
-  {
-    id: 'serverino-stormzilla', name: 'Serverino Stormzilla', texture: 'boss-serverino', assetPath: 'assets/bosses/serverino-stormzilla.svg',
-    baseHp: 640, hpGrowth: 1.205, baseDamage: 10, damagePerChapter: 2, maxDamage: 30,
-    baseAttackMs: 3180, attackStepMs: 68, minAttackMs: 1820, baseReward: 145, rewardPerChapter: 28,
-    accentColor: 0x71f6ff, projectileColor: 0xff71d5, displaySize: 635,
-    presentation: { telegraphStyle: 'sweep', defeatStyle: 'spin', idleStyle: 'sway', defeatLabel: 'NETWORK DOWN!' },
-    phases: {
-      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.52, phaseThreeWeakRatio: 0.20,
-      shieldDamageTakenMultiplier: 0.54, weakDamageTakenMultiplier: 1.48,
-      phaseTwoAttackMultiplier: 0.84, phaseTwoDamageMultiplier: 1.08,
-      phaseThreeAttackMultiplier: 0.66, phaseThreeDamageMultiplier: 1.18,
-      shieldLabel: 'PACKET FIREWALL', weakLabel: 'SERVER CORE EXPOSED', enrageLabel: 'DDoS TEMPEST'
-    }
-  },
-  {
-    id: 'washerzilla-drumissimo', name: 'Washerzilla Drumissimo', texture: 'boss-washerzilla', assetPath: 'assets/bosses/washerzilla-drumissimo.svg',
-    baseHp: 760, hpGrowth: 1.20, baseDamage: 13, damagePerChapter: 2, maxDamage: 34,
-    baseAttackMs: 4050, attackStepMs: 72, minAttackMs: 2050, baseReward: 165, rewardPerChapter: 30,
-    accentColor: 0x8cf3dc, projectileColor: 0xffd46c, displaySize: 660,
-    presentation: { telegraphStyle: 'orbit', defeatStyle: 'pop', idleStyle: 'bob', defeatLabel: 'SPIN CYCLE BROKEN!' },
-    phases: {
-      phaseTwoRatio: 0.70, phaseThreeRatio: 0.40, phaseTwoWeakRatio: 0.57, phaseThreeWeakRatio: 0.24,
-      shieldDamageTakenMultiplier: 0.46, weakDamageTakenMultiplier: 1.38,
-      phaseTwoAttackMultiplier: 0.91, phaseTwoDamageMultiplier: 1.14,
-      phaseThreeAttackMultiplier: 0.76, phaseThreeDamageMultiplier: 1.28,
-      shieldLabel: 'DRUM LOCK', weakLabel: 'BEARING CORE OPEN', enrageLabel: 'MAX SPIN RAGE'
-    }
-  }
-] as const;
-
-const BOSSES: readonly BossDefinition[] = [...CORE_BOSSES, ...WORLD_FINAL_BOSSES];
-
+  { id:'serverino-stormzilla',name:'Serverino Stormzilla',texture:'boss-serverino',assetPath:'assets/bosses/serverino-stormzilla.svg',baseHp:640,hpGrowth:1.205,baseDamage:10,damagePerChapter:2,maxDamage:30,baseAttackMs:3180,attackStepMs:68,minAttackMs:1820,baseReward:145,rewardPerChapter:28,accentColor:0x71f6ff,projectileColor:0xff71d5,displaySize:635,presentation:{telegraphStyle:'sweep',defeatStyle:'spin',idleStyle:'sway',defeatLabel:'NETWORK DOWN!'},phases:{phaseTwoRatio:.70,phaseThreeRatio:.40,phaseTwoWeakRatio:.52,phaseThreeWeakRatio:.20,shieldDamageTakenMultiplier:.54,weakDamageTakenMultiplier:1.48,phaseTwoAttackMultiplier:.84,phaseTwoDamageMultiplier:1.08,phaseThreeAttackMultiplier:.66,phaseThreeDamageMultiplier:1.18,shieldLabel:'PACKET FIREWALL',weakLabel:'SERVER CORE EXPOSED',enrageLabel:'DDoS TEMPEST'} },
+  { id:'washerzilla-drumissimo',name:'Washerzilla Drumissimo',texture:'boss-washerzilla',assetPath:'assets/bosses/washerzilla-drumissimo.svg',baseHp:760,hpGrowth:1.20,baseDamage:13,damagePerChapter:2,maxDamage:34,baseAttackMs:4050,attackStepMs:72,minAttackMs:2050,baseReward:165,rewardPerChapter:30,accentColor:0x8cf3dc,projectileColor:0xffd46c,displaySize:660,presentation:{telegraphStyle:'orbit',defeatStyle:'pop',idleStyle:'bob',defeatLabel:'SPIN CYCLE BROKEN!'},phases:{phaseTwoRatio:.70,phaseThreeRatio:.40,phaseTwoWeakRatio:.57,phaseThreeWeakRatio:.24,shieldDamageTakenMultiplier:.46,weakDamageTakenMultiplier:1.38,phaseTwoAttackMultiplier:.91,phaseTwoDamageMultiplier:1.14,phaseThreeAttackMultiplier:.76,phaseThreeDamageMultiplier:1.28,shieldLabel:'DRUM LOCK',weakLabel:'BEARING CORE OPEN',enrageLabel:'MAX SPIN RAGE'} }
+];
+const ENDLESS_BOSSES: readonly BossDefinition[] = [
+  { id:'vacuumoon-overlord',name:'Vacuumoon Overlord',texture:'boss-vacuumoon',assetPath:'assets/bosses/vacuumoon-overlord.svg',baseHp:820,hpGrowth:1.19,baseDamage:14,damagePerChapter:2,maxDamage:36,baseAttackMs:3600,attackStepMs:66,minAttackMs:1880,baseReward:190,rewardPerChapter:33,accentColor:0x7ff0ff,projectileColor:0x9c7cff,displaySize:680,presentation:{telegraphStyle:'orbit',defeatStyle:'implode',idleStyle:'float',defeatLabel:'SUCTION COLLAPSED!'},phases:{phaseTwoRatio:.72,phaseThreeRatio:.42,phaseTwoWeakRatio:.55,phaseThreeWeakRatio:.21,shieldDamageTakenMultiplier:.48,weakDamageTakenMultiplier:1.52,phaseTwoAttackMultiplier:.84,phaseTwoDamageMultiplier:1.12,phaseThreeAttackMultiplier:.68,phaseThreeDamageMultiplier:1.24,shieldLabel:'CYCLONE CHAMBER',weakLabel:'TURBINE HEART OPEN',enrageLabel:'EVENT HORIZON SUCTION'} },
+  { id:'blenderbehemoth-royale',name:'Blenderbehemoth Royale',texture:'boss-blenderbehemoth',assetPath:'assets/bosses/blenderbehemoth-royale.svg',baseHp:900,hpGrowth:1.185,baseDamage:15,damagePerChapter:2,maxDamage:38,baseAttackMs:3920,attackStepMs:70,minAttackMs:1950,baseReward:210,rewardPerChapter:35,accentColor:0xffcf79,projectileColor:0xff6f7d,displaySize:700,presentation:{telegraphStyle:'fan',defeatStyle:'spin',idleStyle:'huff',defeatLabel:'BLADES JAMMED!'},phases:{phaseTwoRatio:.69,phaseThreeRatio:.38,phaseTwoWeakRatio:.51,phaseThreeWeakRatio:.19,shieldDamageTakenMultiplier:.52,weakDamageTakenMultiplier:1.56,phaseTwoAttackMultiplier:.82,phaseTwoDamageMultiplier:1.14,phaseThreeAttackMultiplier:.65,phaseThreeDamageMultiplier:1.30,shieldLabel:'BLADE CAGE',weakLabel:'DRIVE SHAFT EXPOSED',enrageLabel:'PURÉE PROTOCOL'} }
+];
+const BOSSES: readonly BossDefinition[] = [...CORE_BOSSES, ...WORLD_FINAL_BOSSES, ...ENDLESS_BOSSES];
 export function getAllBosses(): readonly BossDefinition[] { return BOSSES; }
-
 export function getBossForChapter(chapter: number): BossDefinition {
-  const safeChapter = Math.max(1, Math.floor(chapter));
-  if (safeChapter === 10) return WORLD_FINAL_BOSSES[0] as BossDefinition;
-  if (safeChapter === 15) return WORLD_FINAL_BOSSES[1] as BossDefinition;
-  const pool = safeChapter > 15 ? BOSSES : CORE_BOSSES;
-  const boss = pool[(safeChapter - 1) % pool.length];
-  if (!boss) throw new Error(`No boss configured for chapter ${chapter}`);
-  return boss;
+  const safeChapter=Math.max(1,Math.floor(chapter));
+  if(safeChapter===10) return WORLD_FINAL_BOSSES[0] as BossDefinition;
+  if(safeChapter===15) return WORLD_FINAL_BOSSES[1] as BossDefinition;
+  const pool=safeChapter>15?BOSSES:CORE_BOSSES;
+  const boss=pool[(safeChapter-1)%pool.length]; if(!boss) throw new Error(`No boss configured for chapter ${chapter}`); return boss;
 }
-
-export function scaleBoss(boss: BossDefinition, chapter: number): ScaledBossStats {
-  const level = Math.max(0, Math.floor(chapter) - 1);
-  return {
-    hp: Math.max(1, Math.round(boss.baseHp * Math.pow(boss.hpGrowth, level))),
-    damage: Math.max(1, Math.min(boss.maxDamage, boss.baseDamage + level * boss.damagePerChapter)),
-    attackMs: Math.max(boss.minAttackMs, boss.baseAttackMs - level * boss.attackStepMs),
-    reward: Math.max(1, boss.baseReward + level * boss.rewardPerChapter)
-  };
-}
+export function scaleBoss(boss: BossDefinition, chapter: number): ScaledBossStats { const level=Math.max(0,Math.floor(chapter)-1); return { hp:Math.max(1,Math.round(boss.baseHp*Math.pow(boss.hpGrowth,level))), damage:Math.max(1,Math.min(boss.maxDamage,boss.baseDamage+level*boss.damagePerChapter)), attackMs:Math.max(boss.minAttackMs,boss.baseAttackMs-level*boss.attackStepMs), reward:Math.max(1,boss.baseReward+level*boss.rewardPerChapter) }; }

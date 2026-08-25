@@ -1,0 +1,72 @@
+export const SUPPORTED_LOCALES = ['en', 'ru'] as const;
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+
+const EN = {
+  'boot.title': 'BRAINROR MERGE',
+  'hud.wave': 'WAVE {current} / {total}',
+  'hud.boss': 'BOSS {chapter}',
+  'hud.chaosGate': 'CHAOS GATE {current} / {total}',
+  'hud.fortress': 'FORTRESS {hp}',
+  'hud.endless': 'ENDLESS {stage}',
+  'hud.rift': 'RIFT {tier}',
+  'hud.recruit': 'RECRUIT  •  {cost}',
+  'hud.anomaly': 'ANOMALY {current} / {max}',
+  'hud.crownSignal': 'CROWN SIGNAL {current} / {max}',
+  'hud.upgrades': 'UPGRADES',
+  'codex.discovered': '{current} / {total} discovered'
+} as const;
+
+export type TranslationKey = keyof typeof EN;
+type Dictionary = Readonly<Record<TranslationKey, string>>;
+
+const RU: Dictionary = {
+  'boot.title': 'BRAINROR MERGE',
+  'hud.wave': 'ВОЛНА {current} / {total}',
+  'hud.boss': 'БОСС {chapter}',
+  'hud.chaosGate': 'ВРАТА ХАОСА {current} / {total}',
+  'hud.fortress': 'КРЕПОСТЬ {hp}',
+  'hud.endless': 'БЕСКОНЕЧНО {stage}',
+  'hud.rift': 'РАЗЛОМ {tier}',
+  'hud.recruit': 'ПРИЗЫВ  •  {cost}',
+  'hud.anomaly': 'АНОМАЛИЯ {current} / {max}',
+  'hud.crownSignal': 'СИГНАЛ КОРОНЫ {current} / {max}',
+  'hud.upgrades': 'УЛУЧШЕНИЯ',
+  'codex.discovered': 'открыто {current} / {total}'
+};
+
+const DICTIONARIES: Readonly<Record<SupportedLocale, Dictionary>> = { en: EN, ru: RU };
+
+export function normalizeLocale(value: string | null | undefined): SupportedLocale | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase().replace('_', '-');
+  if (normalized === 'en' || normalized.startsWith('en-')) return 'en';
+  if (normalized === 'ru' || normalized.startsWith('ru-')) return 'ru';
+  return null;
+}
+
+export function resolveLocale(search?: string, languages?: readonly string[]): SupportedLocale {
+  const query = search ?? (typeof location !== 'undefined' ? location.search : '');
+  const params = new URLSearchParams(query);
+  const explicit = normalizeLocale(params.get('lang'));
+  if (explicit) return explicit;
+  const preferred = languages ?? (typeof navigator !== 'undefined' ? navigator.languages : []);
+  for (const language of preferred) {
+    const resolved = normalizeLocale(language);
+    if (resolved) return resolved;
+  }
+  return 'en';
+}
+
+export function translate(
+  key: TranslationKey,
+  params: Readonly<Record<string, string | number>> = {},
+  locale: SupportedLocale = resolveLocale()
+): string {
+  const template = DICTIONARIES[locale][key] ?? EN[key];
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, token: string) => {
+    const value = params[token];
+    return value === undefined ? match : String(value);
+  });
+}
+
+export function getDictionary(locale: SupportedLocale): Dictionary { return DICTIONARIES[locale]; }

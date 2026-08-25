@@ -4,48 +4,32 @@ import { getAllCreatures } from '../content/creatures';
 import { getAllEnemies } from '../content/enemies';
 import { getMutationOverlayDefinitions } from '../content/mutations';
 import { getAllWorlds } from '../content/worlds';
+import { translate } from '../i18n';
 
 export class BootScene extends Phaser.Scene {
-  public constructor() {
-    super('boot');
-  }
+  public constructor() { super('boot'); }
 
   public preload(): void {
     this.cameras.main.setBackgroundColor('#11172d');
-    const title = this.add.text(540, 830, 'BRAINROR MERGE', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '60px',
-      color: '#eafaff',
-      stroke: '#3d2b6d',
-      strokeThickness: 12
+    const title = this.add.text(540, 830, translate('boot.title'), {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '60px', color: '#eafaff', stroke: '#3d2b6d', strokeThickness: 12
     }).setOrigin(0.5);
     const track = this.add.graphics();
     const fill = this.add.graphics();
     track.fillStyle(0x253157, 1);
     track.fillRoundedRect(190, 960, 700, 42, 21);
     this.load.on('progress', (progress: number) => {
-      fill.clear();
-      fill.fillStyle(0x72eaff, 1);
-      fill.fillRoundedRect(198, 968, 684 * progress, 26, 13);
-      title.setScale(1 + progress * 0.025);
+      fill.clear(); fill.fillStyle(0x72eaff, 1); fill.fillRoundedRect(198, 968, 684 * progress, 26, 13); title.setScale(1 + progress * 0.025);
     });
 
-    for (const world of getAllWorlds()) {
-      this.load.svg(world.texture, world.assetPath, { width: 1080, height: 1920 });
-    }
-    for (const creature of getAllCreatures()) {
-      this.load.svg(creature.texture, creature.assetPath, { width: 512, height: 512 });
-    }
+    for (const world of getAllWorlds()) this.load.svg(world.texture, world.assetPath, { width: 1080, height: 1920 });
+    for (const creature of getAllCreatures()) this.load.svg(creature.texture, creature.assetPath, { width: 384, height: 384 });
     for (const mutation of getMutationOverlayDefinitions()) {
       if (!mutation.texture || !mutation.assetPath) continue;
-      this.load.svg(mutation.texture, mutation.assetPath, { width: 256, height: 256 });
+      this.load.svg(mutation.texture, mutation.assetPath, { width: 192, height: 192 });
     }
-    for (const enemy of getAllEnemies()) {
-      this.load.svg(enemy.texture, enemy.assetPath, { width: 512, height: 512 });
-    }
-    for (const boss of getAllBosses()) {
-      this.load.svg(boss.texture, boss.assetPath, { width: 720, height: 720 });
-    }
+    for (const enemy of getAllEnemies()) this.load.svg(enemy.texture, enemy.assetPath, { width: 384, height: 384 });
+    for (const boss of getAllBosses()) this.load.svg(boss.texture, boss.assetPath, { width: 640, height: 640 });
     this.load.svg('ui-core-shard', 'assets/ui/core-shard.svg', { width: 128, height: 128 });
     this.load.svg('upgrade-power-core', 'assets/ui/power-core.svg', { width: 160, height: 160 });
     this.load.svg('upgrade-fortress-plate', 'assets/ui/fortress-plate.svg', { width: 160, height: 160 });
@@ -56,7 +40,5 @@ export class BootScene extends Phaser.Scene {
     this.load.svg('ui-revive-bolt', 'assets/ui/revive-bolt.svg', { width: 250, height: 250 });
   }
 
-  public create(): void {
-    this.scene.start('game');
-  }
+  public create(): void { this.scene.start('game'); }
 }
