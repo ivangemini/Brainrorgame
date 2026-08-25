@@ -1,3 +1,5 @@
+import { getCurrentCrewSynergyState } from '../systems/crewSynergies';
+
 export const MUTATION_IDS = ['none', 'charged', 'prismatic', 'crowned'] as const;
 export type MutationId = (typeof MUTATION_IDS)[number];
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
@@ -104,9 +106,11 @@ export function ascendMutationPair(a: MutationId, b: MutationId): MutationId | n
 }
 
 export function mutatedDamage(baseDamage: number, mutation: MutationId): number {
-  return Math.max(1, Math.round(baseDamage * getMutationDefinition(mutation).damageMultiplier));
+  const synergy = getCurrentCrewSynergyState();
+  return Math.max(1, Math.round(baseDamage * getMutationDefinition(mutation).damageMultiplier * synergy.squadDamageMultiplier));
 }
 
 export function mutatedAttackMs(baseAttackMs: number, mutation: MutationId): number {
-  return Math.max(180, Math.round(baseAttackMs * getMutationDefinition(mutation).attackIntervalMultiplier));
+  const synergy = getCurrentCrewSynergyState();
+  return Math.max(180, Math.round(baseAttackMs * getMutationDefinition(mutation).attackIntervalMultiplier * synergy.attackIntervalMultiplier));
 }

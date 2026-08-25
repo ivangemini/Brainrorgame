@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { BoardState } from '../systems/board';
+import { resetCrewSynergyState, syncCrewSynergyState } from '../systems/crewSynergies';
 import {
   ascendMutationPair,
   getAllMutationDefinitions,
@@ -7,6 +9,8 @@ import {
   mutatedDamage,
   rollMutation
 } from './mutations';
+
+afterEach(() => resetCrewSynergyState());
 
 describe('mutations and rarity', () => {
   it('keeps the four rarity tiers ordered from common to legendary', () => {
@@ -43,12 +47,25 @@ describe('mutations and rarity', () => {
     expect(ascendMutationPair('none', 'charged')).toBeNull();
   });
 
-  it('applies bounded combat bonuses', () => {
+  it('applies bounded mutation combat bonuses without crew synergy', () => {
     expect(mutatedDamage(100, 'charged')).toBe(108);
     expect(mutatedDamage(100, 'prismatic')).toBe(120);
     expect(mutatedDamage(100, 'crowned')).toBe(135);
     expect(mutatedAttackMs(1000, 'charged')).toBe(940);
     expect(mutatedAttackMs(1000, 'prismatic')).toBe(900);
     expect(mutatedAttackMs(1000, 'crowned')).toBe(860);
+  });
+
+  it('stacks Pinguino haste and Lampalotl damage with mutation bonuses', () => {
+    const board: BoardState = [
+      { id: 'p3a', family: 'pinguino', level: 3, mutation: 'none' },
+      { id: 'p3b', family: 'pinguino', level: 3, mutation: 'none' },
+      { id: 'l3a', family: 'lampalotl', level: 3, mutation: 'none' },
+      { id: 'l3b', family: 'lampalotl', level: 3, mutation: 'none' },
+      null, null, null, null, null, null, null, null
+    ];
+    syncCrewSynergyState(board);
+    expect(mutatedDamage(100, 'charged')).toBe(123);
+    expect(mutatedAttackMs(1000, 'charged')).toBe(846);
   });
 });

@@ -1,3 +1,5 @@
+import { getCurrentCrewSynergyState } from './crewSynergies';
+
 export type MetaUpgradeId = 'power' | 'armor' | 'bounty';
 
 export interface MetaUpgradeLevels {
@@ -84,11 +86,12 @@ export function squadDamageMultiplier(levels: MetaUpgradeLevels): number {
 }
 
 export function incomingDamageMultiplier(levels: MetaUpgradeLevels): number {
-  return Math.max(0.52, 1 - levels.armor * 0.06);
+  const metaMultiplier = Math.max(0.52, 1 - levels.armor * 0.06);
+  return Math.max(0.42, metaMultiplier * getCurrentCrewSynergyState().incomingDamageMultiplier);
 }
 
 export function coinRewardMultiplier(levels: MetaUpgradeLevels): number {
-  return 1 + levels.bounty * 0.1;
+  return (1 + levels.bounty * 0.1) * getCurrentCrewSynergyState().coinRewardMultiplier;
 }
 
 export function bossCoreReward(chapter: number): number {

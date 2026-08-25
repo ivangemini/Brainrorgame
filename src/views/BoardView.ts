@@ -3,6 +3,7 @@ import { getCreature } from '../content/creatures';
 import { getMutationDefinition } from '../content/mutations';
 import type { GameFx } from '../presentation/GameFx';
 import type { BoardState, BoardUnit } from '../systems/board';
+import { getActiveCrewSynergies, syncCrewSynergyState } from '../systems/crewSynergies';
 
 const COLUMNS = 4;
 const ROWS = 3;
@@ -15,6 +16,8 @@ interface UnitViewMeta { readonly slot: number; readonly unitId: string; }
 
 export class BoardView {
   private readonly unitViews = new Map<number, Phaser.GameObjects.Container>();
+  private synergyText!: Phaser.GameObjects.Text;
+  private lastSynergySignature = '';
 
   public constructor(
     private readonly scene: Phaser.Scene,
@@ -28,6 +31,13 @@ export class BoardView {
     panel.fillStyle(0x0a1128, 0.78); panel.fillRoundedRect(58, 1060, 964, 716, 62);
     panel.lineStyle(4, 0xa5d9ff, 0.14); panel.strokeRoundedRect(58, 1060, 964, 716, 62);
     this.scene.add.text(100, 1080, 'MERGE CREW', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '31px', color: '#d9efff', stroke: '#1d2951', strokeThickness: 5 });
+    this.synergyText = this.scene.add.text(342, 1090, 'CREW SYNERGIES', {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '17px',
+      color: '#a9c9e8',
+      stroke: '#101832',
+      strokeThickness: 4
+    });
     for (let index = 0; index < COLUMNS * ROWS; index += 1) {
       const position = this.slotPosition(index); const slot = this.scene.add.graphics();
       slot.fillStyle(0x24345d, 0.74); slot.fillRoundedRect(position.x - SLOT_SIZE / 2, position.y - SLOT_SIZE / 2, SLOT_SIZE, SLOT_SIZE, 46);
@@ -37,6 +47,7 @@ export class BoardView {
   }
 
   public render(board: BoardState, pulseSlot = -1): void {
+    this.renderSynergies(board);
     for (const view of this.unitViews.values()) view.destroy();
     this.unitViews.clear();
     for (let index = 0; index < board.length; index += 1) {
@@ -67,6 +78,23 @@ export class BoardView {
   public attackKick(slot: number): Phaser.Math.Vector2 | null {
     const view = this.unitViews.get(slot); if (!view) return null; const origin = this.slotPosition(slot);
     this.scene.tweens.add({ targets: view, y: origin.y - 14, scaleX: 1.04, scaleY: 0.96, duration: 80, yoyo: true, ease: 'Quad.Out' }); return origin;
+  }
+
+  private renderSynergies(board: BoardState): void {
+    if (!this.synergyText) return;
+    const state = syncCrewSynergyState(board);
+    const active = getActiveCrewSynergies(state);
+    const label = active.length > 0
+      ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
+      : 'NO ACTIVE SYNERGY';
+    const signature = active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
+    this.synergyText.setText(label).setColor(active.length > 0 ? '#c8f6ff' : '#7587a8');
+    if (signature !== this.lastSynergySignature && this.lastSynergySignature !== '') {
+      this.scene.tweens.killTweensOf(this.synergyText);
+      this.synergyText.setScale(1.08).setAlpha(0.55);
+      this.scene.tweens.add({ targets: this.synergyText, scaleX: 1, scaleY: 1, alpha: 1, duration: 260, ease: 'Back.Out' });
+    }
+    this.lastSynergySignature = signature;
   }
 
   private createUnitView(slot: number, unit: BoardUnit): Phaser.GameObjects.Container {
@@ -141,6 +169,10 @@ export class BoardView {
     view.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => { if (!this.isLocked()) view.setPosition(dragX, dragY); });
     view.on('dragend', () => { const meta = view.getData('meta') as UnitViewMeta; if (this.isLocked()) { this.snapHome(view, meta.slot); return; } this.onDrop(view, meta.slot, this.closestSlot(view.x, view.y)); });
     return view;
+  }
+
+  private roman(tier: 1 | 2 | 3): string {
+    return tier === 1 ? 'I' : tier === 2 ? 'II' : 'III';
   }
 
   private pulse(view: Phaser.GameObjects.Container): void { view.setScale(0.45); this.scene.tweens.add({ targets: view, scaleX: 1.08, scaleY: 1.08, duration: 230, ease: 'Back.Out', onComplete: () => this.scene.tweens.add({ targets: view, scaleX: 1, scaleY: 1, duration: 130, ease: 'Sine.Out' }) }); }

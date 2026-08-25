@@ -74,6 +74,9 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Data-driven rotating boss roster with distinct idle, telegraph and defeat choreography
 - [x] Recruit currency sink and encounter reward loop
 - [x] Four-way recruit pool with balanced / heavy / rapid-fire / artillery family identities
+- [x] Merge-stable crew-family synergy power with Tier I / II / III thresholds
+- [x] Pinguino haste, Toastodilo fortress armor, Lampalotl squad damage and Dishnail coin-bounty identities
+- [x] Active crew synergy labels with tier-change pulse above the merge board
 - [x] Four-tier mutation rarity: Common / Rare Charged / Epic Prismatic / Legendary Crowned
 - [x] Mutation roll rates, combat modifiers, merge inheritance and rarity-promotion rules
 - [x] Project-owned mutation secondary-silhouette overlays with animated board presentation
@@ -109,7 +112,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Resumable onboarding state with pre-v6 saves migrated as already complete
 - [x] Onboarding funnel telemetry and first-session skill/doc
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
-- [ ] Crew-family combat synergies and composition bonuses
+- [x] Crew-family combat synergies and composition bonuses
 - [ ] Expand playable creature families and boss roster toward retention MVP targets (creatures: 12 / 20–30 target, bosses: 4 / 4–6 target)
 - [x] Mutations / rarity system
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
