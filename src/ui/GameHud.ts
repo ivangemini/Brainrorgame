@@ -1,10 +1,12 @@
 import type * as Phaser from 'phaser';
 import { getChapterMutator } from '../content/chapterMutators';
+import { getAllWorlds, getWorldForChapter, getWorldStage, type WorldId } from '../content/worlds';
 import { BOSS_STEP, GAUNTLET_STEP, WAVES_PER_CHAPTER, type EncounterStep } from '../systems/encounters';
 
 const RECRUIT_COST = 20;
 
 export class GameHud {
+  private biomeBackdrop!: Phaser.GameObjects.Image;
   private coinsText!: Phaser.GameObjects.Text;
   private coreText!: Phaser.GameObjects.Text;
   private baseText!: Phaser.GameObjects.Text;
@@ -16,6 +18,7 @@ export class GameHud {
   private dailyDot!: Phaser.GameObjects.Arc;
   private collectionButton!: Phaser.GameObjects.Container;
   private collectionDot!: Phaser.GameObjects.Arc;
+  private lastWorldId: WorldId | null = null;
 
   public constructor(
     private readonly scene: Phaser.Scene,
@@ -26,6 +29,8 @@ export class GameHud {
   ) {}
 
   public create(): void {
+    this.biomeBackdrop = this.scene.add.image(540, 960, 'bg-candy-crater').setDisplaySize(1080, 1920);
+
     const topGlow = this.scene.add.graphics();
     topGlow.fillStyle(0x0b1028, 0.72);
     topGlow.fillRoundedRect(54, 54, 972, 186, 48);
@@ -35,7 +40,7 @@ export class GameHud {
     this.encounterText = this.scene.add.text(100, 80, `WAVE 1 / ${WAVES_PER_CHAPTER}`, {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '42px', color: '#f7fbff', stroke: '#18264d', strokeThickness: 8
     });
-    this.chapterText = this.scene.add.text(102, 137, 'CHAPTER 1', {
+    this.chapterText = this.scene.add.text(102, 137, 'CANDY • 1 / 5', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '21px', color: '#b9c9ff'
     });
     this.coinsText = this.scene.add.text(720, 91, '120', {
@@ -69,14 +74,20 @@ export class GameHud {
     this.coreText.setText(`${coreShards}`);
     this.baseText.setText(`FORTRESS ${baseHp}`);
     this.baseText.setColor(baseHp > 35 ? '#9ff4ff' : '#ff9bab');
+
+    const world = getWorldForChapter(chapter);
+    const stage = getWorldStage(chapter);
+    this.biomeBackdrop.setTexture(world.texture);
     const mutator = getChapterMutator(chapter);
-    if (mutator) {
-      this.chapterText
-        .setText(`CHAPTER ${chapter}  •  ${mutator.name.toUpperCase()}`)
-        .setColor(`#${mutator.accentColor.toString(16).padStart(6, '0')}`);
-    } else {
-      this.chapterText.setText(`CHAPTER ${chapter}`).setColor('#b9c9ff');
-    }
+    const stageLabel = stage <= 5 ? `${stage} / 5` : `ENDLESS ${stage}`;
+    const mutatorLabel = mutator ? `  •  ${mutator.name.toUpperCase()}` : '';
+    this.chapterText
+      .setText(`${world.shortName}  •  ${stageLabel}${mutatorLabel}`)
+      .setColor(mutator
+        ? `#${mutator.accentColor.toString(16).padStart(6, '0')}`
+        : `#${world.accentColor.toString(16).padStart(6, '0')}`);
+    this.showWorldTransitionIfNeeded(world.id, world.name, world.ruleLabel, world.accentColor);
+
     if (step === BOSS_STEP) {
       this.encounterText.setText(`BOSS ${chapter}`).setColor('#fff0a6');
     } else if (step === GAUNTLET_STEP) {
@@ -86,6 +97,42 @@ export class GameHud {
     }
     this.dailyDot.setVisible(dailyReady);
     this.collectionDot.setVisible(collectionReady);
+  }
+
+  private showWorldTransitionIfNeeded(id: WorldId, name: string, ruleLabel: string, accentColor: number): void {
+    if (this.lastWorldId === null) {
+      this.lastWorldId = id;
+      return;
+    }
+    if (this.lastWorldId === id) return;
+    this.lastWorldId = id;
+    const worldNumber = getAllWorlds().findIndex((world) => world.id === id) + 1;
+    const color = `#${accentColor.toString(16).padStart(6, '0')}`;
+    const banner = this.scene.add.text(540, 350, `WORLD ${worldNumber} • ${name.toUpperCase()}`, {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '52px',
+      color,
+      stroke: '#10172c',
+      strokeThickness: 10,
+      align: 'center'
+    }).setOrigin(0.5).setDepth(1500).setScale(0.45).setAlpha(0);
+    const rule = this.scene.add.text(540, 414, ruleLabel.toUpperCase(), {
+      fontFamily: 'system-ui, sans-serif',
+      fontStyle: '900',
+      fontSize: '24px',
+      color: '#f4fbff',
+      stroke: '#10172c',
+      strokeThickness: 6
+    }).setOrigin(0.5).setDepth(1500).setAlpha(0);
+    this.scene.tweens.add({ targets: banner, alpha: 1, scaleX: 1, scaleY: 1, duration: 360, ease: 'Back.Out' });
+    this.scene.tweens.add({ targets: rule, alpha: 1, y: 430, duration: 300, delay: 160, ease: 'Quad.Out' });
+    this.scene.time.delayedCall(1450, () => {
+      this.scene.tweens.add({
+        targets: [banner, rule], alpha: 0, y: '-=24', duration: 260, ease: 'Quad.In',
+        onComplete: () => { banner.destroy(); rule.destroy(); }
+      });
+    });
+    this.scene.cameras.main.flash(170, 220, 248, 255, false);
   }
 
   private createCollectionButton(): void {
