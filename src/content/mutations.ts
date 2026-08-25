@@ -3,7 +3,7 @@ import {
   currentActiveHasteMultiplier,
   recordCrewAttackEnergy
 } from '../systems/activeAbilities';
-import { currentBossIncomingDamageMultiplier, getCurrentBossPhaseState } from '../systems/bossPhases';
+import { currentBossIncomingDamageMultiplier } from '../systems/bossPhases';
 import { getCurrentChaosPerkMultipliers } from '../systems/chaosDraft';
 import { getCurrentCrewSynergyState } from '../systems/crewSynergies';
 
@@ -76,13 +76,11 @@ export function ascendMutationPair(a: MutationId, b: MutationId): MutationId | n
 export function mutatedDamage(baseDamage: number, mutation: MutationId): number {
   const synergy = getCurrentCrewSynergyState();
   const perks = getCurrentChaosPerkMultipliers();
-  const bossSynergyMultiplier = getCurrentBossPhaseState() ? synergy.bossDamageMultiplier : 1;
   recordCrewAttackEnergy();
   return Math.max(1, Math.round(
     baseDamage
     * getMutationDefinition(mutation).damageMultiplier
     * synergy.squadDamageMultiplier
-    * bossSynergyMultiplier
     * perks.squadDamageMultiplier
     * currentActiveDamageMultiplier()
     * currentBossIncomingDamageMultiplier()
