@@ -3,6 +3,7 @@ import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPoli
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
+import type { OnboardingStep } from '../systems/onboarding';
 
 export type EncounterKind = 'wave' | 'boss';
 
@@ -12,6 +13,15 @@ export type GameAnalyticsEvent =
       readonly elapsedMs: number;
       readonly returning: boolean;
       readonly chapter: number;
+    }
+  | {
+      readonly name: 'onboarding_step';
+      readonly elapsedMs: number;
+      readonly step: Exclude<OnboardingStep, 'complete'>;
+    }
+  | {
+      readonly name: 'onboarding_complete';
+      readonly elapsedMs: number;
     }
   | {
       readonly name: 'first_merge';
