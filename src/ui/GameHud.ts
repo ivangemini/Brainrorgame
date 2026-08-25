@@ -1,6 +1,12 @@
 import type * as Phaser from 'phaser';
 import { getChapterMutator } from '../content/chapterMutators';
 import { getAllWorlds, getWorldForChapter, getWorldStage, type WorldId } from '../content/worlds';
+import {
+  ANOMALY_PITY_MAX,
+  ANOMALY_SECRET_PITY_MAX,
+  anomalyChargePercent,
+  type AnomalyHuntState
+} from '../systems/anomalyHunt';
 import { BOSS_STEP, GAUNTLET_STEP, WAVES_PER_CHAPTER, type EncounterStep } from '../systems/encounters';
 
 const RECRUIT_COST = 20;
@@ -12,6 +18,7 @@ export class GameHud {
   private baseText!: Phaser.GameObjects.Text;
   private encounterText!: Phaser.GameObjects.Text;
   private chapterText!: Phaser.GameObjects.Text;
+  private anomalyText!: Phaser.GameObjects.Text;
   private recruitButton!: Phaser.GameObjects.Container;
   private upgradeButton!: Phaser.GameObjects.Container;
   private dailyButton!: Phaser.GameObjects.Container;
@@ -68,7 +75,8 @@ export class GameHud {
     chapter: number,
     step: EncounterStep,
     dailyReady: boolean,
-    collectionReady: boolean
+    collectionReady: boolean,
+    anomalyHunt: AnomalyHuntState
   ): void {
     this.coinsText.setText(`${coins}`);
     this.coreText.setText(`${coreShards}`);
@@ -97,6 +105,24 @@ export class GameHud {
     }
     this.dailyDot.setVisible(dailyReady);
     this.collectionDot.setVisible(collectionReady);
+
+    const charge = anomalyChargePercent(anomalyHunt);
+    this.anomalyText
+      .setText(`ANOMALY ${anomalyHunt.charge} / ${ANOMALY_PITY_MAX}  •  CROWN SIGNAL ${anomalyHunt.secretPity} / ${ANOMALY_SECRET_PITY_MAX}`)
+      .setColor(charge >= 80 ? '#63244d' : charge >= 50 ? '#6e3c2c' : '#76431f');
+  }
+
+  public pulseAnomaly(special: boolean): void {
+    this.scene.tweens.killTweensOf(this.anomalyText);
+    this.anomalyText.setScale(special ? 1.18 : 1.08).setAlpha(special ? 0.5 : 0.7);
+    this.scene.tweens.add({
+      targets: this.anomalyText,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: special ? 320 : 170,
+      ease: special ? 'Back.Out' : 'Quad.Out'
+    });
   }
 
   private showWorldTransitionIfNeeded(id: WorldId, name: string, ruleLabel: string, accentColor: number): void {
@@ -182,10 +208,10 @@ export class GameHud {
     const label = this.scene.add.text(0, -8, `RECRUIT  •  ${RECRUIT_COST}`, {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '37px', color: '#47271e', align: 'center'
     }).setOrigin(0.5);
-    const sub = this.scene.add.text(0, 37, 'NEW WEIRDO', {
-      fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '18px', color: '#76431f'
+    this.anomalyText = this.scene.add.text(0, 37, `ANOMALY 0 / ${ANOMALY_PITY_MAX}  •  CROWN SIGNAL 0 / ${ANOMALY_SECRET_PITY_MAX}`, {
+      fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '16px', color: '#76431f'
     }).setOrigin(0.5);
-    this.recruitButton = this.scene.add.container(540, 1841, [background, label, sub]);
+    this.recruitButton = this.scene.add.container(540, 1841, [background, label, this.anomalyText]);
     this.recruitButton.setSize(476, 124).setInteractive({ useHandCursor: true });
     this.recruitButton.on('pointerdown', () => {
       this.scene.tweens.add({ targets: this.recruitButton, scaleX: 0.96, scaleY: 0.94, duration: 80, yoyo: true, ease: 'Quad.Out' });

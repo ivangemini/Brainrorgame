@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createDefaultAnomalyHuntState } from '../systems/anomalyHunt';
 import { createStarterBoard } from '../systems/board';
 import { createDefaultCollectionProgress, discoverCreature } from '../systems/collectionProgression';
 import { createDefaultDailyState } from '../systems/dailyRetention';
@@ -16,6 +17,7 @@ function makeSnapshot() {
     daily: createDefaultDailyState(Date.parse('2026-08-25T12:00:00.000Z')),
     collection: createDefaultCollectionProgress(board),
     onboarding: createDefaultOnboardingState(),
+    anomalyHunt: { charge: 7, secretPity: 23, totalPulls: 23, secretsFound: 0 },
     baseHp: 77,
     chapter: 3,
     encounterStep: 2 as const,
@@ -32,20 +34,33 @@ function makeLegacyBoard() {
 }
 
 describe('game save', () => {
-  it('round-trips a valid v9 snapshot with chapter perks', () => {
+  it('round-trips a valid v10 snapshot with anomaly progression and chapter perks', () => {
     const save = createGameSave(makeSnapshot(), 12345);
-    expect(save.version).toBe(9);
+    expect(save.version).toBe(10);
     expect(save.chaosPerks).toEqual(['impact-jelly', 'repair-moss']);
+    expect(save.anomalyHunt).toEqual({ charge: 7, secretPity: 23, totalPulls: 23, secretsFound: 0 });
     expect(parseGameSave(save)).toEqual(save);
   });
 
-  it('migrates a valid v8 save with an empty chapter build', () => {
+  it('migrates a valid v9 save with a fresh anomaly hunt while preserving chapter perks', () => {
     const current = createGameSave(makeSnapshot(), 12346);
     const legacy: Record<string, unknown> = { ...current };
+    delete legacy.anomalyHunt;
+    const migrated = parseGameSave({ ...legacy, version: 9 });
+    expect(migrated?.version).toBe(10);
+    expect(migrated?.chaosPerks).toEqual(['impact-jelly', 'repair-moss']);
+    expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
+  });
+
+  it('migrates a valid v8 save with an empty chapter build and fresh anomaly hunt', () => {
+    const current = createGameSave(makeSnapshot(), 12347);
+    const legacy: Record<string, unknown> = { ...current };
     delete legacy.chaosPerks;
+    delete legacy.anomalyHunt;
     const migrated = parseGameSave({ ...legacy, version: 8 });
-    expect(migrated?.version).toBe(9);
+    expect(migrated?.version).toBe(10);
     expect(migrated?.chaosPerks).toEqual([]);
+    expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
   });
 
   it('round-trips the new late-wave and boss encounter steps', () => {
@@ -64,7 +79,7 @@ describe('game save', () => {
     const collection = discoverCreature(snapshot.collection, 'lampalotl-2');
     const save = createGameSave({ ...snapshot, board, collection }, 22222);
     const parsed = parseGameSave(save);
-    expect(parsed?.version).toBe(9);
+    expect(parsed?.version).toBe(10);
     expect(parsed?.board[8]).toEqual({ id: 'lamp-save', family: 'lampalotl', level: 2, mutation: 'prismatic' });
     expect(parsed?.collection.discovered).toContain('lampalotl-2');
   });
@@ -89,11 +104,12 @@ describe('game save', () => {
       board: snapshot.board
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(9);
+    expect(migrated?.version).toBe(10);
     expect(migrated?.encounterStep).toBe(BOSS_STEP);
     expect(migrated?.targetHpMax).toBe(930);
     expect(migrated?.targetHp).toBe(410);
     expect(migrated?.chaosPerks).toEqual([]);
+    expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
   });
 
   it('keeps historical v7 wave steps before the old boss unchanged', () => {
@@ -118,7 +134,7 @@ describe('game save', () => {
     expect(parseGameSave(oldSave)?.encounterStep).toBe(2);
   });
 
-  it('migrates v2 saves through v9 and preserves progression', () => {
+  it('migrates v2 saves through v10 and preserves progression', () => {
     const oldSave = {
       version: 2,
       updatedAt: Date.parse('2026-08-24T12:00:00.000Z'),
@@ -132,7 +148,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(9);
+    expect(migrated?.version).toBe(10);
     expect(migrated?.coreShards).toBe(3);
     expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
     expect(migrated?.daily.streak).toBe(0);
@@ -141,6 +157,7 @@ describe('game save', () => {
     expect(migrated?.onboarding.step).toBe('complete');
     expect(migrated?.board[0]?.mutation).toBe('none');
     expect(migrated?.chaosPerks).toEqual([]);
+    expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
   });
 
   it('migrates v3 boss saves through the extended chapter migration', () => {
@@ -159,7 +176,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(9);
+    expect(migrated?.version).toBe(10);
     expect(migrated?.encounterStep).toBe(BOSS_STEP);
     expect(migrated?.daily.dayKey).toBe('2026-08-25');
     expect(migrated?.daily.counters).toEqual({ merge: 0, defeat: 0, recruit: 0 });
@@ -186,7 +203,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(9);
+    expect(migrated?.version).toBe(10);
     expect(migrated?.daily).toEqual(snapshot.daily);
     expect(migrated?.collection.stats.recruits).toBe(snapshot.recruitSerial);
     expect(migrated?.onboarding.step).toBe('complete');
@@ -211,7 +228,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(9);
+    expect(migrated?.version).toBe(10);
     expect(migrated?.onboarding).toEqual({ step: 'complete', completedAt: 777 });
   });
 
@@ -235,16 +252,17 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(9);
+    expect(migrated?.version).toBe(10);
     expect(migrated?.board.filter(Boolean).every((unit) => unit?.mutation === 'none')).toBe(true);
   });
 
-  it('clamps upgrade levels, collection stats and target HP to supported maximums', () => {
+  it('clamps upgrade levels, collection stats, anomaly counters and target HP to supported maximums', () => {
     const save = createGameSave(makeSnapshot(), 12345);
     const parsed = parseGameSave({
       ...save,
       targetHp: 9999,
       upgrades: { power: 999, armor: 999, bounty: 999 },
+      anomalyHunt: { charge: 999, secretPity: 999, totalPulls: 12, secretsFound: 999 },
       collection: {
         ...save.collection,
         stats: { merges: 2_000_000_000, recruits: 0, defeats: 0, bosses: 0, upgrades: 0 }
@@ -253,6 +271,7 @@ describe('game save', () => {
     expect(parsed?.targetHp).toBe(800);
     expect(parsed?.upgrades).toEqual({ power: 10, armor: 8, bounty: 10 });
     expect(parsed?.collection.stats.merges).toBe(1_000_000_000);
+    expect(parsed?.anomalyHunt).toEqual({ charge: 17, secretPity: 69, totalPulls: 12, secretsFound: 12 });
   });
 
   it('rejects malformed or duplicate chaos perks', () => {
@@ -260,6 +279,11 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, chaosPerks: ['copied-meme'] })).toBeNull();
     expect(parseGameSave({ ...save, chaosPerks: ['impact-jelly', 'impact-jelly'] })).toBeNull();
     expect(parseGameSave({ ...save, chaosPerks: ['impact-jelly', 'repair-moss', 'tempo-worm'] })).toBeNull();
+  });
+
+  it('rejects malformed anomaly hunt state', () => {
+    const save = createGameSave(makeSnapshot());
+    expect(parseGameSave({ ...save, anomalyHunt: { ...save.anomalyHunt, charge: 'full' } })).toBeNull();
   });
 
   it('rejects malformed onboarding state', () => {
@@ -282,12 +306,12 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, upgrades: { power: 'max', armor: 0, bounty: 0 } })).toBeNull();
   });
 
-  it('rejects unsupported v9 encounter steps', () => {
+  it('rejects unsupported v10 encounter steps', () => {
     const save = createGameSave(makeSnapshot());
     expect(parseGameSave({ ...save, encounterStep: 6 })).toBeNull();
   });
 
-  it('rejects malformed board mutation data in v9', () => {
+  it('rejects malformed board mutation data in v10', () => {
     const save = createGameSave(makeSnapshot());
     const board = [...save.board];
     const first = board[0];
@@ -296,7 +320,7 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, board })).toBeNull();
   });
 
-  it('rejects v9 board units that omit mutation', () => {
+  it('rejects v10 board units that omit mutation', () => {
     const save = createGameSave(makeSnapshot());
     const board = save.board.map((unit) => unit ? { id: unit.id, family: unit.family, level: unit.level } : null);
     expect(parseGameSave({ ...save, board })).toBeNull();

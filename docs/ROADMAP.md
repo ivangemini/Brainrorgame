@@ -83,6 +83,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Reload-safe boss phase reconstruction directly from persisted boss HP
 - [x] Recruit currency sink and encounter reward loop
 - [x] Progression-gated seven-family recruit pool: 4 starters -> Mochimoth Ch3 -> Routeraptor Ch6 -> Vendinguana Ch11
+- [x] Persistent Anomaly Hunt on normal Recruit with mutation safety net by pull 18 and Crown Signal hard guarantee by pull 70
+- [x] Recruit HUD exposes both Anomaly Hunt counters with guarantee and secret-result reveal feedback
 - [x] Merge-stable crew-family synergy power with Tier I / II / III thresholds
 - [x] Pinguino haste, Toastodilo armor, Lampalotl damage, Dishnail bounty, Mochimoth sustain, Routeraptor energy and Vendinguana boss-break identities
 - [x] Active crew synergy labels with tier-change pulse above the merge board
@@ -101,10 +103,11 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
-- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7 -> v8 -> v9
+- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7 -> v8 -> v9 -> v10
 - [x] v6 -> v7 mutation migration preserving legacy boards as Common
 - [x] v7 -> v8 encounter migration preserving historical boss HP at the new boss step
 - [x] v8 -> v9 Chaos Draft migration preserving old progression with an empty chapter build
+- [x] v9 -> v10 Anomaly Hunt migration preserving prior progression with fresh persistent pity counters
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
 - [x] Capped offline coin progression on reload/background resume

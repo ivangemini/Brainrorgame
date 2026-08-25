@@ -2,12 +2,17 @@ import * as Phaser from 'phaser';
 import { GameAnalytics } from '../analytics/GameAnalytics';
 import { GameAudio } from '../audio/GameAudio';
 import { getCreature, getRecruitableFamilies, type CreatureFamily } from '../content/creatures';
-import { getMutationDefinition, mutatedAttackMs, mutatedDamage, rollMutation } from '../content/mutations';
+import { getMutationDefinition, mutatedAttackMs, mutatedDamage } from '../content/mutations';
 import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { createGameSave, type GameSave } from '../state/save';
 import { shouldRequestChapterInterstitial } from '../systems/adPolicy';
 import { setActiveAbilityCombatActive } from '../systems/activeAbilities';
+import {
+  createDefaultAnomalyHuntState,
+  rollAnomalyHunt,
+  type AnomalyHuntState
+} from '../systems/anomalyHunt';
 import {
   addChaosPerk,
   chaosDraftCheckpointForStep,
@@ -111,6 +116,7 @@ export class GameScene extends Phaser.Scene {
   private daily: DailyRetentionState = createDefaultDailyState();
   private collection: CollectionProgress = createDefaultCollectionProgress(this.board);
   private onboarding: OnboardingState = createDefaultOnboardingState();
+  private anomalyHunt: AnomalyHuntState = createDefaultAnomalyHuntState();
   private chaosPerks: readonly ChaosPerkId[] = [];
   private baseHp = 100;
   private chapter = 1;
@@ -351,7 +357,9 @@ export class GameScene extends Phaser.Scene {
     this.audio.button();
     this.coins -= RECRUIT_COST;
     const family = Phaser.Math.RND.pick<CreatureFamily>([...getRecruitableFamilies()]);
-    const mutationId = rollMutation(Phaser.Math.RND.frac());
+    const anomalyResult = rollAnomalyHunt(this.anomalyHunt, Phaser.Math.RND.frac());
+    this.anomalyHunt = anomalyResult.state;
+    const mutationId = anomalyResult.mutation;
     const mutation = getMutationDefinition(mutationId);
     this.recruitSerial += 1;
     this.board = addUnit(this.board, {
@@ -367,13 +375,23 @@ export class GameScene extends Phaser.Scene {
     this.recordDailyProgress('recruit');
     this.advanceOnboardingAction('recruited');
     this.syncUi();
+    this.hud.pulseAnomaly(anomalyResult.guaranteed || anomalyResult.secret);
     this.boardView.render(this.board, empty);
     const position = this.boardView.slotPosition(empty);
     const recruitColor = mutation.rank > 0 ? mutation.accentColor : getCreature(family, 1).accentColor;
     this.fx.burst(position.x, position.y, recruitColor, mutation.rank > 0 ? 18 : 11, mutation.rank > 0 ? 190 : 150);
-    if (mutation.rank > 0) {
+    if (anomalyResult.secret) {
+      this.audio.reward();
       this.fx.flashRing(position.x, position.y, mutation.accentColor);
-      this.fx.showHint(`${mutation.rarity.toUpperCase()} RECRUIT • ${mutation.name.toUpperCase()}`, 1015, `#${mutation.accentColor.toString(16).padStart(6, '0')}`);
+      this.fx.burst(position.x, position.y, 0xffffff, 28, 260);
+      this.cameras.main.flash(150, 245, 220, 255, false);
+      this.fx.showHint('SECRET ANOMALY • CROWNED SIGNAL FOUND', 1015, '#fff0d0');
+    } else if (mutation.rank > 0) {
+      this.fx.flashRing(position.x, position.y, mutation.accentColor);
+      const label = anomalyResult.guaranteed
+        ? `ANOMALY GUARANTEE • ${mutation.rarity.toUpperCase()} ${mutation.name.toUpperCase()}`
+        : `${mutation.rarity.toUpperCase()} RECRUIT • ${mutation.name.toUpperCase()}`;
+      this.fx.showHint(label, 1015, `#${mutation.accentColor.toString(16).padStart(6, '0')}`);
     }
     this.persistSoon();
   }
@@ -837,6 +855,7 @@ export class GameScene extends Phaser.Scene {
     this.daily = rollDailyState(save.daily);
     this.collection = save.collection;
     this.onboarding = save.onboarding;
+    this.anomalyHunt = save.anomalyHunt;
     this.chaosPerks = save.chaosPerks;
     syncCurrentChaosPerks(this.chaosPerks);
     this.baseHp = save.baseHp;
@@ -865,6 +884,7 @@ export class GameScene extends Phaser.Scene {
       daily: this.daily,
       collection: this.collection,
       onboarding: this.onboarding,
+      anomalyHunt: this.anomalyHunt,
       baseHp: this.baseHp,
       chapter: this.chapter,
       encounterStep: this.encounterStep,
@@ -885,7 +905,8 @@ export class GameScene extends Phaser.Scene {
       this.chapter,
       this.encounterStep,
       hasDailyClaimAvailable(this.daily),
-      hasAchievementClaimAvailable(this.collection)
+      hasAchievementClaimAvailable(this.collection),
+      this.anomalyHunt
     );
     this.setTargetHealth();
   }

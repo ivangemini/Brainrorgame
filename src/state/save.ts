@@ -1,6 +1,12 @@
 import { isCreatureFamily, type CreatureFamily } from '../content/creatures';
 import { isMutationId } from '../content/mutations';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
+import {
+  ANOMALY_PITY_MAX,
+  ANOMALY_SECRET_PITY_MAX,
+  createDefaultAnomalyHuntState,
+  type AnomalyHuntState
+} from '../systems/anomalyHunt';
 import type { BoardState, BoardUnit } from '../systems/board';
 import {
   isChaosPerkId,
@@ -27,7 +33,7 @@ import {
   type OnboardingState
 } from '../systems/onboarding';
 
-export const SAVE_VERSION = 9 as const;
+export const SAVE_VERSION = 10 as const;
 
 type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
@@ -95,11 +101,16 @@ export interface GameSaveV8 extends Omit<GameSaveV7, 'version' | 'encounterStep'
 }
 
 export interface GameSaveV9 extends Omit<GameSaveV8, 'version'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 9;
   readonly chaosPerks: readonly ChaosPerkId[];
 }
 
-export type GameSave = GameSaveV9;
+export interface GameSaveV10 extends Omit<GameSaveV9, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly anomalyHunt: AnomalyHuntState;
+}
+
+export type GameSave = GameSaveV10;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -108,6 +119,7 @@ export interface GameSaveSnapshot {
   readonly daily: DailyRetentionState;
   readonly collection: CollectionProgress;
   readonly onboarding: OnboardingState;
+  readonly anomalyHunt: AnomalyHuntState;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -143,7 +155,7 @@ interface V5ProgressFields extends V4ProgressFields {
 type BoardParser = (value: unknown) => BoardState | null;
 type StepParser = (value: unknown) => EncounterStep | null;
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV9 {
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV10 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -153,6 +165,7 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     daily: cloneDaily(snapshot.daily),
     collection: cloneCollection(snapshot.collection),
     onboarding: cloneOnboarding(snapshot.onboarding),
+    anomalyHunt: cloneAnomalyHunt(snapshot.anomalyHunt),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -184,7 +197,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
-    return v8 ? migrateV8ToV9(v8) : null;
+    const v9 = v8 ? migrateV8ToV9(v8) : null;
+    return v9 ? migrateV9ToV10(v9) : null;
   }
   if (value.version === 2) {
     const v3 = migrateV2ToV3(value);
@@ -193,7 +207,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
-    return v8 ? migrateV8ToV9(v8) : null;
+    const v9 = v8 ? migrateV8ToV9(v8) : null;
+    return v9 ? migrateV9ToV10(v9) : null;
   }
   if (value.version === 3) {
     const v4 = migrateV3ToV4(value);
@@ -201,33 +216,57 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
-    return v8 ? migrateV8ToV9(v8) : null;
+    const v9 = v8 ? migrateV8ToV9(v8) : null;
+    return v9 ? migrateV9ToV10(v9) : null;
   }
   if (value.version === 4) {
     const v5 = migrateV4ToV5(value);
     const v6 = v5 ? migrateV5ToV6(v5) : null;
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
-    return v8 ? migrateV8ToV9(v8) : null;
+    const v9 = v8 ? migrateV8ToV9(v8) : null;
+    return v9 ? migrateV9ToV10(v9) : null;
   }
   if (value.version === 5) {
     const v6 = migrateV5ToV6(value);
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
-    return v8 ? migrateV8ToV9(v8) : null;
+    const v9 = v8 ? migrateV8ToV9(v8) : null;
+    return v9 ? migrateV9ToV10(v9) : null;
   }
   if (value.version === 6) {
     const v7 = migrateV6ToV7(value);
     const v8 = v7 ? migrateV7ToV8(v7) : null;
-    return v8 ? migrateV8ToV9(v8) : null;
+    const v9 = v8 ? migrateV8ToV9(v8) : null;
+    return v9 ? migrateV9ToV10(v9) : null;
   }
   if (value.version === 7) {
     const v8 = migrateV7ToV8(value);
-    return v8 ? migrateV8ToV9(v8) : null;
+    const v9 = v8 ? migrateV8ToV9(v8) : null;
+    return v9 ? migrateV9ToV10(v9) : null;
   }
-  if (value.version === 8) return migrateV8ToV9(value);
+  if (value.version === 8) {
+    const v9 = migrateV8ToV9(value);
+    return v9 ? migrateV9ToV10(v9) : null;
+  }
+  if (value.version === 9) return migrateV9ToV10(value);
   if (value.version !== SAVE_VERSION) return null;
 
+  const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
+  const chaosPerks = parseChaosPerks(value.chaosPerks);
+  const anomalyHunt = parseAnomalyHunt(value.anomalyHunt);
+  if (!v5 || !chaosPerks || !anomalyHunt || !isValidOnboardingState(value.onboarding)) return null;
+  return {
+    version: SAVE_VERSION,
+    ...v5,
+    onboarding: cloneOnboarding(value.onboarding),
+    chaosPerks,
+    anomalyHunt
+  };
+}
+
+function migrateV9ToV10(value: unknown): GameSaveV10 | null {
+  if (!isRecord(value)) return null;
   const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
   const chaosPerks = parseChaosPerks(value.chaosPerks);
   if (!v5 || !chaosPerks || !isValidOnboardingState(value.onboarding)) return null;
@@ -235,7 +274,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     version: SAVE_VERSION,
     ...v5,
     onboarding: cloneOnboarding(value.onboarding),
-    chaosPerks
+    chaosPerks,
+    anomalyHunt: createDefaultAnomalyHuntState()
   };
 }
 
@@ -244,7 +284,7 @@ function migrateV8ToV9(value: unknown): GameSaveV9 | null {
   const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
   if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
   return {
-    version: SAVE_VERSION,
+    version: 9,
     ...v5,
     onboarding: cloneOnboarding(value.onboarding),
     chaosPerks: []
@@ -400,6 +440,20 @@ function parseChaosPerks(value: unknown): readonly ChaosPerkId[] | null {
   return perks;
 }
 
+function parseAnomalyHunt(value: unknown): AnomalyHuntState | null {
+  if (!isRecord(value)) return null;
+  if (!isFiniteNumber(value.charge) || !isFiniteNumber(value.secretPity)) return null;
+  if (!isFiniteNumber(value.totalPulls) || !isFiniteNumber(value.secretsFound)) return null;
+
+  const totalPulls = clamp(Math.floor(value.totalPulls), 0, 1_000_000_000);
+  return {
+    charge: clamp(Math.floor(value.charge), 0, ANOMALY_PITY_MAX - 1),
+    secretPity: clamp(Math.floor(value.secretPity), 0, ANOMALY_SECRET_PITY_MAX - 1),
+    totalPulls,
+    secretsFound: clamp(Math.floor(value.secretsFound), 0, totalPulls)
+  };
+}
+
 function parseCollection(value: unknown): CollectionProgress | null {
   if (!isRecord(value) || !Array.isArray(value.discovered) || !isRecord(value.stats) || !Array.isArray(value.claimedAchievements)) return null;
   const discovered: CollectionKey[] = [];
@@ -478,6 +532,10 @@ function cloneDaily(daily: DailyRetentionState): DailyRetentionState {
 
 function cloneOnboarding(onboarding: OnboardingState): OnboardingState {
   return { step: onboarding.step, completedAt: onboarding.completedAt };
+}
+
+function cloneAnomalyHunt(anomalyHunt: AnomalyHuntState): AnomalyHuntState {
+  return { ...anomalyHunt };
 }
 
 function parseCurrentBoard(value: unknown): BoardState | null {
