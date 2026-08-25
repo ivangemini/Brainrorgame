@@ -88,9 +88,10 @@ export class GameHud {
     this.biomeBackdrop.setTexture(world.texture);
     const mutator = getChapterMutator(chapter);
     const stageLabel = stage <= 5 ? `${stage} / 5` : `ENDLESS ${stage}`;
+    const riftLabel = mutator && mutator.endlessTier > 0 ? `  •  RIFT ${mutator.endlessTier}` : '';
     const mutatorLabel = mutator ? `  •  ${mutator.name.toUpperCase()}` : '';
     this.chapterText
-      .setText(`${world.shortName}  •  ${stageLabel}${mutatorLabel}`)
+      .setText(`${world.shortName}  •  ${stageLabel}${riftLabel}${mutatorLabel}`)
       .setColor(mutator
         ? `#${mutator.accentColor.toString(16).padStart(6, '0')}`
         : `#${world.accentColor.toString(16).padStart(6, '0')}`);
