@@ -2,7 +2,6 @@ import type * as Phaser from 'phaser';
 import type { OnboardingState } from '../systems/onboarding';
 
 export class OnboardingCoach {
-  private root!: Phaser.GameObjects.Container;
   private card!: Phaser.GameObjects.Container;
   private title!: Phaser.GameObjects.Text;
   private body!: Phaser.GameObjects.Text;
@@ -96,7 +95,6 @@ export class OnboardingCoach {
   }
 
   public update(state: OnboardingState): void {
-    if (!this.root && !this.card) return;
     if (state.step === this.currentStep) return;
     this.currentStep = state.step;
 
