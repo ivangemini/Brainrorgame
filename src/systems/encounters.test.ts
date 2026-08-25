@@ -11,14 +11,16 @@ describe('encounter progression', () => {
     expect(getEncounterSpec(1, BOSS_STEP).kind).toBe('boss');
   });
 
-  it('keeps early rotating elite modifiers disabled', () => {
+  it('keeps early rotating elite modifiers and chapter mutators disabled', () => {
     for (const chapter of [1, 2]) {
       for (const step of [0, 1, 2] as const) {
         const encounter = getEncounterSpec(chapter, step);
         expect(encounter.kind).toBe('wave');
         if (encounter.kind === 'wave') expect(encounter.elite).toBeNull();
+        expect(encounter.mutator).toBeNull();
       }
     }
+    expect(getEncounterSpec(3, BOSS_STEP).mutator).toBeNull();
   });
 
   it('preserves one rotating elite modifier in the first three waves from chapter three', () => {
@@ -36,6 +38,27 @@ describe('encounter progression', () => {
       expect(elite4[0].elite?.id).toBe('bulwark');
       expect(elite5[0].elite?.id).toBe('siege');
     }
+  });
+
+  it('applies one mutator to the full chapter from chapter four', () => {
+    const chapter4 = [0, 1, 2, 3, 4, BOSS_STEP] as const;
+    const chapter5 = [0, 1, 2, 3, 4, BOSS_STEP] as const;
+    expect(chapter4.map((step) => getEncounterSpec(4, step).mutator?.id)).toEqual([
+      'turbo-swarm', 'turbo-swarm', 'turbo-swarm', 'turbo-swarm', 'turbo-swarm', 'turbo-swarm'
+    ]);
+    expect(chapter5.map((step) => getEncounterSpec(5, step).mutator?.id)).toEqual([
+      'heavy-weather', 'heavy-weather', 'heavy-weather', 'heavy-weather', 'heavy-weather', 'heavy-weather'
+    ]);
+  });
+
+  it('stacks chapter mutators on top of normal wave scaling', () => {
+    const baseline = scaleEnemy(getEnemyForWave(4, 4), 4);
+    const turboWave = getEncounterSpec(4, 3);
+    expect(turboWave.kind).toBe('wave');
+    if (turboWave.kind !== 'wave') throw new Error('Expected wave');
+    expect(turboWave.mutator?.id).toBe('turbo-swarm');
+    expect(turboWave.reward).toBeGreaterThan(baseline.reward);
+    expect(turboWave.attackMs).toBeLessThan(baseline.attackMs);
   });
 
   it('adds a fifth-wave Chaos Gate without replacing the rotating elite system', () => {
