@@ -1,3 +1,4 @@
+import { getBossForChapter, scaleBoss } from '../content/bosses';
 import { getEnemyForWave, scaleEnemy } from '../content/enemies';
 
 export const WAVES_PER_CHAPTER = 3 as const;
@@ -16,6 +17,7 @@ export interface EncounterSpec {
   readonly accentColor: number;
   readonly projectileColor: number;
   readonly displaySize: number;
+  readonly defeatCallout?: string;
 }
 
 export interface EncounterPosition {
@@ -30,18 +32,21 @@ export function isBossStep(step: EncounterStep): boolean {
 export function getEncounterSpec(chapter: number, step: EncounterStep): EncounterSpec {
   const safeChapter = Math.max(1, Math.floor(chapter));
   if (step === BOSS_STEP) {
+    const boss = getBossForChapter(safeChapter);
+    const scaled = scaleBoss(boss, safeChapter);
     return {
       kind: 'boss',
-      id: 'fridgino-maximo',
-      name: 'Fridgino Maximo',
-      texture: 'boss-fridgino',
-      hp: Math.round(520 * Math.pow(1.22, safeChapter - 1)),
-      damage: Math.min(26, 7 + safeChapter * 2),
-      attackMs: Math.max(2100, 3900 - safeChapter * 90),
-      reward: 85 + safeChapter * 25,
-      accentColor: 0x9cfbff,
-      projectileColor: 0xff6d85,
-      displaySize: 570
+      id: boss.id,
+      name: boss.name,
+      texture: boss.texture,
+      hp: scaled.hp,
+      damage: scaled.damage,
+      attackMs: scaled.attackMs,
+      reward: scaled.reward,
+      accentColor: boss.accentColor,
+      projectileColor: boss.projectileColor,
+      displaySize: boss.displaySize,
+      defeatCallout: boss.defeatCallout
     };
   }
 
