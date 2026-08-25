@@ -31,14 +31,30 @@ Playable creatures are original project IP. Families are data-driven in `src/con
 - Color/material notes: aqua body anchors the family; magenta/purple/soft yellow energy escalates by tier.
 - IP-distance check: original generic amphibian + decorative lamp concept; no branded lamp design, known meme character, celebrity, franchise or logo cues.
 
+## Dishnail family
+
+- Visual joke: a relaxed snail carrying an oversized satellite-dish shell and treating every projectile like a long-range transmission.
+- Silhouette primitive: very low horizontal body with one tall eye stalk and a dominant tilted parabolic dish.
+- Dominant materials: soft mint creature skin, purple receiver housing, cyan glass-metal dish and warm signal cores.
+- Face/personality: sleepy one-eyed smile; the visual calm contrasts with unusually heavy projectile hits.
+- Gameplay role: artillery / alpha-strike family. Slowest attack cadence and highest damage per individual shot.
+- Tier 1 — **Ping Dishnail**: compact single dish, one receiver node and simple low body.
+- Tier 2 — **Relay Dishnail**: larger dish, twin relay antennae and brighter signal hardware.
+- Tier 3 — **Quasar Dishnail**: maximum dish mass, signal crown and a glowing secondary quasar emitter.
+- Animation opportunities: dish recoil, receiver-node flash, eye-stalk follow-through and a slower anticipation before each shot.
+- Mutation hooks: ion storm, aurora receiver, crystal array and black-signal variants.
+- Color/material notes: mint/teal body anchors the family; cyan-violet dish hardware and yellow signal light escalate by tier.
+- IP-distance check: original generic snail + satellite receiver combination; no telecom logos, branded hardware, known meme character, celebrity or franchise cues.
+
 ## Combat pacing
 
-The three current families intentionally occupy different attack rhythms rather than being cosmetic duplicates:
+The four current families intentionally occupy different attack rhythms rather than being cosmetic duplicates:
 
 | Family | Tier 1 | Tier 2 | Tier 3 | Role |
 | --- | ---: | ---: | ---: | --- |
 | Pinguino | 8 / 1250 ms | 19 / 1120 ms | 46 / 980 ms | balanced |
 | Toastodilo | 11 / 1500 ms | 27 / 1360 ms | 61 / 1190 ms | heavy |
 | Lampalotl | 6 / 850 ms | 14 / 760 ms | 31 / 660 ms | rapid-fire |
+| Dishnail | 15 / 1950 ms | 36 / 1760 ms | 82 / 1530 ms | artillery |
 
-Values are damage per shot / base attack interval. Permanent Power Core upgrades multiply squad damage uniformly, so family identity remains primarily cadence and hit-weight.
+Values are damage per shot / base attack interval. Dishnail's base DPS stays close to the heavy family while concentrating more output into fewer, larger hits. Permanent Power Core upgrades and mutation multipliers apply uniformly, so family identity remains cadence and hit-weight rather than a hidden exception.
