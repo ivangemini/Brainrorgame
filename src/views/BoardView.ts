@@ -3,7 +3,7 @@ import { getCreature } from '../content/creatures';
 import { getMutationDefinition } from '../content/mutations';
 import type { GameFx } from '../presentation/GameFx';
 import type { BoardState, BoardUnit } from '../systems/board';
-import { evaluateCrewSynergies, getActiveCrewSynergies } from '../systems/crewSynergies';
+import { getActiveCrewSynergies, syncCrewSynergyState } from '../systems/crewSynergies';
 
 const COLUMNS = 4;
 const ROWS = 3;
@@ -82,7 +82,7 @@ export class BoardView {
 
   private renderSynergies(board: BoardState): void {
     if (!this.synergyText) return;
-    const state = evaluateCrewSynergies(board);
+    const state = syncCrewSynergyState(board);
     const active = getActiveCrewSynergies(state);
     const label = active.length > 0
       ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
