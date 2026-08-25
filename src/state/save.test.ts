@@ -3,6 +3,7 @@ import { createStarterBoard } from '../systems/board';
 import { createDefaultCollectionProgress } from '../systems/collectionProgression';
 import { createDefaultDailyState } from '../systems/dailyRetention';
 import { createDefaultMetaUpgradeLevels } from '../systems/metaProgression';
+import { createDefaultOnboardingState } from '../systems/onboarding';
 import { createGameSave, parseGameSave } from './save';
 
 function makeSnapshot() {
@@ -13,6 +14,7 @@ function makeSnapshot() {
     upgrades: { power: 2, armor: 1, bounty: 0 },
     daily: createDefaultDailyState(Date.parse('2026-08-25T12:00:00.000Z')),
     collection: createDefaultCollectionProgress(board),
+    onboarding: createDefaultOnboardingState(),
     baseHp: 77,
     chapter: 3,
     encounterStep: 2 as const,
@@ -24,12 +26,12 @@ function makeSnapshot() {
 }
 
 describe('game save', () => {
-  it('round-trips a valid v5 snapshot', () => {
+  it('round-trips a valid v6 snapshot', () => {
     const save = createGameSave(makeSnapshot(), 12345);
     expect(parseGameSave(save)).toEqual(save);
   });
 
-  it('migrates v2 saves through v5 and preserves progression', () => {
+  it('migrates v2 saves through v6 and preserves progression', () => {
     const oldSave = {
       version: 2,
       updatedAt: Date.parse('2026-08-24T12:00:00.000Z'),
@@ -43,12 +45,13 @@ describe('game save', () => {
       board: createStarterBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(5);
+    expect(migrated?.version).toBe(6);
     expect(migrated?.coreShards).toBe(3);
     expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
     expect(migrated?.daily.streak).toBe(0);
     expect(migrated?.collection.discovered).toEqual(['pinguino-1', 'toastodilo-1']);
     expect(migrated?.collection.stats.bosses).toBe(3);
+    expect(migrated?.onboarding.step).toBe('complete');
   });
 
   it('migrates v3 saves with fresh daily state and collection backfill', () => {
@@ -67,11 +70,12 @@ describe('game save', () => {
       board: createStarterBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(5);
+    expect(migrated?.version).toBe(6);
     expect(migrated?.daily.dayKey).toBe('2026-08-25');
     expect(migrated?.daily.counters).toEqual({ merge: 0, defeat: 0, recruit: 0 });
     expect(migrated?.collection.stats.bosses).toBe(5);
     expect(migrated?.collection.stats.upgrades).toBe(6);
+    expect(migrated?.onboarding.completedAt).toBe(Date.parse('2026-08-25T08:00:00.000Z'));
   });
 
   it('migrates v4 saves without losing daily data', () => {
@@ -92,9 +96,33 @@ describe('game save', () => {
       board: snapshot.board
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(5);
+    expect(migrated?.version).toBe(6);
     expect(migrated?.daily).toEqual(snapshot.daily);
     expect(migrated?.collection.stats.recruits).toBe(snapshot.recruitSerial);
+    expect(migrated?.onboarding.step).toBe('complete');
+  });
+
+  it('migrates a valid v5 save as already onboarded', () => {
+    const snapshot = makeSnapshot();
+    const oldSave = {
+      version: 5,
+      updatedAt: 777,
+      coins: snapshot.coins,
+      coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades,
+      daily: snapshot.daily,
+      collection: snapshot.collection,
+      baseHp: snapshot.baseHp,
+      chapter: snapshot.chapter,
+      encounterStep: snapshot.encounterStep,
+      targetHpMax: snapshot.targetHpMax,
+      targetHp: snapshot.targetHp,
+      recruitSerial: snapshot.recruitSerial,
+      board: snapshot.board
+    };
+    const migrated = parseGameSave(oldSave);
+    expect(migrated?.version).toBe(6);
+    expect(migrated?.onboarding).toEqual({ step: 'complete', completedAt: 777 });
   });
 
   it('clamps upgrade levels, collection stats and target HP to supported maximums', () => {
@@ -111,6 +139,11 @@ describe('game save', () => {
     expect(parsed?.targetHp).toBe(800);
     expect(parsed?.upgrades).toEqual({ power: 10, armor: 8, bounty: 10 });
     expect(parsed?.collection.stats.merges).toBe(1_000_000_000);
+  });
+
+  it('rejects malformed onboarding state', () => {
+    const save = createGameSave(makeSnapshot());
+    expect(parseGameSave({ ...save, onboarding: { step: 'complete', completedAt: null } })).toBeNull();
   });
 
   it('rejects malformed collection data', () => {
