@@ -312,5 +312,5 @@ function emptyCooldowns(): Record<ActiveAbilityId, number> {
 
 function clampEnergy(value: number): number {
   if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(MAX_COMBAT_ENERGY, Math.round(value)));
+  return Math.max(0, Math.min(MAX_COMBAT_ENERGY, value));
 }
