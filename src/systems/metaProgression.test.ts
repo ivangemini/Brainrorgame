@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { BoardState } from './board';
+import { resetCrewSynergyState, syncCrewSynergyState } from './crewSynergies';
 import {
   bossCoreReward,
   coinRewardMultiplier,
@@ -8,6 +10,8 @@ import {
   purchaseMetaUpgrade,
   squadDamageMultiplier
 } from './metaProgression';
+
+afterEach(() => resetCrewSynergyState());
 
 describe('meta progression', () => {
   it('makes the first permanent upgrade available after one boss', () => {
@@ -26,11 +30,25 @@ describe('meta progression', () => {
     expect(result).toEqual({ purchased: false, shards: 0, levels });
   });
 
-  it('applies bounded combat and economy multipliers', () => {
+  it('applies bounded combat and economy multipliers without crew synergy', () => {
     const levels = { power: 3, armor: 8, bounty: 4 };
     expect(squadDamageMultiplier(levels)).toBeCloseTo(1.24);
     expect(incomingDamageMultiplier(levels)).toBeCloseTo(0.52);
     expect(coinRewardMultiplier(levels)).toBeCloseTo(1.4);
+  });
+
+  it('stacks Toastodilo armor and Dishnail bounty with meta upgrades', () => {
+    const board: BoardState = [
+      { id: 't3a', family: 'toastodilo', level: 3, mutation: 'none' },
+      { id: 't3b', family: 'toastodilo', level: 3, mutation: 'none' },
+      { id: 'd3a', family: 'dishnail', level: 3, mutation: 'none' },
+      { id: 'd3b', family: 'dishnail', level: 3, mutation: 'none' },
+      null, null, null, null, null, null, null, null
+    ];
+    syncCrewSynergyState(board);
+    expect(incomingDamageMultiplier({ power: 0, armor: 0, bounty: 0 })).toBeCloseTo(0.85);
+    expect(incomingDamageMultiplier({ power: 0, armor: 8, bounty: 0 })).toBeCloseTo(0.442);
+    expect(coinRewardMultiplier({ power: 0, armor: 0, bounty: 4 })).toBeCloseTo(1.652);
   });
 
   it('accelerates core rewards every five chapters with a cap', () => {
