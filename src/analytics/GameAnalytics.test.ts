@@ -26,12 +26,22 @@ describe('GameAnalytics', () => {
     expect(sink.events[2]).toMatchObject({ name: 'merge', mutation: 'prismatic' });
   });
 
-  it('records recruit mutation without adding player identifiers', () => {
+  it('records bounded recruit anomaly context without adding player identifiers', () => {
     const sink = new CaptureSink();
     const analytics = new GameAnalytics(sink, () => 1000);
-    analytics.recruit('lampalotl', 'crowned', 80);
+    analytics.recruit('lampalotl', 'crowned', 80, 17, 69, true, true);
     expect(sink.events).toEqual([
-      { name: 'recruit', elapsedMs: 0, family: 'lampalotl', mutation: 'crowned', coinsAfter: 80 }
+      {
+        name: 'recruit',
+        elapsedMs: 0,
+        family: 'lampalotl',
+        mutation: 'crowned',
+        coinsAfter: 80,
+        anomalyChargeBefore: 17,
+        crownSignalBefore: 69,
+        guaranteed: true,
+        secret: true
+      }
     ]);
   });
 

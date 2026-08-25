@@ -29,6 +29,9 @@ Use aggregate gameplay state only: chapter, encounter step, elapsed duration, re
 - `daily_mission_claim`
 - repeat `session_start`
 - mutation mix on `recruit` and `merge`
+- Anomaly Hunt context on `recruit`: `anomalyChargeBefore` (0–17), `crownSignalBefore` (0–69), `guaranteed` and `secret`
+
+The Anomaly Hunt recruit fields answer whether visible pity is actually reducing bad-luck tails, how often hard guarantees fire, and whether secret Crowned outcomes cluster at the intended late-signal range. They are bounded gameplay state only and contain no player identifier.
 
 ## Failure / balance signals
 
@@ -37,6 +40,7 @@ Use aggregate gameplay state only: chapter, encounter step, elapsed duration, re
 - fortress HP remaining
 - chapter and encounter step
 - creature family + mutation distribution on progression events
+- recruit mutation outcomes segmented by pre-roll Anomaly Charge / Crown Signal and guarantee state
 
 ## Event quality rules
 

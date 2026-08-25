@@ -357,7 +357,8 @@ export class GameScene extends Phaser.Scene {
     this.audio.button();
     this.coins -= RECRUIT_COST;
     const family = Phaser.Math.RND.pick<CreatureFamily>([...getRecruitableFamilies()]);
-    const anomalyResult = rollAnomalyHunt(this.anomalyHunt, Phaser.Math.RND.frac());
+    const anomalyBefore = this.anomalyHunt;
+    const anomalyResult = rollAnomalyHunt(anomalyBefore, Phaser.Math.RND.frac());
     this.anomalyHunt = anomalyResult.state;
     const mutationId = anomalyResult.mutation;
     const mutation = getMutationDefinition(mutationId);
@@ -368,7 +369,15 @@ export class GameScene extends Phaser.Scene {
       level: 1,
       mutation: mutationId
     });
-    this.analytics.recruit(family, mutationId, this.coins);
+    this.analytics.recruit(
+      family,
+      mutationId,
+      this.coins,
+      anomalyBefore.charge,
+      anomalyBefore.secretPity,
+      anomalyResult.guaranteed,
+      anomalyResult.secret
+    );
     this.collection = recordLifetimeEvent(this.collection, 'recruit');
     this.collection = discoverCreature(this.collection, `${family}-1`);
     this.collectionPanel.update(this.collection);

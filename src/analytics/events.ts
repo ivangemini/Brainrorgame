@@ -45,6 +45,10 @@ export type GameAnalyticsEvent =
       readonly family: CreatureFamily;
       readonly mutation: MutationId;
       readonly coinsAfter: number;
+      readonly anomalyChargeBefore: number;
+      readonly crownSignalBefore: number;
+      readonly guaranteed: boolean;
+      readonly secret: boolean;
     }
   | {
       readonly name: 'encounter_start';

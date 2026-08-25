@@ -44,8 +44,26 @@ export class GameAnalytics {
     this.send({ name: 'merge', elapsedMs: this.elapsed(), family, resultingLevel, mutation, chapter });
   }
 
-  public recruit(family: CreatureFamily, mutation: MutationId, coinsAfter: number): void {
-    this.send({ name: 'recruit', elapsedMs: this.elapsed(), family, mutation, coinsAfter });
+  public recruit(
+    family: CreatureFamily,
+    mutation: MutationId,
+    coinsAfter: number,
+    anomalyChargeBefore: number,
+    crownSignalBefore: number,
+    guaranteed: boolean,
+    secret: boolean
+  ): void {
+    this.send({
+      name: 'recruit',
+      elapsedMs: this.elapsed(),
+      family,
+      mutation,
+      coinsAfter,
+      anomalyChargeBefore,
+      crownSignalBefore,
+      guaranteed,
+      secret
+    });
   }
 
   public encounterStart(kind: EncounterKind, chapter: number, step: number): void {
