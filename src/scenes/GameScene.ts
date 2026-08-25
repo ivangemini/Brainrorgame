@@ -50,12 +50,21 @@ import {
   type MetaUpgradeId,
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
+import {
+  advanceOnboarding,
+  blocksCombatForOnboarding,
+  createDefaultOnboardingState,
+  isOnboardingComplete,
+  type OnboardingAction,
+  type OnboardingState
+} from '../systems/onboarding';
 import { calculateOfflineReward, type OfflineReward } from '../systems/offlineProgression';
 import { CollectionPanel } from '../ui/CollectionPanel';
 import { DailyPanel } from '../ui/DailyPanel';
 import { GameHud } from '../ui/GameHud';
 import { MetaUpgradePanel } from '../ui/MetaUpgradePanel';
 import { OfflineRewardPanel } from '../ui/OfflineRewardPanel';
+import { OnboardingCoach } from '../ui/OnboardingCoach';
 import { RevivePanel } from '../ui/RevivePanel';
 import { BoardView } from '../views/BoardView';
 import { BossView } from '../views/BossView';
@@ -77,6 +86,7 @@ export class GameScene extends Phaser.Scene {
   private dailyPanel!: DailyPanel;
   private collectionPanel!: CollectionPanel;
   private revivePanel!: RevivePanel;
+  private onboardingCoach!: OnboardingCoach;
   private boardView!: BoardView;
   private bossView!: BossView;
   private enemyView!: EnemyView;
@@ -85,6 +95,7 @@ export class GameScene extends Phaser.Scene {
   private upgrades: MetaUpgradeLevels = createDefaultMetaUpgradeLevels();
   private daily: DailyRetentionState = createDefaultDailyState();
   private collection: CollectionProgress = createDefaultCollectionProgress(this.board);
+  private onboarding: OnboardingState = createDefaultOnboardingState();
   private baseHp = 100;
   private chapter = 1;
   private encounterStep: EncounterStep = 0;
@@ -166,8 +177,9 @@ export class GameScene extends Phaser.Scene {
       this,
       this.fx,
       (view, from, to) => this.handleDrop(view, from, to),
-      () => this.resolvingBoard || this.isBlockingPanelOpen()
+      () => this.resolvingBoard || this.isBlockingPanelOpen() || this.onboarding.step === 'recruit'
     );
+    this.onboardingCoach = new OnboardingCoach(this, (slot) => this.boardView.slotPosition(slot));
     this.bossView = new BossView(this, this.fx);
     this.enemyView = new EnemyView(this, this.fx);
 
@@ -181,9 +193,11 @@ export class GameScene extends Phaser.Scene {
     this.enemyView.create();
     this.boardView.createFrame();
     this.boardView.render(this.board);
+    this.onboardingCoach.create();
+    this.onboardingCoach.update(this.onboarding);
     this.daily = rollDailyState(this.daily);
     this.presentEncounter(true);
-    this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
+    this.startInitialFunnelTelemetry();
     this.metaPanel.update(this.coreShards, this.upgrades);
     this.dailyPanel.update(this.daily);
     this.collectionPanel.update(this.collection);
@@ -195,13 +209,14 @@ export class GameScene extends Phaser.Scene {
 
     if (initialOfflineReward && initialOfflineReward.coins > 0) {
       this.applyOfflineReward(initialOfflineReward);
-    } else {
+    } else if (isOnboardingComplete(this.onboarding)) {
       this.time.delayedCall(550, () => this.fx.showHint('DRAG TWINS TO MERGE', 1355));
     }
   }
 
   public override update(_time: number, delta: number): void {
     if (!this.targetAlive || this.resolvingBoard || this.isBlockingPanelOpen()) return;
+    if (blocksCombatForOnboarding(this.onboarding)) return;
     this.updateUnitAttacks(delta);
     this.updateTargetAttack(delta);
   }
@@ -250,6 +265,11 @@ export class GameScene extends Phaser.Scene {
       this.boardView.snapHome(view, from);
       return;
     }
+    if (this.onboarding.step === 'merge' && result.action !== 'merge') {
+      this.boardView.snapHome(view, from);
+      this.fx.showHint('MERGE MATCHING TWINS FIRST', 1015, '#fff0a6');
+      return;
+    }
     if (result.action === 'merge') {
       this.resolvingBoard = true;
       this.boardView.animateMerge(
@@ -270,6 +290,7 @@ export class GameScene extends Phaser.Scene {
             this.collectionPanel.update(this.collection);
           }
           this.recordDailyProgress('merge');
+          this.advanceOnboardingAction('merged');
           this.persistSoon();
         }
       );
@@ -282,6 +303,10 @@ export class GameScene extends Phaser.Scene {
 
   private recruitUnit(): void {
     if (this.resolvingBoard || !this.targetAlive || this.isBlockingPanelOpen()) return;
+    if (this.onboarding.step === 'merge') {
+      this.fx.showHint('MERGE THE GLOWING TWINS FIRST', 1732, '#fff0a6');
+      return;
+    }
     const empty = firstEmptySlot(this.board);
     if (empty < 0) {
       this.fx.showHint('BOARD FULL — MERGE!', 1732, '#ffdda0');
@@ -306,6 +331,7 @@ export class GameScene extends Phaser.Scene {
     this.collection = discoverCreature(this.collection, `${family}-1`);
     this.collectionPanel.update(this.collection);
     this.recordDailyProgress('recruit');
+    this.advanceOnboardingAction('recruited');
     this.syncUi();
     this.boardView.render(this.board, empty);
     const position = this.boardView.slotPosition(empty);
@@ -360,6 +386,7 @@ export class GameScene extends Phaser.Scene {
     if (isBoss) this.collection = recordLifetimeEvent(this.collection, 'boss');
     this.collectionPanel.update(this.collection);
     this.recordDailyProgress('defeat');
+    this.advanceOnboardingAction('defeated_target');
     let coreReward = 0;
     if (isBoss) {
       coreReward = bossCoreReward(this.chapter);
@@ -490,7 +517,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleMetaPanel(): void {
-    if (this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
     this.audio.button();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
@@ -499,7 +526,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleDailyPanel(): void {
-    if (this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
     this.audio.button();
     this.daily = rollDailyState(this.daily);
     this.dailyPanel.update(this.daily);
@@ -511,7 +538,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private toggleCollectionPanel(): void {
-    if (this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen()) return;
     this.audio.button();
     this.collectionPanel.update(this.collection);
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
@@ -620,7 +647,7 @@ export class GameScene extends Phaser.Scene {
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
-    if (!reviveFlowActive) this.offlinePanel.show(reward);
+    if (!reviveFlowActive && isOnboardingComplete(this.onboarding)) this.offlinePanel.show(reward);
   }
 
   private async doubleOfflineReward(reward: OfflineReward): Promise<boolean> {
@@ -669,6 +696,41 @@ export class GameScene extends Phaser.Scene {
     else this.enemyView.setHealth(this.targetHp, this.targetHpMax);
   }
 
+  private startInitialFunnelTelemetry(): void {
+    if (isOnboardingComplete(this.onboarding)) {
+      this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
+      return;
+    }
+    this.analytics.onboardingStep(this.onboarding.step);
+    if (this.onboarding.step === 'fight') {
+      this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
+    }
+  }
+
+  private advanceOnboardingAction(action: OnboardingAction): void {
+    const previousStep = this.onboarding.step;
+    const next = advanceOnboarding(this.onboarding, action);
+    if (next.step === previousStep) return;
+
+    this.onboarding = next;
+    this.onboardingCoach.update(this.onboarding);
+    this.attackClocks.clear();
+    this.targetAttackClock = 0;
+
+    if (next.step === 'complete') {
+      this.analytics.onboardingComplete();
+      this.audio.reward();
+      this.fx.showHint('TRAINING COMPLETE • CHAOS UNLOCKED', 1015, '#bffaff');
+    } else {
+      this.analytics.onboardingStep(next.step);
+      if (next.step === 'fight') {
+        this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
+        this.fx.showHint('AUTO-FIRE ONLINE!', 1015, '#fff0a6');
+      }
+    }
+    this.persistNow();
+  }
+
   private restoreSave(save: GameSave): void {
     this.board = save.board;
     this.coins = save.coins;
@@ -676,6 +738,7 @@ export class GameScene extends Phaser.Scene {
     this.upgrades = save.upgrades;
     this.daily = rollDailyState(save.daily);
     this.collection = save.collection;
+    this.onboarding = save.onboarding;
     this.baseHp = save.baseHp;
     this.chapter = save.chapter;
     this.encounterStep = save.encounterStep;
@@ -701,6 +764,7 @@ export class GameScene extends Phaser.Scene {
       upgrades: this.upgrades,
       daily: this.daily,
       collection: this.collection,
+      onboarding: this.onboarding,
       baseHp: this.baseHp,
       chapter: this.chapter,
       encounterStep: this.encounterStep,
