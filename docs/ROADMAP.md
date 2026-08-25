@@ -60,15 +60,15 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 
 - [x] Immediate merge board with two starter pairs
 - [x] Drag / move / swap / merge interaction
-- [x] Nine original creature designs across three three-tier families
-- [x] Three original bosses and arena art
+- [x] Twelve original creature designs across four three-tier families
+- [x] Four original bosses and arena art
 - [x] Six original normal-wave enemies with rotating chapter order and distinct pacing profiles
 - [x] Three-wave -> boss encounter loop
 - [x] Real-time auto combat for waves and boss
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop
 - [x] Data-driven rotating boss roster with distinct idle, telegraph and defeat choreography
 - [x] Recruit currency sink and encounter reward loop
-- [x] Three-way recruit pool with balanced / heavy / rapid-fire family identities
+- [x] Four-way recruit pool with balanced / heavy / rapid-fire / artillery family identities
 - [x] Four-tier mutation rarity: Common / Rare Charged / Epic Prismatic / Legendary Crowned
 - [x] Mutation roll rates, combat modifiers, merge inheritance and rarity-promotion rules
 - [x] Project-owned mutation secondary-silhouette overlays with animated board presentation
@@ -89,7 +89,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Typed privacy-safe analytics event contract and gameplay funnel instrumentation
 - [x] Analytics agent skill and vendor-independent PlatformAdapter sink
 - [x] Chaos Codex collection with discovered / hidden creature forms
-- [x] Codex layout expanded for nine current creature forms without overlapping achievements
+- [x] Codex layout expanded for twelve current creature forms without overlapping achievements
 - [x] Lifetime stats + six claimable achievements
 - [x] Conservative collection backfill for pre-v5 saves
 - [x] Yandex SDK adapter foundation: loader, LoadingAPI, lifecycle, local/cloud save arbitration
@@ -103,7 +103,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Resumable onboarding state with pre-v6 saves migrated as already complete
 - [x] Onboarding funnel telemetry and first-session skill/doc
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
-- [ ] Expand playable creature families and boss roster toward retention MVP targets (creatures: 9 / 20–30 target, bosses: 3 / 4–6 target)
+- [ ] Expand playable creature families and boss roster toward retention MVP targets (creatures: 12 / 20–30 target, bosses: 4 / 4–6 target)
 - [x] Mutations / rarity system
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass

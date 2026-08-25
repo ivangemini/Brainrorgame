@@ -8,9 +8,9 @@ import {
 } from './creatures';
 
 describe('creature roster', () => {
-  it('contains three complete three-tier families', () => {
-    expect(CREATURE_FAMILIES).toEqual(['pinguino', 'toastodilo', 'lampalotl']);
-    expect(getAllCreatures()).toHaveLength(9);
+  it('contains four complete three-tier families', () => {
+    expect(CREATURE_FAMILIES).toEqual(['pinguino', 'toastodilo', 'lampalotl', 'dishnail']);
+    expect(getAllCreatures()).toHaveLength(12);
     for (const family of CREATURE_FAMILIES) {
       expect([1, 2, 3].map((level) => getCreature(family, level).level)).toEqual([1, 2, 3]);
     }
@@ -28,8 +28,17 @@ describe('creature roster', () => {
     expect(nova.damage).toBeGreaterThan(glow.damage);
   });
 
+  it('keeps Dishnail as the slow artillery family', () => {
+    const ping = getCreature('dishnail', 1);
+    const quasar = getCreature('dishnail', 3);
+    expect(ping.attackMs).toBeGreaterThan(getCreature('toastodilo', 1).attackMs);
+    expect(quasar.attackMs).toBeGreaterThan(getCreature('toastodilo', 3).attackMs);
+    expect(ping.damage).toBeGreaterThan(getCreature('toastodilo', 1).damage);
+    expect(quasar.damage).toBeGreaterThan(getCreature('toastodilo', 3).damage);
+  });
+
   it('validates supported family identifiers', () => {
-    expect(isCreatureFamily('lampalotl')).toBe(true);
+    expect(isCreatureFamily('dishnail')).toBe(true);
     expect(isCreatureFamily('copied-meme')).toBe(false);
   });
 });
