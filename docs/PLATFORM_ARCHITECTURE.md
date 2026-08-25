@@ -19,17 +19,18 @@ Adapters:
 3. CrazyGames — implemented
 4. Poki — implemented
 5. Playgama — implemented
-6. GameDistribution — planned
+6. GameDistribution — implemented
 
 ## Selection
 
 `createPlatformAdapter()` keeps portal detection outside gameplay code.
 
 - Yandex wins when `YaGames` is injected by the host.
-- Explicit `?platform=crazygames`, `?platform=poki` and `?platform=playgama` hints are available for localhost and portal QA.
+- Explicit `?platform=crazygames`, `?platform=poki`, `?platform=playgama` and `?platform=gamedistribution` hints are available for localhost and portal QA.
 - CrazyGames is detected from `crazygames.com` hosts.
 - Poki is detected from an injected `PokiSDK`, a `poki.com` host, or a Poki embedding referrer.
 - Playgama is detected from a `playgama.com` host or embedding referrer. A generic global `bridge` is intentionally not used for selection because Playgama Bridge can target multiple portals.
+- GameDistribution is detected from a `gamedistribution.com` host/referrer or the official `gd_sdk_referrer_url` embed parameter.
 - Otherwise the game falls back to the Web adapter.
 
 ## CrazyGames
@@ -67,4 +68,16 @@ The Playgama adapter loads the stable Playgama Bridge only when Playgama is sele
 - `bridge.storage.get/set` stores the existing save object directly. Current Bridge storage already queues operations and provides platform/local fallback, so the adapter does not add a competing cloud arbitration layer.
 - Unsupported ad formats and storage/message failures fail soft.
 
-The architecture is now proven against four materially different real portal contracts without adding portal branches to `GameScene` or the economy systems.
+## GameDistribution
+
+The GameDistribution adapter uses the official HTML5 SDK and configures `GD_OPTIONS` before loading `https://html5.api.gamedistribution.com/main.min.js`.
+
+- A GameDistribution Game ID is injected with `VITE_GAMEDISTRIBUTION_GAME_ID` for production builds. `GD_GAME_ID` and `gd_game_id` are supported as controlled host/QA overrides.
+- `SDK_GAME_PAUSE` and `SDK_GAME_START` map to the shared Phaser pause/resume boundary around ads.
+- Interstitial opportunities call `gdsdk.showAd()`.
+- Rewarded opportunities call `gdsdk.showAd('rewarded')` and preload the next rewarded placement when supported.
+- Reward value is granted only after `SDK_REWARDED_WATCH_COMPLETE`; a resolved `showAd()` promise alone is never sufficient.
+- `SDK_ERROR`, rejected ad promises and unavailable ads fail soft without blocking the game loop.
+- GameDistribution does not expose a general cloud-save API through this HTML5 ad SDK, so the adapter keeps the existing guarded localStorage save key.
+
+The architecture is now proven against all five target web portals without adding portal branches to `GameScene` or the economy systems.
