@@ -16,6 +16,7 @@ describe('board rules', () => {
     expect(result.action).toBe('merge');
     expect(result.board[0]).toBeNull();
     expect(result.board[1]).toMatchObject({ level: 2, mutation: 'none' });
+    expect(result.ascended).toBe(false);
   });
 
   it('promotes two matching rare mutations on merge', () => {
@@ -37,10 +38,39 @@ describe('board rules', () => {
     expect(result.mutationPromoted).toBe(false);
   });
 
-  it('will not merge max-tier units', () => {
+  it('ascends matching common T3 twins into a rare T3 instead of dead-ending', () => {
     const board: Array<null | { id: string; family: 'pinguino'; level: 3; mutation: 'none' }> = Array.from({ length: 4 }, () => null);
     board[0] = { id: 'a', family: 'pinguino', level: 3, mutation: 'none' };
     board[1] = { id: 'b', family: 'pinguino', level: 3, mutation: 'none' };
+    const result = moveOrMerge(board, 0, 1);
+    expect(result.action).toBe('merge');
+    expect(result.board[0]).toBeNull();
+    expect(result.upgraded).toMatchObject({ family: 'pinguino', level: 3, mutation: 'charged' });
+    expect(result.mutationPromoted).toBe(true);
+    expect(result.ascended).toBe(true);
+  });
+
+  it('continues T3 ascension through epic and legendary rarity', () => {
+    const charged = Array.from<null | { id: string; family: 'dishnail'; level: 3; mutation: 'charged' }>({ length: 4 }, () => null);
+    charged[0] = { id: 'a', family: 'dishnail', level: 3, mutation: 'charged' };
+    charged[1] = { id: 'b', family: 'dishnail', level: 3, mutation: 'charged' };
+    const epic = moveOrMerge(charged, 0, 1);
+    expect(epic.upgraded?.mutation).toBe('prismatic');
+
+    const prismatic = [...epic.board];
+    prismatic[0] = { id: 'c', family: 'dishnail', level: 3, mutation: 'prismatic' };
+    const legendary = moveOrMerge(prismatic, 0, 1);
+    expect(legendary.upgraded?.mutation).toBe('crowned');
+  });
+
+  it('does not consume incompatible or already legendary T3 pairs', () => {
+    const board = Array.from<null | { id: string; family: 'pinguino'; level: 3; mutation: 'crowned' | 'prismatic' }>({ length: 4 }, () => null);
+    board[0] = { id: 'legend-a', family: 'pinguino', level: 3, mutation: 'crowned' };
+    board[1] = { id: 'legend-b', family: 'pinguino', level: 3, mutation: 'crowned' };
+    expect(moveOrMerge(board, 0, 1).action).toBe('swap');
+
+    board[0] = { id: 'epic', family: 'pinguino', level: 3, mutation: 'prismatic' };
+    board[1] = { id: 'legend', family: 'pinguino', level: 3, mutation: 'crowned' };
     expect(moveOrMerge(board, 0, 1).action).toBe('swap');
   });
 
