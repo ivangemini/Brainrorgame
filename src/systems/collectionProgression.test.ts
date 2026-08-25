@@ -18,8 +18,9 @@ describe('collection progression', () => {
   });
 
   it('derives the codex keys from the complete creature roster', () => {
-    expect(COLLECTION_KEYS).toHaveLength(9);
+    expect(COLLECTION_KEYS).toHaveLength(12);
     expect(COLLECTION_KEYS).toContain('lampalotl-3');
+    expect(COLLECTION_KEYS).toContain('dishnail-3');
   });
 
   it('backfills lower tiers and minimum legacy stats', () => {
@@ -35,9 +36,9 @@ describe('collection progression', () => {
     expect(progress.stats.upgrades).toBe(3);
   });
 
-  it('discovers new Lampalotl tiers and rejects unknown collection keys', () => {
-    const progress = discoverCreature(createDefaultCollectionProgress(), 'lampalotl-2');
-    expect(progress.discovered).toEqual(['lampalotl-2']);
+  it('discovers new roster tiers and rejects unknown collection keys', () => {
+    const progress = discoverCreature(createDefaultCollectionProgress(), 'dishnail-2');
+    expect(progress.discovered).toEqual(['dishnail-2']);
     expect(discoverCreature(progress, 'stolen-meme-999')).toBe(progress);
   });
 
