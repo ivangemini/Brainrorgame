@@ -1,4 +1,5 @@
 import type { EncounterStep } from './encounters';
+import { getCurrentCrewSynergyState } from './crewSynergies';
 
 export const CHAOS_PERK_IDS = [
   'impact-jelly',
@@ -30,63 +31,19 @@ export interface ChaosPerkMultipliers {
 }
 
 const DEFINITIONS: Readonly<Record<ChaosPerkId, ChaosPerkDefinition>> = {
-  'impact-jelly': {
-    id: 'impact-jelly',
-    name: 'Impact Jelly',
-    shortLabel: 'IMPACT',
-    description: '+9% squad damage for the rest of this chapter.',
-    accentColor: 0xff829f
-  },
-  'tempo-worm': {
-    id: 'tempo-worm',
-    name: 'Tempo Worm',
-    shortLabel: 'TEMPO',
-    description: 'Crew attacks 8% faster for the rest of this chapter.',
-    accentColor: 0x6fe9ff
-  },
-  'fortress-foam': {
-    id: 'fortress-foam',
-    name: 'Fortress Foam',
-    shortLabel: 'FOAM',
-    description: 'Fortress takes 12% less damage this chapter.',
-    accentColor: 0x79c8ff
-  },
-  'bounty-magnet': {
-    id: 'bounty-magnet',
-    name: 'Bounty Magnet',
-    shortLabel: 'BOUNTY',
-    description: '+18% combat coin rewards this chapter.',
-    accentColor: 0xffdc72
-  },
-  'repair-moss': {
-    id: 'repair-moss',
-    name: 'Repair Moss',
-    shortLabel: 'REPAIR',
-    description: 'Restore +7 extra fortress HP after every cleared wave.',
-    accentColor: 0x83f3a5
-  },
-  'chaos-capacitor': {
-    id: 'chaos-capacitor',
-    name: 'Chaos Capacitor',
-    shortLabel: 'CHARGE',
-    description: '+25% Chaos Energy gain for the rest of this chapter.',
-    accentColor: 0xc88cff
-  }
+  'impact-jelly': { id: 'impact-jelly', name: 'Impact Jelly', shortLabel: 'IMPACT', description: '+9% squad damage for the rest of this chapter.', accentColor: 0xff829f },
+  'tempo-worm': { id: 'tempo-worm', name: 'Tempo Worm', shortLabel: 'TEMPO', description: 'Crew attacks 8% faster for the rest of this chapter.', accentColor: 0x6fe9ff },
+  'fortress-foam': { id: 'fortress-foam', name: 'Fortress Foam', shortLabel: 'FOAM', description: 'Fortress takes 12% less damage this chapter.', accentColor: 0x79c8ff },
+  'bounty-magnet': { id: 'bounty-magnet', name: 'Bounty Magnet', shortLabel: 'BOUNTY', description: '+18% combat coin rewards this chapter.', accentColor: 0xffdc72 },
+  'repair-moss': { id: 'repair-moss', name: 'Repair Moss', shortLabel: 'REPAIR', description: 'Restore +7 extra fortress HP after every cleared wave.', accentColor: 0x83f3a5 },
+  'chaos-capacitor': { id: 'chaos-capacitor', name: 'Chaos Capacitor', shortLabel: 'CHARGE', description: '+25% Chaos Energy gain for the rest of this chapter.', accentColor: 0xc88cff }
 };
 
 let currentPerks: readonly ChaosPerkId[] = [];
 
-export function getChaosPerkDefinition(id: ChaosPerkId): ChaosPerkDefinition {
-  return DEFINITIONS[id];
-}
-
-export function getAllChaosPerkDefinitions(): readonly ChaosPerkDefinition[] {
-  return CHAOS_PERK_IDS.map((id) => DEFINITIONS[id]);
-}
-
-export function isChaosPerkId(value: unknown): value is ChaosPerkId {
-  return typeof value === 'string' && (CHAOS_PERK_IDS as readonly string[]).includes(value);
-}
+export function getChaosPerkDefinition(id: ChaosPerkId): ChaosPerkDefinition { return DEFINITIONS[id]; }
+export function getAllChaosPerkDefinitions(): readonly ChaosPerkDefinition[] { return CHAOS_PERK_IDS.map((id) => DEFINITIONS[id]); }
+export function isChaosPerkId(value: unknown): value is ChaosPerkId { return typeof value === 'string' && (CHAOS_PERK_IDS as readonly string[]).includes(value); }
 
 export function chaosDraftCheckpointForStep(step: EncounterStep): ChaosDraftCheckpoint | null {
   if (step === 2) return 1;
@@ -100,11 +57,7 @@ export function needsChaosDraft(step: EncounterStep, selectedCount: number): boo
   return Math.max(0, Math.floor(selectedCount)) < checkpoint;
 }
 
-export function getChaosPerkOffers(
-  chapter: number,
-  checkpoint: ChaosDraftCheckpoint,
-  selected: readonly ChaosPerkId[]
-): readonly [ChaosPerkId, ChaosPerkId, ChaosPerkId] {
+export function getChaosPerkOffers(chapter: number, checkpoint: ChaosDraftCheckpoint, selected: readonly ChaosPerkId[]): readonly [ChaosPerkId, ChaosPerkId, ChaosPerkId] {
   const excluded = new Set(selected);
   const candidates = CHAOS_PERK_IDS.filter((id) => !excluded.has(id));
   const seed = Math.max(1, Math.floor(chapter)) * 97 + checkpoint * 41;
@@ -119,17 +72,9 @@ export function addChaosPerk(selected: readonly ChaosPerkId[], id: ChaosPerkId):
   return [...selected, id];
 }
 
-export function syncCurrentChaosPerks(selected: readonly ChaosPerkId[]): void {
-  currentPerks = [...selected];
-}
-
-export function resetCurrentChaosPerks(): void {
-  currentPerks = [];
-}
-
-export function getCurrentChaosPerks(): readonly ChaosPerkId[] {
-  return currentPerks;
-}
+export function syncCurrentChaosPerks(selected: readonly ChaosPerkId[]): void { currentPerks = [...selected]; }
+export function resetCurrentChaosPerks(): void { currentPerks = []; }
+export function getCurrentChaosPerks(): readonly ChaosPerkId[] { return currentPerks; }
 
 export function getCurrentChaosPerkMultipliers(): ChaosPerkMultipliers {
   const has = (id: ChaosPerkId): boolean => currentPerks.includes(id);
@@ -138,7 +83,7 @@ export function getCurrentChaosPerkMultipliers(): ChaosPerkMultipliers {
     attackIntervalMultiplier: has('tempo-worm') ? 0.92 : 1,
     incomingDamageMultiplier: has('fortress-foam') ? 0.88 : 1,
     coinRewardMultiplier: has('bounty-magnet') ? 1.18 : 1,
-    energyGainMultiplier: has('chaos-capacitor') ? 1.25 : 1,
+    energyGainMultiplier: (has('chaos-capacitor') ? 1.25 : 1) * getCurrentCrewSynergyState().energyGainMultiplier,
     waveHealBonus: has('repair-moss') ? 7 : 0
   };
 }
