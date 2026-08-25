@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createStarterBoard } from './board';
 import {
+  COLLECTION_KEYS,
   achievementProgress,
   backfillCollectionProgress,
   claimAchievement,
@@ -16,6 +17,11 @@ describe('collection progression', () => {
     expect(progress.discovered).toEqual(['pinguino-1', 'toastodilo-1']);
   });
 
+  it('derives the codex keys from the complete creature roster', () => {
+    expect(COLLECTION_KEYS).toHaveLength(9);
+    expect(COLLECTION_KEYS).toContain('lampalotl-3');
+  });
+
   it('backfills lower tiers and minimum legacy stats', () => {
     const board = [...createStarterBoard()];
     board[0] = { id: 'legacy', family: 'pinguino', level: 3 };
@@ -29,8 +35,9 @@ describe('collection progression', () => {
     expect(progress.stats.upgrades).toBe(3);
   });
 
-  it('rejects unknown collection keys', () => {
-    const progress = createDefaultCollectionProgress();
+  it('discovers new Lampalotl tiers and rejects unknown collection keys', () => {
+    const progress = discoverCreature(createDefaultCollectionProgress(), 'lampalotl-2');
+    expect(progress.discovered).toEqual(['lampalotl-2']);
     expect(discoverCreature(progress, 'stolen-meme-999')).toBe(progress);
   });
 

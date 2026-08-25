@@ -42,7 +42,7 @@ export class CollectionPanel {
     const title = this.scene.add.text(-305, -657, 'CHAOS CODEX', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '42px', color: '#f5fbff', stroke: '#151a39', strokeThickness: 8
     });
-    this.titleCount = this.scene.add.text(-303, -607, '0 / 6 discovered', {
+    this.titleCount = this.scene.add.text(-303, -607, '0 discovered', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '22px', color: '#bfefff'
     });
 
@@ -56,7 +56,7 @@ export class CollectionPanel {
     const collectionLabel = this.scene.add.text(-420, -532, 'DISCOVERIES', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#ffd984'
     });
-    const achievementLabel = this.scene.add.text(-420, 32, 'ACHIEVEMENTS', {
+    const achievementLabel = this.scene.add.text(-420, 63, 'ACHIEVEMENTS', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#ffd984'
     });
 
@@ -122,23 +122,26 @@ export class CollectionPanel {
     creatures.forEach((creature, index) => {
       const column = index % 3;
       const row = Math.floor(index / 3);
-      const x = -292 + column * 292;
-      const y = -378 + row * 248;
+      const x = -286 + column * 286;
+      const y = -412 + row * 180;
       const discovered = isCollectionKey(creature.key) && progress.discovered.includes(creature.key);
 
       const bg = this.scene.add.graphics();
       bg.fillStyle(discovered ? 0x22264a : 0x101327, 0.98);
-      bg.fillRoundedRect(-128, -105, 256, 210, 30);
+      bg.fillRoundedRect(-122, -77, 244, 154, 27);
       bg.lineStyle(3, discovered ? creature.accentColor : 0x4c5271, discovered ? 0.6 : 0.24);
-      bg.strokeRoundedRect(-128, -105, 256, 210, 30);
+      bg.strokeRoundedRect(-122, -77, 244, 154, 27);
 
-      const art = this.scene.add.image(0, -22, creature.texture).setDisplaySize(142, 142);
+      const art = this.scene.add.image(0, -16, creature.texture).setDisplaySize(104, 104);
       if (!discovered) art.setTint(0x151827).setAlpha(0.42);
-      const name = this.scene.add.text(0, 76, discovered ? creature.name.toUpperCase() : '???', {
-        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: discovered ? '#f5fbff' : '#77809f', align: 'center'
-      }).setOrigin(0.5).setWordWrapWidth(220);
-      const tier = this.scene.add.text(94, -82, `T${creature.level}`, {
-        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: discovered ? '#ffe69a' : '#59617e'
+      const name = this.scene.add.text(0, 56, discovered ? creature.name.toUpperCase() : '???', {
+        fontFamily: 'Arial Black, system-ui, sans-serif',
+        fontSize: discovered ? '12px' : '14px',
+        color: discovered ? '#f5fbff' : '#77809f',
+        align: 'center'
+      }).setOrigin(0.5).setWordWrapWidth(188);
+      const tier = this.scene.add.text(91, -57, `T${creature.level}`, {
+        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '14px', color: discovered ? '#ffe69a' : '#59617e'
       }).setOrigin(0.5);
       this.cardsRoot.add(this.scene.add.container(x, y, [bg, art, name, tier]));
     });
@@ -148,18 +151,18 @@ export class CollectionPanel {
     this.achievementsRoot.removeAll(true);
     ACHIEVEMENTS.forEach((achievement, index) => {
       const status = achievementProgress(progress, achievement.id);
-      const y = 122 + index * 92;
+      const y = 132 + index * 88;
       const row = this.scene.add.graphics();
       row.fillStyle(status.claimed ? 0x1a2940 : status.ready ? 0x392c56 : 0x1d2140, 0.98);
-      row.fillRoundedRect(-412, -37, 824, 76, 24);
+      row.fillRoundedRect(-412, -35, 824, 70, 22);
       row.lineStyle(2, status.ready ? 0xffd768 : 0x7080ad, status.ready ? 0.58 : 0.18);
-      row.strokeRoundedRect(-412, -37, 824, 76, 24);
+      row.strokeRoundedRect(-412, -35, 824, 70, 22);
 
-      const title = this.scene.add.text(-384, -27, achievement.name, {
-        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '18px', color: status.claimed ? '#8fe8bb' : '#f4f7ff'
+      const title = this.scene.add.text(-384, -25, achievement.name, {
+        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '17px', color: status.claimed ? '#8fe8bb' : '#f4f7ff'
       });
-      const progressText = this.scene.add.text(-384, 2, `${achievement.description}   ${status.current}/${status.target}`, {
-        fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '15px', color: '#aab6d8'
+      const progressText = this.scene.add.text(-384, 1, `${achievement.description}   ${status.current}/${status.target}`, {
+        fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '14px', color: '#aab6d8'
       });
 
       const rewardText = achievement.reward.coreShards > 0
@@ -167,13 +170,13 @@ export class CollectionPanel {
         : `${achievement.reward.coins} COINS`;
       const buttonBg = this.scene.add.graphics();
       buttonBg.fillStyle(status.claimed ? 0x31526a : status.ready ? 0xf6b94b : 0x353b5b, 1);
-      buttonBg.fillRoundedRect(-96, -27, 192, 54, 22);
+      buttonBg.fillRoundedRect(-96, -25, 192, 50, 20);
       const buttonText = this.scene.add.text(0, 0, status.claimed ? 'CLAIMED' : status.ready ? `CLAIM ${rewardText}` : rewardText, {
         fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: status.ready ? '12px' : '14px', color: status.ready ? '#3b2718' : '#cad2e8', align: 'center'
       }).setOrigin(0.5);
       const button = this.scene.add.container(300, 0, [buttonBg, buttonText]);
       if (status.ready) {
-        button.setSize(192, 58).setInteractive({ useHandCursor: true });
+        button.setSize(192, 54).setInteractive({ useHandCursor: true });
         button.on('pointerdown', () => {
           this.scene.tweens.add({ targets: button, scaleX: 0.94, scaleY: 0.94, duration: 70, yoyo: true, ease: 'Quad.Out' });
           this.onClaimAchievement(achievement.id);

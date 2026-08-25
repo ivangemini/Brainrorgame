@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { GameAnalytics } from '../analytics/GameAnalytics';
 import { GameAudio } from '../audio/GameAudio';
-import { getCreature, type CreatureFamily } from '../content/creatures';
+import { getCreature, getRecruitableFamilies, type CreatureFamily } from '../content/creatures';
 import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { createGameSave, type GameSave } from '../state/save';
@@ -319,7 +319,7 @@ export class GameScene extends Phaser.Scene {
 
     this.audio.button();
     this.coins -= RECRUIT_COST;
-    const family = Phaser.Math.RND.pick<CreatureFamily>(['pinguino', 'toastodilo']);
+    const family = Phaser.Math.RND.pick<CreatureFamily>([...getRecruitableFamilies()]);
     this.recruitSerial += 1;
     this.board = addUnit(this.board, {
       id: `recruit-${this.recruitSerial}-${family}`,

@@ -1,3 +1,4 @@
+import { isCreatureFamily } from '../content/creatures';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import type { BoardState, BoardUnit } from '../systems/board';
 import {
@@ -388,7 +389,7 @@ function cloneBoard(board: BoardState): BoardState {
 
 function isBoardUnit(value: unknown): value is BoardUnit {
   if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 160) return false;
-  if (value.family !== 'pinguino' && value.family !== 'toastodilo') return false;
+  if (!isCreatureFamily(value.family)) return false;
   return value.level === 1 || value.level === 2 || value.level === 3;
 }
 

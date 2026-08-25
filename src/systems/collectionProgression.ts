@@ -1,17 +1,11 @@
+import { getAllCreatures, type CreatureKey } from '../content/creatures';
 import type { BoardState } from './board';
 import type { EncounterStep } from './encounters';
 import type { MetaUpgradeLevels } from './metaProgression';
 
-export const COLLECTION_KEYS = [
-  'pinguino-1',
-  'pinguino-2',
-  'pinguino-3',
-  'toastodilo-1',
-  'toastodilo-2',
-  'toastodilo-3'
-] as const;
+export type CollectionKey = CreatureKey;
+export const COLLECTION_KEYS: readonly CollectionKey[] = getAllCreatures().map((creature) => creature.key);
 
-export type CollectionKey = (typeof COLLECTION_KEYS)[number];
 export type LifetimeEvent = 'merge' | 'recruit' | 'defeat' | 'boss' | 'upgrade';
 export type AchievementId =
   | 'first-fusion'

@@ -60,7 +60,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 
 - [x] Immediate merge board with two starter pairs
 - [x] Drag / move / swap / merge interaction
-- [x] Six original creature designs across two three-tier families
+- [x] Nine original creature designs across three three-tier families
 - [x] Three original bosses and arena art
 - [x] Six original normal-wave enemies with rotating chapter order and distinct pacing profiles
 - [x] Three-wave -> boss encounter loop
@@ -68,6 +68,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop
 - [x] Data-driven rotating boss roster with distinct idle, telegraph and defeat choreography
 - [x] Recruit currency sink and encounter reward loop
+- [x] Three-way recruit pool with balanced / heavy / rapid-fire family identities
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
@@ -82,6 +83,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Typed privacy-safe analytics event contract and gameplay funnel instrumentation
 - [x] Analytics agent skill and vendor-independent PlatformAdapter sink
 - [x] Chaos Codex collection with discovered / hidden creature forms
+- [x] Codex layout expanded for nine current creature forms without overlapping achievements
 - [x] Lifetime stats + six claimable achievements
 - [x] Conservative collection backfill for pre-v5 saves
 - [x] Yandex SDK adapter foundation: loader, LoadingAPI, lifecycle, local/cloud save arbitration
@@ -95,7 +97,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Resumable onboarding state with pre-v6 saves migrated as already complete
 - [x] Onboarding funnel telemetry and first-session skill/doc
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
-- [ ] Expand playable creature families and boss roster toward retention MVP targets (bosses: 3 / 4–6 target)
+- [ ] Expand playable creature families and boss roster toward retention MVP targets (creatures: 9 / 20–30 target, bosses: 3 / 4–6 target)
 - [ ] Mutations / rarity system
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass

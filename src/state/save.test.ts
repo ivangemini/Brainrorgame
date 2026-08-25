@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createStarterBoard } from '../systems/board';
-import { createDefaultCollectionProgress } from '../systems/collectionProgression';
+import { createDefaultCollectionProgress, discoverCreature } from '../systems/collectionProgression';
 import { createDefaultDailyState } from '../systems/dailyRetention';
 import { createDefaultMetaUpgradeLevels } from '../systems/metaProgression';
 import { createDefaultOnboardingState } from '../systems/onboarding';
@@ -29,6 +29,18 @@ describe('game save', () => {
   it('round-trips a valid v6 snapshot', () => {
     const save = createGameSave(makeSnapshot(), 12345);
     expect(parseGameSave(save)).toEqual(save);
+  });
+
+  it('round-trips the new Lampalotl family without changing the save version', () => {
+    const snapshot = makeSnapshot();
+    const board = [...snapshot.board];
+    board[8] = { id: 'lamp-save', family: 'lampalotl', level: 2 };
+    const collection = discoverCreature(snapshot.collection, 'lampalotl-2');
+    const save = createGameSave({ ...snapshot, board, collection }, 22222);
+    const parsed = parseGameSave(save);
+    expect(parsed?.version).toBe(6);
+    expect(parsed?.board[8]).toEqual({ id: 'lamp-save', family: 'lampalotl', level: 2 });
+    expect(parsed?.collection.discovered).toContain('lampalotl-2');
   });
 
   it('migrates v2 saves through v6 and preserves progression', () => {
