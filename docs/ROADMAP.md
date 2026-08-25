@@ -77,6 +77,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Merge-stable crew-family synergy power with Tier I / II / III thresholds
 - [x] Pinguino haste, Toastodilo fortress armor, Lampalotl squad damage and Dishnail coin-bounty identities
 - [x] Active crew synergy labels with tier-change pulse above the merge board
+- [x] Encounter-local Chaos Energy with four synergy-gated active combat abilities
+- [x] Active ability cooldowns, tier scaling, combat UI and mutation/Core Lab stacking
 - [x] Four-tier mutation rarity: Common / Rare Charged / Epic Prismatic / Legendary Crowned
 - [x] Mutation roll rates, combat modifiers, merge inheritance and rarity-promotion rules
 - [x] Project-owned mutation secondary-silhouette overlays with animated board presentation

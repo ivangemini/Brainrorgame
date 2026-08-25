@@ -1,4 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  beginActiveAbilityEncounter,
+  recordCrewAttackEnergy,
+  resetActiveAbilityRuntime,
+  tryCastCurrentActiveAbility
+} from '../systems/activeAbilities';
 import type { BoardState } from '../systems/board';
 import { resetCrewSynergyState, syncCrewSynergyState } from '../systems/crewSynergies';
 import {
@@ -10,7 +16,10 @@ import {
   rollMutation
 } from './mutations';
 
-afterEach(() => resetCrewSynergyState());
+afterEach(() => {
+  resetCrewSynergyState();
+  resetActiveAbilityRuntime();
+});
 
 describe('mutations and rarity', () => {
   it('keeps the four rarity tiers ordered from common to legendary', () => {
@@ -67,5 +76,23 @@ describe('mutations and rarity', () => {
     syncCrewSynergyState(board);
     expect(mutatedDamage(100, 'charged')).toBe(123);
     expect(mutatedAttackMs(1000, 'charged')).toBe(846);
+  });
+
+  it('stacks active Overdrive and Slipstream Burst on top of passive crew bonuses', () => {
+    const board: BoardState = [
+      { id: 'p3a', family: 'pinguino', level: 3, mutation: 'none' },
+      { id: 'p3b', family: 'pinguino', level: 3, mutation: 'none' },
+      { id: 'l3a', family: 'lampalotl', level: 3, mutation: 'none' },
+      { id: 'l3b', family: 'lampalotl', level: 3, mutation: 'none' },
+      null, null, null, null, null, null, null, null
+    ];
+    syncCrewSynergyState(board);
+    beginActiveAbilityEncounter('test-active-stack');
+    for (let index = 0; index < 100; index += 1) recordCrewAttackEnergy();
+    expect(tryCastCurrentActiveAbility('neon-overdrive', 3).cast).toBe(true);
+    for (let index = 0; index < 50; index += 1) recordCrewAttackEnergy();
+    expect(tryCastCurrentActiveAbility('slipstream-burst', 3).cast).toBe(true);
+    expect(mutatedDamage(100, 'charged')).toBe(191);
+    expect(mutatedAttackMs(1000, 'charged')).toBe(558);
   });
 });
