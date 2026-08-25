@@ -59,7 +59,7 @@ function createFakeSdk(cloudData: Record<string, unknown> = {}): FakeSdkBundle {
       })
     },
     getPlayer: vi.fn(async () => player),
-    on: vi.fn((event, callback) => {
+    on: vi.fn((event: YandexEvent, callback: () => void) => {
       events[event] = callback;
     })
   };
@@ -104,10 +104,10 @@ describe('YandexAdapter', () => {
 
   it('does not double-resume when ad and game_api pause overlap', async () => {
     const bundle = createFakeSdk();
-    let closeAd: (() => void) | null = null;
+    const controls: { closeAd?: () => void } = {};
     bundle.sdk.adv.showFullscreenAdv = vi.fn((options) => {
       options?.callbacks?.onOpen?.();
-      closeAd = () => options?.callbacks?.onClose?.(true);
+      controls.closeAd = () => options?.callbacks?.onClose?.(true);
     });
     const adapter = new YandexAdapter({ init: vi.fn(async () => bundle.sdk) }, new MemoryStorage());
     await adapter.initialize();
@@ -117,7 +117,7 @@ describe('YandexAdapter', () => {
 
     const adPromise = adapter.showInterstitial();
     bundle.events.game_api_pause?.();
-    closeAd?.();
+    controls.closeAd?.();
     expect(resume).toHaveBeenCalledTimes(0);
     bundle.events.game_api_resume?.();
     await adPromise;
