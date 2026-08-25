@@ -9,6 +9,7 @@ import {
 } from '../systems/collectionProgression';
 
 export class CollectionPanel {
+  private overlay!: Phaser.GameObjects.Rectangle;
   private root!: Phaser.GameObjects.Container;
   private cardsRoot!: Phaser.GameObjects.Container;
   private achievementsRoot!: Phaser.GameObjects.Container;
@@ -21,9 +22,12 @@ export class CollectionPanel {
   ) {}
 
   public create(): void {
-    const shade = this.scene.add.rectangle(540, 960, 1080, 1920, 0x080b18, 0.72)
-      .setInteractive({ useHandCursor: true });
-    shade.on('pointerdown', () => this.hide());
+    this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x080b18, 0.72)
+      .setOrigin(0)
+      .setDepth(1849)
+      .setInteractive()
+      .setVisible(false);
+    this.overlay.on('pointerdown', () => this.hide());
 
     const panel = this.scene.add.graphics();
     panel.fillStyle(0x171a37, 0.99);
@@ -33,6 +37,7 @@ export class CollectionPanel {
     panel.fillStyle(0x34275d, 0.88);
     panel.fillRoundedRect(-430, -680, 860, 116, 38);
 
+    const blocker = this.scene.add.rectangle(0, 0, 940, 1440, 0xffffff, 0.001).setInteractive();
     const icon = this.scene.add.image(-365, -621, 'ui-chaos-codex').setDisplaySize(86, 86);
     const title = this.scene.add.text(-305, -657, 'CHAOS CODEX', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '42px', color: '#f5fbff', stroke: '#151a39', strokeThickness: 8
@@ -58,7 +63,7 @@ export class CollectionPanel {
     this.cardsRoot = this.scene.add.container(0, 0);
     this.achievementsRoot = this.scene.add.container(0, 0);
     this.root = this.scene.add.container(540, 960, [
-      shade,
+      blocker,
       panel,
       icon,
       title,
@@ -83,13 +88,16 @@ export class CollectionPanel {
   public show(progress: CollectionProgress): void {
     this.opened = true;
     this.update(progress);
+    this.overlay.setVisible(true).setAlpha(0);
     this.root.setVisible(true).setAlpha(0).setScale(0.93);
+    this.scene.tweens.add({ targets: this.overlay, alpha: 1, duration: 150, ease: 'Quad.Out' });
     this.scene.tweens.add({ targets: this.root, alpha: 1, scaleX: 1, scaleY: 1, duration: 220, ease: 'Back.Out' });
   }
 
   public hide(): void {
     if (!this.opened) return;
     this.opened = false;
+    this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 120, ease: 'Quad.In' });
     this.scene.tweens.add({
       targets: this.root,
       alpha: 0,
@@ -97,7 +105,10 @@ export class CollectionPanel {
       scaleY: 0.96,
       duration: 135,
       ease: 'Quad.In',
-      onComplete: () => this.root.setVisible(false)
+      onComplete: () => {
+        this.root.setVisible(false);
+        this.overlay.setVisible(false);
+      }
     });
   }
 
