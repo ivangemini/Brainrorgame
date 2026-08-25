@@ -116,7 +116,7 @@ export class PokiAdapter implements PlatformAdapter {
       this.adPaused = true;
       this.syncLifecycleState();
     };
-    let rewarded = false;
+    let rewarded: boolean;
     try {
       rewarded = await sdk.rewardedBreak({ size: 'medium', onStart });
     } catch {
