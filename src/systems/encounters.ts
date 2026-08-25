@@ -4,6 +4,7 @@ import {
   getChapterMutator,
   type ChapterMutatorDefinition
 } from '../content/chapterMutators';
+import { syncRecruitProgressChapter } from '../content/creatures';
 import {
   applyEliteModifier,
   getEliteModifierForWave,
@@ -84,6 +85,7 @@ export function isBossStep(step: EncounterStep): boolean {
 
 export function getEncounterSpec(chapter: number, step: EncounterStep): EncounterSpec {
   const safeChapter = Math.max(1, Math.floor(chapter));
+  syncRecruitProgressChapter(safeChapter);
   const mutator = getChapterMutator(safeChapter);
   const energyGainMultiplier = getWorldEnergyGainMultiplier(safeChapter);
   if (step === BOSS_STEP) {
