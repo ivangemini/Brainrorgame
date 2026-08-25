@@ -20,14 +20,26 @@ describe('crew synergies', () => {
     expect(tierForPower(8)).toBe(3);
   });
 
-  it('starts with the original starter synergies and zero new-family power', () => {
+  it('starts with starter synergies while all late-game families remain dormant', () => {
     const state = evaluateCrewSynergies(createStarterBoard());
     expect(state.familyPower).toEqual({
-      pinguino: 2, toastodilo: 2, lampalotl: 0, dishnail: 0, mochimoth: 0, routeraptor: 0, vendinguana: 0
+      pinguino: 2,
+      toastodilo: 2,
+      lampalotl: 0,
+      dishnail: 0,
+      mochimoth: 0,
+      routeraptor: 0,
+      vendinguana: 0,
+      umbrellama: 0,
+      mopossum: 0,
+      fanthom: 0,
+      socktopus: 0,
+      microwhale: 0
     });
     expect(state.tiers.pinguino).toBe(1);
     expect(state.tiers.toastodilo).toBe(1);
-    expect(state.tiers.mochimoth).toBe(0);
+    expect(state.tiers.umbrellama).toBe(0);
+    expect(state.tiers.microwhale).toBe(0);
     expect(state.energyGainMultiplier).toBe(1);
     expect(state.bossDamageMultiplier).toBe(1);
   });
@@ -42,7 +54,7 @@ describe('crew synergies', () => {
     expect(afterState.tiers.pinguino).toBe(beforeState.tiers.pinguino);
   });
 
-  it('stacks all seven family identities at higher power tiers', () => {
+  it('stacks the original family identities at higher power tiers', () => {
     const board: BoardState = [
       { id: 'p3a', family: 'pinguino', level: 3, mutation: 'none' },
       { id: 'p3b', family: 'pinguino', level: 3, mutation: 'charged' },
@@ -69,6 +81,33 @@ describe('crew synergies', () => {
     expect(state.coinRewardMultiplier).toBe(1.18);
     expect(state.energyGainMultiplier).toBe(1.28);
     expect(state.bossDamageMultiplier).toBe(1.30);
+  });
+
+  it('gives every Phase 3 family a distinct live combat/economy effect', () => {
+    const baseline = evaluateCrewSynergies([]);
+    const state = evaluateCrewSynergies([
+      { id: 'u3a', family: 'umbrellama', level: 3, mutation: 'none' },
+      { id: 'u3b', family: 'umbrellama', level: 3, mutation: 'none' },
+      { id: 'mop3a', family: 'mopossum', level: 3, mutation: 'none' },
+      { id: 'mop3b', family: 'mopossum', level: 3, mutation: 'none' },
+      { id: 'f3a', family: 'fanthom', level: 3, mutation: 'none' },
+      { id: 'f3b', family: 'fanthom', level: 3, mutation: 'none' },
+      { id: 's3a', family: 'socktopus', level: 3, mutation: 'none' },
+      { id: 's3b', family: 'socktopus', level: 3, mutation: 'none' },
+      { id: 'w3a', family: 'microwhale', level: 3, mutation: 'none' },
+      { id: 'w3b', family: 'microwhale', level: 3, mutation: 'none' }
+    ]);
+
+    expect(state.tiers.umbrellama).toBe(3);
+    expect(state.tiers.mopossum).toBe(3);
+    expect(state.tiers.fanthom).toBe(3);
+    expect(state.tiers.socktopus).toBe(3);
+    expect(state.tiers.microwhale).toBe(3);
+    expect(state.incomingDamageMultiplier).toBeLessThan(baseline.incomingDamageMultiplier);
+    expect(state.coinRewardMultiplier).toBeGreaterThan(baseline.coinRewardMultiplier);
+    expect(state.attackIntervalMultiplier).toBeLessThan(baseline.attackIntervalMultiplier);
+    expect(state.squadDamageMultiplier).toBeGreaterThan(baseline.squadDamageMultiplier);
+    expect(state.bossDamageMultiplier).toBeGreaterThan(baseline.bossDamageMultiplier);
   });
 
   it('keeps a resettable runtime snapshot for combat consumers', () => {
