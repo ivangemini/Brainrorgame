@@ -1,5 +1,9 @@
 import * as Phaser from 'phaser';
 import type { GameFx } from '../presentation/GameFx';
+import type { BossEncounterSpec } from '../systems/encounters';
+
+const BOSS_X = 540;
+const BOSS_Y = 565;
 
 export class BossView {
   private title!: Phaser.GameObjects.Text;
@@ -7,21 +11,25 @@ export class BossView {
   private boss!: Phaser.GameObjects.Image;
   private hpBar!: Phaser.GameObjects.Graphics;
   private hpText!: Phaser.GameObjects.Text;
+  private spec: BossEncounterSpec | null = null;
+  private baseScaleX = 1;
+  private baseScaleY = 1;
+  private motionEpoch = 0;
 
   public constructor(private readonly scene: Phaser.Scene, private readonly fx: GameFx) {}
 
   public create(): void {
-    this.title = this.scene.add.text(540, 282, 'FRIDGINO MAXIMO', {
+    this.title = this.scene.add.text(BOSS_X, 282, '', {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '42px',
       color: '#dffaff',
       stroke: '#19234b',
       strokeThickness: 9
     }).setOrigin(0.5);
-    this.shadow = this.scene.add.ellipse(540, 834, 520, 94, 0x071020, 0.34);
-    this.boss = this.scene.add.image(540, 565, 'boss-fridgino').setDisplaySize(570, 570);
+    this.shadow = this.scene.add.ellipse(BOSS_X, 834, 520, 94, 0x071020, 0.34);
+    this.boss = this.scene.add.image(BOSS_X, BOSS_Y, 'boss-fridgino').setDisplaySize(570, 570);
     this.hpBar = this.scene.add.graphics();
-    this.hpText = this.scene.add.text(540, 906, '', {
+    this.hpText = this.scene.add.text(BOSS_X, 906, '', {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '25px',
       color: '#fff7fb',
@@ -31,15 +39,26 @@ export class BossView {
     this.hide();
   }
 
-  public show(): void {
+  public show(spec: BossEncounterSpec): void {
+    this.spec = spec;
+    this.motionEpoch += 1;
     this.scene.tweens.killTweensOf(this.boss);
-    this.title.setVisible(true).setAlpha(1);
-    this.shadow.setVisible(true).setAlpha(1);
+    this.title.setText(spec.name.toUpperCase()).setColor(this.cssColor(spec.accentColor)).setVisible(true).setAlpha(1);
+    this.shadow.setVisible(true).setAlpha(1).setScale(1);
     this.hpBar.setVisible(true).setAlpha(1);
     this.hpText.setVisible(true).setAlpha(1);
-    this.boss.setVisible(true).setPosition(540, 565).setAngle(0).setAlpha(1).setDisplaySize(570, 570);
+    this.boss
+      .setTexture(spec.texture)
+      .setVisible(true)
+      .setPosition(BOSS_X, BOSS_Y)
+      .setAngle(0)
+      .setAlpha(1)
+      .setDisplaySize(spec.displaySize, spec.displaySize);
+
     const targetScaleX = this.boss.scaleX;
     const targetScaleY = this.boss.scaleY;
+    this.baseScaleX = targetScaleX;
+    this.baseScaleY = targetScaleY;
     this.boss.setScale(targetScaleX * 0.68, targetScaleY * 0.68);
     this.scene.tweens.add({
       targets: this.boss,
@@ -47,22 +66,12 @@ export class BossView {
       scaleY: targetScaleY,
       duration: 420,
       ease: 'Back.Out',
-      onComplete: () => {
-        this.scene.tweens.add({
-          targets: this.boss,
-          y: 578,
-          scaleX: targetScaleX * 1.015,
-          scaleY: targetScaleY * 0.985,
-          duration: 1350,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.InOut'
-        });
-      }
+      onComplete: () => this.startIdle(targetScaleX, targetScaleY)
     });
   }
 
   public hide(): void {
+    this.motionEpoch += 1;
     if (this.boss) this.scene.tweens.killTweensOf(this.boss);
     this.title?.setVisible(false);
     this.shadow?.setVisible(false);
@@ -73,10 +82,11 @@ export class BossView {
 
   public setHealth(current: number, max: number): void {
     const ratio = Phaser.Math.Clamp(current / max, 0, 1);
+    const accent = this.spec?.accentColor ?? 0x69dcff;
     this.hpBar.clear();
     this.hpBar.fillStyle(0x10182f, 0.92);
     this.hpBar.fillRoundedRect(170, 866, 740, 66, 33);
-    this.hpBar.fillStyle(ratio > 0.35 ? 0x69dcff : 0xff6784, 1);
+    this.hpBar.fillStyle(ratio > 0.35 ? accent : 0xff6784, 1);
     this.hpBar.fillRoundedRect(178, 874, 724 * ratio, 50, 25);
     this.hpBar.lineStyle(4, 0xdaf9ff, 0.5);
     this.hpBar.strokeRoundedRect(170, 866, 740, 66, 33);
@@ -84,7 +94,11 @@ export class BossView {
   }
 
   public targetPoint(): Phaser.Math.Vector2 {
-    return new Phaser.Math.Vector2(540 + Phaser.Math.Between(-78, 78), 555 + Phaser.Math.Between(-65, 75));
+    const spread = Math.max(72, Math.round((this.spec?.displaySize ?? 570) * 0.14));
+    return new Phaser.Math.Vector2(
+      this.boss.x + Phaser.Math.Between(-spread, spread),
+      this.boss.y + Phaser.Math.Between(-Math.round(spread * 0.8), Math.round(spread * 0.85))
+    );
   }
 
   public hit(color: number): void {
@@ -96,33 +110,47 @@ export class BossView {
       yoyo: true,
       ease: 'Quad.Out'
     });
-    this.fx.burst(this.boss.x + Phaser.Math.Between(-100, 100), this.boss.y + Phaser.Math.Between(-80, 80), color, 5, 90);
+    this.fx.burst(
+      this.boss.x + Phaser.Math.Between(-100, 100),
+      this.boss.y + Phaser.Math.Between(-80, 80),
+      color,
+      5,
+      90
+    );
   }
 
   public telegraph(onImpact: () => void): void {
-    const ring = this.scene.add.circle(this.boss.x, this.boss.y + 20, 115, 0xff6688, 0.08)
-      .setStrokeStyle(12, 0xff8ca6, 0.82)
-      .setDepth(700)
-      .setScale(0.55);
-    this.scene.tweens.add({ targets: ring, scaleX: 2.25, scaleY: 2.25, alpha: 0.14, duration: 630, ease: 'Cubic.Out' });
-    this.scene.tweens.add({ targets: this.boss, y: this.boss.y - 25, angle: Phaser.Math.Between(-3, 3), duration: 340, ease: 'Back.Out' });
-    this.scene.time.delayedCall(650, () => {
-      ring.destroy();
+    this.scene.tweens.killTweensOf(this.boss);
+    const epoch = this.motionEpoch;
+    const guardedImpact = (): boolean => {
+      if (epoch !== this.motionEpoch) return false;
       onImpact();
-      this.scene.tweens.add({ targets: this.boss, y: 565, angle: 0, duration: 250, ease: 'Back.Out' });
-    });
+      return true;
+    };
+    const style = this.spec?.presentation.telegraphStyle ?? 'ring';
+    if (style === 'sweep') {
+      this.telegraphSweep(guardedImpact);
+      return;
+    }
+    if (style === 'orbit') {
+      this.telegraphOrbit(guardedImpact);
+      return;
+    }
+    this.telegraphRing(guardedImpact);
   }
 
   public defeat(reward: number, onComplete: () => void): void {
+    this.motionEpoch += 1;
     this.scene.tweens.killTweensOf(this.boss);
-    const banner = this.scene.add.text(540, 420, 'BOSS MELTED!', {
+    const defeatLabel = this.spec?.presentation.defeatLabel ?? 'BOSS MELTED!';
+    const banner = this.scene.add.text(BOSS_X, 420, defeatLabel, {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '70px',
       color: '#fff5a8',
       stroke: '#66305c',
       strokeThickness: 12
     }).setOrigin(0.5).setDepth(1200).setScale(0.35);
-    const rewardText = this.scene.add.text(540, 500, `+${reward} COINS`, {
+    const rewardText = this.scene.add.text(BOSS_X, 500, `+${reward} COINS`, {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '34px',
       color: '#dfffff',
@@ -131,6 +159,171 @@ export class BossView {
     }).setOrigin(0.5).setDepth(1200).setAlpha(0);
     this.scene.tweens.add({ targets: banner, scaleX: 1, scaleY: 1, duration: 350, ease: 'Back.Out' });
     this.scene.tweens.add({ targets: rewardText, alpha: 1, y: 520, duration: 350, delay: 180, ease: 'Quad.Out' });
+    this.playDefeatMotion();
+    this.scene.time.delayedCall(1450, () => {
+      banner.destroy();
+      rewardText.destroy();
+      onComplete();
+    });
+  }
+
+  public reset(): void {
+    this.motionEpoch += 1;
+    this.scene.tweens.killTweensOf(this.boss);
+    const displaySize = this.spec?.displaySize ?? 570;
+    this.boss.setPosition(BOSS_X, BOSS_Y).setAngle(0).setAlpha(1).setDisplaySize(displaySize, displaySize);
+  }
+
+  private startIdle(scaleX: number, scaleY: number): void {
+    const style = this.spec?.presentation.idleStyle ?? 'float';
+    if (style === 'sway') {
+      this.scene.tweens.add({
+        targets: this.boss,
+        y: BOSS_Y + 8,
+        angle: 2.4,
+        duration: 980,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut'
+      });
+      return;
+    }
+    if (style === 'bob') {
+      this.scene.tweens.add({
+        targets: this.boss,
+        y: BOSS_Y + 16,
+        scaleX: scaleX * 1.012,
+        scaleY: scaleY * 0.982,
+        duration: 1120,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut'
+      });
+      return;
+    }
+    this.scene.tweens.add({
+      targets: this.boss,
+      y: BOSS_Y + 13,
+      scaleX: scaleX * 1.015,
+      scaleY: scaleY * 0.985,
+      duration: 1350,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut'
+    });
+  }
+
+  private telegraphRing(onImpact: () => boolean): void {
+    const color = this.spec?.projectileColor ?? 0xff6688;
+    const ring = this.scene.add.circle(this.boss.x, this.boss.y + 20, 115, color, 0.08)
+      .setStrokeStyle(12, color, 0.82)
+      .setDepth(700)
+      .setScale(0.55);
+    this.scene.tweens.add({ targets: ring, scaleX: 2.25, scaleY: 2.25, alpha: 0.14, duration: 630, ease: 'Cubic.Out' });
+    this.scene.tweens.add({ targets: this.boss, y: this.boss.y - 25, angle: Phaser.Math.Between(-3, 3), duration: 340, ease: 'Back.Out' });
+    this.scene.time.delayedCall(650, () => {
+      ring.destroy();
+      if (onImpact()) this.recoverToIdle(250, 'Back.Out');
+    });
+  }
+
+  private telegraphSweep(onImpact: () => boolean): void {
+    const color = this.spec?.projectileColor ?? 0xff5cda;
+    const railLeft = this.scene.add.rectangle(BOSS_X - 120, 790, 24, 430, color, 0.14)
+      .setStrokeStyle(6, color, 0.78)
+      .setDepth(700)
+      .setScale(1, 0.1);
+    const railRight = this.scene.add.rectangle(BOSS_X + 120, 790, 24, 430, color, 0.14)
+      .setStrokeStyle(6, color, 0.78)
+      .setDepth(700)
+      .setScale(1, 0.1);
+    this.scene.tweens.add({ targets: [railLeft, railRight], scaleY: 1, alpha: 0.62, duration: 510, ease: 'Cubic.Out' });
+    this.scene.tweens.add({ targets: railLeft, x: BOSS_X - 34, duration: 610, ease: 'Sine.In' });
+    this.scene.tweens.add({ targets: railRight, x: BOSS_X + 34, duration: 610, ease: 'Sine.In' });
+    this.scene.tweens.add({ targets: this.boss, angle: -4.5, scaleX: this.boss.scaleX * 1.035, duration: 300, yoyo: true, ease: 'Quad.Out' });
+    this.scene.time.delayedCall(650, () => {
+      railLeft.destroy();
+      railRight.destroy();
+      if (onImpact()) this.recoverToIdle(230, 'Back.Out');
+    });
+  }
+
+  private telegraphOrbit(onImpact: () => boolean): void {
+    const color = this.spec?.projectileColor ?? 0xb66cff;
+    const orbit = this.scene.add.container(this.boss.x, this.boss.y + 10).setDepth(700).setScale(1.35);
+    const dots = [0, 120, 240].map((angle) => {
+      const radians = Phaser.Math.DegToRad(angle);
+      const dot = this.scene.add.circle(Math.cos(radians) * 175, Math.sin(radians) * 125, 28, color, 0.72)
+        .setStrokeStyle(7, 0xffffff, 0.5);
+      orbit.add(dot);
+      return dot;
+    });
+    this.scene.tweens.add({ targets: orbit, angle: 210, scaleX: 0.52, scaleY: 0.52, duration: 640, ease: 'Cubic.In' });
+    this.scene.tweens.add({ targets: dots, alpha: 1, duration: 300, yoyo: true, repeat: 1 });
+    this.scene.tweens.add({ targets: this.boss, y: this.boss.y - 34, scaleY: this.boss.scaleY * 1.025, duration: 360, ease: 'Back.Out' });
+    this.scene.time.delayedCall(660, () => {
+      orbit.destroy();
+      if (onImpact()) this.recoverToIdle(260, 'Bounce.Out');
+    });
+  }
+
+  private recoverToIdle(duration: number, ease: string): void {
+    const epoch = this.motionEpoch;
+    this.scene.tweens.add({
+      targets: this.boss,
+      x: BOSS_X,
+      y: BOSS_Y,
+      angle: 0,
+      scaleX: this.baseScaleX,
+      scaleY: this.baseScaleY,
+      duration,
+      ease,
+      onComplete: () => {
+        if (epoch === this.motionEpoch && this.boss.visible) this.startIdle(this.baseScaleX, this.baseScaleY);
+      }
+    });
+  }
+
+  private playDefeatMotion(): void {
+    const style = this.spec?.presentation.defeatStyle ?? 'melt';
+    if (style === 'spin') {
+      this.scene.tweens.add({
+        targets: this.boss,
+        x: 760,
+        y: 700,
+        angle: 390,
+        scaleX: this.boss.scaleX * 0.45,
+        scaleY: this.boss.scaleY * 0.45,
+        alpha: 0,
+        duration: 820,
+        ease: 'Cubic.In'
+      });
+      return;
+    }
+    if (style === 'pop') {
+      const startScaleX = this.boss.scaleX;
+      const startScaleY = this.boss.scaleY;
+      this.scene.tweens.add({
+        targets: this.boss,
+        scaleX: startScaleX * 1.16,
+        scaleY: startScaleY * 1.16,
+        duration: 210,
+        ease: 'Back.Out',
+        onComplete: () => {
+          this.scene.tweens.add({
+            targets: this.boss,
+            y: 250,
+            angle: -8,
+            scaleX: startScaleX * 0.58,
+            scaleY: startScaleY * 0.58,
+            alpha: 0,
+            duration: 610,
+            ease: 'Cubic.In'
+          });
+        }
+      });
+      return;
+    }
     this.scene.tweens.add({
       targets: this.boss,
       y: 720,
@@ -141,15 +334,9 @@ export class BossView {
       duration: 760,
       ease: 'Back.In'
     });
-    this.scene.time.delayedCall(1450, () => {
-      banner.destroy();
-      rewardText.destroy();
-      onComplete();
-    });
   }
 
-  public reset(): void {
-    this.scene.tweens.killTweensOf(this.boss);
-    this.boss.setPosition(540, 565).setAngle(0).setAlpha(1).setDisplaySize(570, 570);
+  private cssColor(color: number): string {
+    return `#${color.toString(16).padStart(6, '0')}`;
   }
 }
