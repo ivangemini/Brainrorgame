@@ -4,7 +4,7 @@ import type { PlatformAdapter, PlatformLifecycleHandlers, RewardResult } from '.
 const LOCAL_SAVE_KEY = 'brainrot-merge-boss:save';
 const CLOUD_SAVE_KEY = 'brainrorSave';
 const ANALYTICS_EVENT_NAME = 'brainror:analytics';
-const CLOUD_SAVE_MIN_INTERVAL_MS = 3_500;
+export const CLOUD_SAVE_MIN_INTERVAL_MS = 3_500;
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -51,18 +51,23 @@ export class YandexAdapter implements PlatformAdapter {
   private player: YandexPlayerLike | null = null;
   private lifecycleHandlers: PlatformLifecycleHandlers | null = null;
   private gameplayActive = false;
+  private eventPaused = false;
+  private adPaused = false;
+  private lifecyclePaused = false;
   private pendingCloudSave: unknown | null = null;
   private cloudSaveTimer: ReturnType<typeof setTimeout> | null = null;
   private cloudWriteInFlight = false;
   private lastCloudSaveAt = 0;
 
   private readonly pauseHandler = (): void => {
-    this.lifecycleHandlers?.pause();
+    this.eventPaused = true;
+    this.syncLifecycleState();
     void this.flushPendingCloudSave(true);
   };
 
   private readonly resumeHandler = (): void => {
-    this.lifecycleHandlers?.resume();
+    this.eventPaused = false;
+    this.syncLifecycleState();
   };
 
   public constructor(
@@ -88,6 +93,7 @@ export class YandexAdapter implements PlatformAdapter {
 
   public setLifecycleHandlers(handlers: PlatformLifecycleHandlers): void {
     this.lifecycleHandlers = handlers;
+    if (this.lifecyclePaused) handlers.pause();
   }
 
   public gameplayStart(): void {
@@ -111,7 +117,10 @@ export class YandexAdapter implements PlatformAdapter {
       const finish = (): void => {
         if (settled) return;
         settled = true;
-        if (opened) this.lifecycleHandlers?.resume();
+        if (opened) {
+          this.adPaused = false;
+          this.syncLifecycleState();
+        }
         resolve();
       };
       try {
@@ -119,7 +128,8 @@ export class YandexAdapter implements PlatformAdapter {
           callbacks: {
             onOpen: () => {
               opened = true;
-              this.lifecycleHandlers?.pause();
+              this.adPaused = true;
+              this.syncLifecycleState();
             },
             onClose: () => finish(),
             onError: () => finish()
@@ -141,7 +151,10 @@ export class YandexAdapter implements PlatformAdapter {
       const finish = (): void => {
         if (settled) return;
         settled = true;
-        if (opened) this.lifecycleHandlers?.resume();
+        if (opened) {
+          this.adPaused = false;
+          this.syncLifecycleState();
+        }
         resolve({ rewarded });
       };
       try {
@@ -149,7 +162,8 @@ export class YandexAdapter implements PlatformAdapter {
           callbacks: {
             onOpen: () => {
               opened = true;
-              this.lifecycleHandlers?.pause();
+              this.adPaused = true;
+              this.syncLifecycleState();
             },
             onRewarded: () => {
               rewarded = true;
@@ -188,6 +202,14 @@ export class YandexAdapter implements PlatformAdapter {
     if (!this.player) return;
     this.pendingCloudSave = value;
     this.scheduleCloudSave();
+  }
+
+  private syncLifecycleState(): void {
+    const shouldPause = this.eventPaused || this.adPaused;
+    if (shouldPause === this.lifecyclePaused) return;
+    this.lifecyclePaused = shouldPause;
+    if (shouldPause) this.lifecycleHandlers?.pause();
+    else this.lifecycleHandlers?.resume();
   }
 
   private readLocalSave<T>(): T | null {
@@ -241,9 +263,9 @@ export class YandexAdapter implements PlatformAdapter {
     const value = this.pendingCloudSave;
     this.pendingCloudSave = null;
     this.cloudWriteInFlight = true;
+    this.lastCloudSaveAt = this.now();
     try {
       await this.player.setData({ [CLOUD_SAVE_KEY]: value }, flush);
-      this.lastCloudSaveAt = this.now();
     } catch {
       if (this.pendingCloudSave === null) this.pendingCloudSave = value;
     } finally {
@@ -253,7 +275,7 @@ export class YandexAdapter implements PlatformAdapter {
   }
 }
 
-function selectNewestSave<T>(local: T | null, cloud: T | null): T | null {
+export function selectNewestSave<T>(local: T | null, cloud: T | null): T | null {
   if (local === null) return cloud;
   if (cloud === null) return local;
   const localUpdatedAt = updatedAtOf(local);
