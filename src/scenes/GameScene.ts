@@ -668,7 +668,7 @@ export class GameScene extends Phaser.Scene {
   private presentEncounter(initial: boolean): void {
     if (this.encounter.kind === 'boss') {
       this.enemyView.hide();
-      this.bossView.show();
+      this.bossView.show(this.encounter);
     } else {
       this.bossView.hide();
       this.enemyView.show(this.encounter, this.encounterStep + 1);
