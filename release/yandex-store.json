@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "slug": "brainror-merge",
+  "category": "casual",
+  "orientation": "portrait",
+  "ageRating": "6+",
+  "languages": ["en", "ru"],
+  "title": {
+    "en": "Brainror Merge: Chaos Bosses",
+    "ru": "Brainror Merge: Боссы Хаоса"
+  },
+  "shortDescription": {
+    "en": "Merge bizarre creatures, build wild synergies and smash escalating chaos bosses.",
+    "ru": "Объединяй странных существ, собирай безумные синергии и побеждай всё более сильных боссов Хаоса."
+  },
+  "description": {
+    "en": "Build a squad of original absurd creatures, merge matching forms into stronger evolutions, unlock mutations and crew synergies, then survive waves and multi-phase bosses. Progress through three worlds, grow the permanent Core Lab, chase daily missions and push deeper into the Endless Rift.",
+    "ru": "Собирай отряд оригинальных абсурдных существ, объединяй одинаковые формы в более сильные эволюции, открывай мутации и синергии команды, проходи волны и сражайся с многофазными боссами. Пройди три мира, развивай постоянную Лабораторию Ядра, выполняй ежедневные задания и продвигайся всё глубже в Бесконечный Разлом."
+  },
+  "controls": {
+    "en": "Drag creatures to move, swap or merge. Tap Recruit, abilities and menu buttons.",
+    "ru": "Перетаскивай существ, чтобы перемещать, менять местами или объединять. Нажимай Призыв, способности и кнопки меню."
+  },
+  "features": ["merge", "boss-rush", "collection", "daily-missions", "offline-progress", "endless"],
+  "creatives": [
+    "public/store/yandex-cover-chaos.svg",
+    "public/store/yandex-cover-boss.svg"
+  ]
+}
