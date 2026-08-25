@@ -10,11 +10,8 @@ import {
   type CollectionKey,
   type CollectionProgress
 } from '../systems/collectionProgression';
-import {
-  createDefaultDailyState,
-  type DailyRetentionState
-} from '../systems/dailyRetention';
-import type { EncounterStep } from '../systems/encounters';
+import { createDefaultDailyState, type DailyRetentionState } from '../systems/dailyRetention';
+import { BOSS_STEP, type EncounterStep } from '../systems/encounters';
 import {
   createDefaultMetaUpgradeLevels,
   getMetaUpgradeDefinition,
@@ -26,7 +23,9 @@ import {
   type OnboardingState
 } from '../systems/onboarding';
 
-export const SAVE_VERSION = 7 as const;
+export const SAVE_VERSION = 8 as const;
+
+type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
 export interface LegacyBoardUnit {
   readonly id: string;
@@ -53,7 +52,7 @@ export interface GameSaveV2 {
   readonly coins: number;
   readonly baseHp: number;
   readonly chapter: number;
-  readonly encounterStep: EncounterStep;
+  readonly encounterStep: LegacyEncounterStep;
   readonly targetHpMax: number;
   readonly targetHp: number;
   readonly recruitSerial: number;
@@ -82,11 +81,16 @@ export interface GameSaveV6 extends Omit<GameSaveV5, 'version'> {
 }
 
 export interface GameSaveV7 extends Omit<GameSaveV6, 'version' | 'board'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 7;
   readonly board: BoardState;
 }
 
-export type GameSave = GameSaveV7;
+export interface GameSaveV8 extends Omit<GameSaveV7, 'version' | 'encounterStep'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly encounterStep: EncounterStep;
+}
+
+export type GameSave = GameSaveV8;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -127,8 +131,9 @@ interface V5ProgressFields extends V4ProgressFields {
 }
 
 type BoardParser = (value: unknown) => BoardState | null;
+type StepParser = (value: unknown) => EncounterStep | null;
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV7 {
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV8 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -159,50 +164,72 @@ export async function loadGameSave(platform: PlatformAdapter): Promise<GameSave 
 
 export function parseGameSave(value: unknown): GameSave | null {
   if (!isRecord(value)) return null;
+
   if (value.version === 1) {
     const v2 = migrateV1ToV2(value);
     const v3 = v2 ? migrateV2ToV3(v2) : null;
     const v4 = v3 ? migrateV3ToV4(v3) : null;
     const v5 = v4 ? migrateV4ToV5(v4) : null;
     const v6 = v5 ? migrateV5ToV6(v5) : null;
-    return v6 ? migrateV6ToV7(v6) : null;
+    const v7 = v6 ? migrateV6ToV7(v6) : null;
+    return v7 ? migrateV7ToV8(v7) : null;
   }
   if (value.version === 2) {
     const v3 = migrateV2ToV3(value);
     const v4 = v3 ? migrateV3ToV4(v3) : null;
     const v5 = v4 ? migrateV4ToV5(v4) : null;
     const v6 = v5 ? migrateV5ToV6(v5) : null;
-    return v6 ? migrateV6ToV7(v6) : null;
+    const v7 = v6 ? migrateV6ToV7(v6) : null;
+    return v7 ? migrateV7ToV8(v7) : null;
   }
   if (value.version === 3) {
     const v4 = migrateV3ToV4(value);
     const v5 = v4 ? migrateV4ToV5(v4) : null;
     const v6 = v5 ? migrateV5ToV6(v5) : null;
-    return v6 ? migrateV6ToV7(v6) : null;
+    const v7 = v6 ? migrateV6ToV7(v6) : null;
+    return v7 ? migrateV7ToV8(v7) : null;
   }
   if (value.version === 4) {
     const v5 = migrateV4ToV5(value);
     const v6 = v5 ? migrateV5ToV6(v5) : null;
-    return v6 ? migrateV6ToV7(v6) : null;
+    const v7 = v6 ? migrateV6ToV7(v6) : null;
+    return v7 ? migrateV7ToV8(v7) : null;
   }
   if (value.version === 5) {
     const v6 = migrateV5ToV6(value);
-    return v6 ? migrateV6ToV7(v6) : null;
+    const v7 = v6 ? migrateV6ToV7(v6) : null;
+    return v7 ? migrateV7ToV8(v7) : null;
   }
-  if (value.version === 6) return migrateV6ToV7(value);
+  if (value.version === 6) {
+    const v7 = migrateV6ToV7(value);
+    return v7 ? migrateV7ToV8(v7) : null;
+  }
+  if (value.version === 7) return migrateV7ToV8(value);
   if (value.version !== SAVE_VERSION) return null;
 
-  const v5 = parseV5Fields(value, parseCurrentBoard);
+  const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
   if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
   return { version: SAVE_VERSION, ...v5, onboarding: cloneOnboarding(value.onboarding) };
 }
 
-function migrateV6ToV7(value: unknown): GameSaveV7 | null {
+function migrateV7ToV8(value: unknown): GameSaveV8 | null {
   if (!isRecord(value)) return null;
-  const v5 = parseV5Fields(value, parseLegacyCompatibleBoard);
+  const v5 = parseV5Fields(value, parseCurrentBoard, parseLegacyEncounterStep);
   if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
   return {
     version: SAVE_VERSION,
+    ...v5,
+    encounterStep: v5.encounterStep === 3 ? BOSS_STEP : v5.encounterStep,
+    onboarding: cloneOnboarding(value.onboarding)
+  };
+}
+
+function migrateV6ToV7(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  const v5 = parseV5Fields(value, parseLegacyCompatibleBoard, parseLegacyEncounterStep);
+  if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
+  return {
+    version: 7,
     ...v5,
     onboarding: cloneOnboarding(value.onboarding)
   };
@@ -210,7 +237,7 @@ function migrateV6ToV7(value: unknown): GameSaveV7 | null {
 
 function migrateV5ToV6(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const v5 = parseV5Fields(value, parseLegacyCompatibleBoard);
+  const v5 = parseV5Fields(value, parseLegacyCompatibleBoard, parseLegacyEncounterStep);
   if (!v5) return null;
   return {
     version: 6,
@@ -221,7 +248,7 @@ function migrateV5ToV6(value: unknown): Record<string, unknown> | null {
 
 function migrateV4ToV5(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const v4 = parseV4Fields(value, parseLegacyCompatibleBoard);
+  const v4 = parseV4Fields(value, parseLegacyCompatibleBoard, parseLegacyEncounterStep);
   if (!v4) return null;
   const collection = backfillCollectionProgress(
     v4.board,
@@ -235,7 +262,7 @@ function migrateV4ToV5(value: unknown): Record<string, unknown> | null {
 
 function migrateV3ToV4(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const common = parseCommonFields(value, parseLegacyCompatibleBoard);
+  const common = parseCommonFields(value, parseLegacyCompatibleBoard, parseLegacyEncounterStep);
   const upgrades = parseUpgrades(value.upgrades);
   if (!common || !upgrades || !isFiniteNumber(value.coreShards)) return null;
   return {
@@ -249,7 +276,7 @@ function migrateV3ToV4(value: unknown): Record<string, unknown> | null {
 
 function migrateV2ToV3(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const common = parseCommonFields(value, parseLegacyCompatibleBoard);
+  const common = parseCommonFields(value, parseLegacyCompatibleBoard, parseLegacyEncounterStep);
   if (!common) return null;
   return {
     version: 3,
@@ -282,15 +309,15 @@ function migrateV1ToV2(value: unknown): Record<string, unknown> | null {
   };
 }
 
-function parseV5Fields(value: Record<string, unknown>, boardParser: BoardParser): V5ProgressFields | null {
-  const v4 = parseV4Fields(value, boardParser);
+function parseV5Fields(value: Record<string, unknown>, boardParser: BoardParser, stepParser: StepParser): V5ProgressFields | null {
+  const v4 = parseV4Fields(value, boardParser, stepParser);
   const collection = parseCollection(value.collection);
   if (!v4 || !collection) return null;
   return { ...v4, collection };
 }
 
-function parseV4Fields(value: Record<string, unknown>, boardParser: BoardParser): V4ProgressFields | null {
-  const common = parseCommonFields(value, boardParser);
+function parseV4Fields(value: Record<string, unknown>, boardParser: BoardParser, stepParser: StepParser): V4ProgressFields | null {
+  const common = parseCommonFields(value, boardParser, stepParser);
   const upgrades = parseUpgrades(value.upgrades);
   const daily = parseDaily(value.daily);
   if (!common || !upgrades || !daily || !isFiniteNumber(value.coreShards)) return null;
@@ -302,11 +329,12 @@ function parseV4Fields(value: Record<string, unknown>, boardParser: BoardParser)
   };
 }
 
-function parseCommonFields(value: Record<string, unknown>, boardParser: BoardParser): CommonProgressFields | null {
+function parseCommonFields(value: Record<string, unknown>, boardParser: BoardParser, stepParser: StepParser): CommonProgressFields | null {
   const board = boardParser(value.board);
-  if (!board) return null;
+  const encounterStep = stepParser(value.encounterStep);
+  if (!board || encounterStep === null) return null;
   if (!isFiniteNumber(value.updatedAt) || !isFiniteNumber(value.coins) || !isFiniteNumber(value.baseHp)) return null;
-  if (!isFiniteNumber(value.chapter) || !isEncounterStep(value.encounterStep)) return null;
+  if (!isFiniteNumber(value.chapter)) return null;
   if (!isFiniteNumber(value.targetHpMax) || !isFiniteNumber(value.targetHp) || !isFiniteNumber(value.recruitSerial)) return null;
 
   const targetHpMax = Math.max(1, Math.floor(value.targetHpMax));
@@ -315,7 +343,7 @@ function parseCommonFields(value: Record<string, unknown>, boardParser: BoardPar
     coins: Math.max(0, Math.floor(value.coins)),
     baseHp: clamp(Math.floor(value.baseHp), 0, 100),
     chapter: Math.max(1, Math.floor(value.chapter)),
-    encounterStep: value.encounterStep,
+    encounterStep,
     targetHpMax,
     targetHp: clamp(Math.floor(value.targetHp), 0, targetHpMax),
     recruitSerial: Math.max(0, Math.floor(value.recruitSerial)),
@@ -444,8 +472,12 @@ function cloneBoard(board: BoardState): BoardState {
   return board.map((unit) => (unit ? { ...unit } : null));
 }
 
-function isEncounterStep(value: unknown): value is EncounterStep {
-  return value === 0 || value === 1 || value === 2 || value === 3;
+function parseLegacyEncounterStep(value: unknown): EncounterStep | null {
+  return value === 0 || value === 1 || value === 2 || value === 3 ? value : null;
+}
+
+function parseCurrentEncounterStep(value: unknown): EncounterStep | null {
+  return value === 0 || value === 1 || value === 2 || value === 3 || value === 4 || value === 5 ? value : null;
 }
 
 function isDayKey(value: unknown): value is string {
