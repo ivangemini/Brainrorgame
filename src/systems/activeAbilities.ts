@@ -106,6 +106,7 @@ const JACKPOT_MULTIPLIER = [1, 1.30, 1.50, 1.80] as const;
 let currentState = createActiveAbilityRuntimeState();
 let combatActive = false;
 let currentEncounterKey = '';
+let currentEnergyGainMultiplier = 1;
 
 export function createActiveAbilityRuntimeState(energy = 0): ActiveAbilityRuntimeState {
   return {
@@ -236,7 +237,8 @@ export function castActiveAbility(
   return { cast: true, state: next, effect, reason: null };
 }
 
-export function beginActiveAbilityEncounter(key: string): void {
+export function beginActiveAbilityEncounter(key: string, energyGainMultiplier = 1): void {
+  currentEnergyGainMultiplier = normalizeEnergyGainMultiplier(energyGainMultiplier);
   if (key === currentEncounterKey) return;
   currentEncounterKey = key;
   currentState = createActiveAbilityRuntimeState();
@@ -262,12 +264,14 @@ export function tickCurrentActiveAbilityRuntime(deltaMs: number): ActiveAbilityR
 
 export function recordCrewAttackEnergy(): void {
   if (!combatActive) return;
-  currentState = gainCombatEnergy(currentState, getCurrentChaosPerkMultipliers().energyGainMultiplier);
+  const perkMultiplier = getCurrentChaosPerkMultipliers().energyGainMultiplier;
+  currentState = gainCombatEnergy(currentState, perkMultiplier * currentEnergyGainMultiplier);
 }
 
 export function recordFortressHitEnergy(): void {
   if (!combatActive) return;
-  currentState = gainCombatEnergy(currentState, 4 * getCurrentChaosPerkMultipliers().energyGainMultiplier);
+  const perkMultiplier = getCurrentChaosPerkMultipliers().energyGainMultiplier;
+  currentState = gainCombatEnergy(currentState, 4 * perkMultiplier * currentEnergyGainMultiplier);
 }
 
 export function tryCastCurrentActiveAbility(
@@ -299,6 +303,7 @@ export function resetActiveAbilityRuntime(): void {
   currentState = createActiveAbilityRuntimeState();
   combatActive = false;
   currentEncounterKey = '';
+  currentEnergyGainMultiplier = 1;
 }
 
 function emptyCooldowns(): Record<ActiveAbilityId, number> {
@@ -313,4 +318,9 @@ function emptyCooldowns(): Record<ActiveAbilityId, number> {
 function clampEnergy(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(MAX_COMBAT_ENERGY, value));
+}
+
+function normalizeEnergyGainMultiplier(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  return value;
 }
