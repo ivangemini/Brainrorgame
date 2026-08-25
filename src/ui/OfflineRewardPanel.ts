@@ -149,12 +149,7 @@ export class OfflineRewardPanel {
     this.doubleButton.setAlpha(0.72);
     this.scene.tweens.add({ targets: this.doubleButton, scaleX: 0.96, scaleY: 0.95, duration: 80, yoyo: true, ease: 'Quad.Out' });
 
-    let doubled = false;
-    try {
-      doubled = await this.onDouble(reward);
-    } catch {
-      doubled = false;
-    }
+    const doubled = await this.onDouble(reward).catch(() => false);
     if (!this.opened) return;
 
     this.doubleInFlight = false;
