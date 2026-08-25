@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { getEnemyForWave, scaleEnemy } from '../content/enemies';
+import { clearBossPhaseRuntime, syncBossPhaseRuntime } from './bossPhases';
 import { BOSS_STEP, GAUNTLET_STEP, WAVES_PER_CHAPTER, getEncounterSpec, nextEncounter } from './encounters';
+
+afterEach(() => clearBossPhaseRuntime());
 
 describe('encounter progression', () => {
   it('runs five waves before the boss', () => {
@@ -103,5 +106,15 @@ describe('encounter progression', () => {
     if (first.kind === 'boss' && fourth.kind === 'boss') {
       expect(first.presentation.telegraphStyle).not.toBe(fourth.presentation.telegraphStyle);
     }
+  });
+
+  it('changes live boss attack cadence and damage when HP enters enrage', () => {
+    const boss = getEncounterSpec(1, BOSS_STEP);
+    if (boss.kind !== 'boss') throw new Error('Expected boss');
+    const baselineAttack = boss.attackMs;
+    const baselineDamage = boss.damage;
+    syncBossPhaseRuntime(boss.phases, 300, 1000);
+    expect(boss.attackMs).toBeLessThan(baselineAttack);
+    expect(boss.damage).toBeGreaterThan(baselineDamage);
   });
 });

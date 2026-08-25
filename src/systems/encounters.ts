@@ -1,4 +1,4 @@
-import { getBossForChapter, scaleBoss, type BossPresentation } from '../content/bosses';
+import { getBossForChapter, scaleBoss, type BossPhaseProfile, type BossPresentation } from '../content/bosses';
 import {
   applyChapterMutator,
   getChapterMutator,
@@ -11,6 +11,10 @@ import {
 } from '../content/eliteModifiers';
 import { getEnemyForWave, scaleEnemy, type EnemyWaveNumber } from '../content/enemies';
 import { beginActiveAbilityEncounter } from './activeAbilities';
+import {
+  currentBossAttackIntervalMultiplier,
+  currentBossOutgoingDamageMultiplier
+} from './bossPhases';
 
 export const WAVES_PER_CHAPTER = 5 as const;
 export const GAUNTLET_STEP = 4 as const;
@@ -41,6 +45,7 @@ export interface WaveEncounterSpec extends EncounterSpecBase {
 export interface BossEncounterSpec extends EncounterSpecBase {
   readonly kind: 'boss';
   readonly presentation: BossPresentation;
+  readonly phases: BossPhaseProfile;
 }
 
 export type EncounterSpec = WaveEncounterSpec | BossEncounterSpec;
@@ -84,13 +89,18 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
       name: boss.name,
       texture: boss.texture,
       hp: scaled.hp,
-      damage: scaled.damage,
-      attackMs: scaled.attackMs,
+      get damage(): number {
+        return Math.max(1, Math.round(scaled.damage * currentBossOutgoingDamageMultiplier()));
+      },
+      get attackMs(): number {
+        return Math.max(1200, Math.round(scaled.attackMs * currentBossAttackIntervalMultiplier()));
+      },
       reward: scaled.reward,
       accentColor: boss.accentColor,
       projectileColor: boss.projectileColor,
       displaySize: boss.displaySize,
       presentation: boss.presentation,
+      phases: boss.phases,
       mutator
     };
   }
