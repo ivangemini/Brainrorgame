@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createPlatformAdapter, shouldUseCrazyGames } from './createPlatformAdapter';
+import { createPlatformAdapter, shouldUseCrazyGames, shouldUsePoki } from './createPlatformAdapter';
+import type { PokiSdkLike } from './PokiAdapter';
 import type { YandexGamesLoaderLike } from './YandexAdapter';
 
 describe('platform selection', () => {
@@ -10,24 +11,40 @@ describe('platform selection', () => {
     expect(shouldUseCrazyGames('example.com', '')).toBe(false);
   });
 
-  it('supports an explicit CrazyGames query hint for localhost QA', () => {
+  it('supports explicit portal query hints for localhost QA', () => {
     expect(shouldUseCrazyGames('localhost', '?platform=crazygames')).toBe(true);
-    expect(shouldUseCrazyGames('127.0.0.1', '?foo=1&platform=CRAZYGAMES')).toBe(true);
+    expect(shouldUseCrazyGames('games.crazygames.com', '?platform=poki')).toBe(false);
+    expect(shouldUsePoki('localhost', '?foo=1&platform=POKI')).toBe(true);
+    expect(shouldUsePoki('poki.com', '?platform=crazygames')).toBe(false);
   });
 
-  it('keeps Yandex SDK detection ahead of hostname hints', () => {
+  it('detects Poki from host or embedding referrer', () => {
+    expect(shouldUsePoki('poki.com', '')).toBe(true);
+    expect(shouldUsePoki('game.poki.com', '')).toBe(true);
+    expect(shouldUsePoki('cdn.example.com', '', 'https://poki.com/en/g/brainror-game')).toBe(true);
+    expect(shouldUsePoki('example.com', '', 'https://example.org/page')).toBe(false);
+  });
+
+  it('keeps Yandex SDK detection ahead of portal hints', () => {
     const yandex = { init: async () => { throw new Error('not called'); } } as YandexGamesLoaderLike;
     const adapter = createPlatformAdapter({
       globalScope: { YaGames: yandex },
       hostname: 'games.crazygames.com',
-      search: '?platform=crazygames'
+      search: '?platform=poki',
+      referrer: 'https://poki.com/en/g/test'
     });
     expect(adapter.id).toBe('yandex');
   });
 
-  it('selects CrazyGames when requested and web otherwise', () => {
-    expect(createPlatformAdapter({ globalScope: {}, hostname: 'games.crazygames.com', search: '' }).id).toBe('crazygames');
-    expect(createPlatformAdapter({ globalScope: {}, hostname: 'localhost', search: '?platform=crazygames' }).id).toBe('crazygames');
-    expect(createPlatformAdapter({ globalScope: {}, hostname: 'example.com', search: '' }).id).toBe('web');
+  it('selects CrazyGames, Poki and Web through the same factory', () => {
+    expect(createPlatformAdapter({ globalScope: {}, hostname: 'games.crazygames.com', search: '', referrer: '' }).id).toBe('crazygames');
+    expect(createPlatformAdapter({ globalScope: {}, hostname: 'localhost', search: '?platform=poki', referrer: '' }).id).toBe('poki');
+    expect(createPlatformAdapter({ globalScope: {}, hostname: 'cdn.example.com', search: '', referrer: 'https://poki.com/en/g/test' }).id).toBe('poki');
+    expect(createPlatformAdapter({ globalScope: {}, hostname: 'example.com', search: '', referrer: '' }).id).toBe('web');
+  });
+
+  it('selects Poki when an inspector/page already injected PokiSDK', () => {
+    const poki = {} as PokiSdkLike;
+    expect(createPlatformAdapter({ globalScope: { PokiSDK: poki }, hostname: 'localhost', search: '', referrer: '' }).id).toBe('poki');
   });
 });
