@@ -26,6 +26,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - 20–30 creatures.
 - 4–6 bosses.
 - Mutations/rarity.
+- Max-tier ascension / long-session merge sink.
+- Elite wave encounter variants.
 - Daily reward and missions.
 - Offline progression where appropriate.
 - Rewarded + interstitial integration behind adapter.
@@ -60,9 +62,13 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 
 - [x] Immediate merge board with two starter pairs
 - [x] Drag / move / swap / merge interaction
+- [x] T3 ascension merge: identical max-tier twins promote mutation rarity instead of dead-ending
+- [x] Safe ascension ceiling: incompatible / Legendary T3 pairs are never consumed
 - [x] Twelve original creature designs across four three-tier families
 - [x] Four original bosses and arena art
 - [x] Six original normal-wave enemies with rotating chapter order and distinct pacing profiles
+- [x] Deterministic elite waves from chapter 3 with Berserk / Bulwark / Siege combat identities
+- [x] Elite-specific pressure/reward scaling, badges and telegraph choreography
 - [x] Three-wave -> boss encounter loop
 - [x] Real-time auto combat for waves and boss
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop

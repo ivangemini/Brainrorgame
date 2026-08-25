@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ascendMutationPair,
   getAllMutationDefinitions,
   mergeMutation,
   mutatedAttackMs,
@@ -32,6 +33,14 @@ describe('mutations and rarity', () => {
     expect(mergeMutation('crowned', 'crowned')).toBe('crowned');
     expect(mergeMutation('none', 'prismatic')).toBe('prismatic');
     expect(mergeMutation('charged', 'crowned')).toBe('crowned');
+  });
+
+  it('provides a strict max-tier ascension ladder only for matching rarity pairs', () => {
+    expect(ascendMutationPair('none', 'none')).toBe('charged');
+    expect(ascendMutationPair('charged', 'charged')).toBe('prismatic');
+    expect(ascendMutationPair('prismatic', 'prismatic')).toBe('crowned');
+    expect(ascendMutationPair('crowned', 'crowned')).toBeNull();
+    expect(ascendMutationPair('none', 'charged')).toBeNull();
   });
 
   it('applies bounded combat bonuses', () => {

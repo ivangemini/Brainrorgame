@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
+import type { EliteModifierId } from '../content/eliteModifiers';
 import type { GameFx } from '../presentation/GameFx';
-import type { EncounterSpec } from '../systems/encounters';
+import type { WaveEncounterSpec } from '../systems/encounters';
 
 export class EnemyView {
   private title!: Phaser.GameObjects.Text;
@@ -11,6 +12,7 @@ export class EnemyView {
   private hpText!: Phaser.GameObjects.Text;
   private accentColor = 0x78e8ff;
   private displaySize = 410;
+  private eliteId: EliteModifierId | null = null;
 
   public constructor(private readonly scene: Phaser.Scene, private readonly fx: GameFx) {}
 
@@ -43,12 +45,22 @@ export class EnemyView {
     this.hide();
   }
 
-  public show(spec: EncounterSpec, waveNumber: number): void {
+  public show(spec: WaveEncounterSpec, waveNumber: number): void {
     this.scene.tweens.killTweensOf(this.enemy);
-    this.accentColor = spec.accentColor;
+    this.eliteId = spec.elite?.id ?? null;
+    this.accentColor = spec.elite?.accentColor ?? spec.accentColor;
     this.displaySize = spec.displaySize;
-    this.title.setText(spec.name.toUpperCase()).setVisible(true).setAlpha(1);
-    this.waveBadge.setText(`WAVE ${waveNumber} / 3`).setVisible(true).setAlpha(1);
+    this.title
+      .setText(spec.name.toUpperCase())
+      .setColor(spec.elite ? this.cssColor(spec.elite.accentColor) : '#f7fbff')
+      .setVisible(true)
+      .setAlpha(1);
+    this.waveBadge
+      .setText(spec.elite ? `ELITE • ${spec.elite.name}` : `WAVE ${waveNumber} / 3`)
+      .setColor(spec.elite ? '#fffaf0' : '#b9c9ff')
+      .setBackgroundColor(spec.elite ? `${this.cssColor(spec.elite.accentColor)}cc` : '#182342cc')
+      .setVisible(true)
+      .setAlpha(1);
     this.shadow.setVisible(true).setAlpha(1);
     this.enemy
       .setTexture(spec.texture)
@@ -67,23 +79,32 @@ export class EnemyView {
       targets: this.enemy,
       scaleX: targetScaleX,
       scaleY: targetScaleY,
-      duration: 330,
+      duration: spec.elite ? 390 : 330,
       ease: 'Back.Out',
       onComplete: () => {
         this.scene.tweens.add({
           targets: this.enemy,
           y: 588,
-          duration: 1050 + Phaser.Math.Between(0, 220),
+          duration: spec.elite ? 820 + Phaser.Math.Between(0, 150) : 1050 + Phaser.Math.Between(0, 220),
           yoyo: true,
           repeat: -1,
           ease: 'Sine.InOut'
         });
       }
     });
+
+    if (spec.elite) {
+      this.scene.time.delayedCall(80, () => {
+        if (!this.enemy.visible) return;
+        this.fx.flashRing(540, 575, spec.elite?.accentColor ?? this.accentColor);
+        this.fx.burst(540, 575, spec.elite?.accentColor ?? this.accentColor, 12, 150);
+      });
+    }
   }
 
   public hide(): void {
     if (this.enemy) this.scene.tweens.killTweensOf(this.enemy);
+    this.eliteId = null;
     this.title?.setVisible(false);
     this.waveBadge?.setVisible(false);
     this.shadow?.setVisible(false);
@@ -122,22 +143,25 @@ export class EnemyView {
   }
 
   public telegraph(onImpact: () => void): void {
-    const ring = this.scene.add.circle(this.enemy.x, this.enemy.y + 20, 86, this.accentColor, 0.07)
-      .setStrokeStyle(9, this.accentColor, 0.78)
-      .setDepth(700)
-      .setScale(0.6);
-    this.scene.tweens.add({ targets: ring, scaleX: 1.9, scaleY: 1.9, alpha: 0.1, duration: 520, ease: 'Cubic.Out' });
-    this.scene.tweens.add({ targets: this.enemy, y: this.enemy.y - 20, scaleX: this.enemy.scaleX * 1.04, scaleY: this.enemy.scaleY * 0.96, duration: 250, ease: 'Back.Out' });
-    this.scene.time.delayedCall(540, () => {
-      ring.destroy();
-      onImpact();
-      this.scene.tweens.add({ targets: this.enemy, y: 575, angle: 0, duration: 220, ease: 'Back.Out' });
-    });
+    this.scene.tweens.killTweensOf(this.enemy);
+    if (this.eliteId === 'berserk') {
+      this.telegraphBerserk(onImpact);
+      return;
+    }
+    if (this.eliteId === 'bulwark') {
+      this.telegraphBulwark(onImpact);
+      return;
+    }
+    if (this.eliteId === 'siege') {
+      this.telegraphSiege(onImpact);
+      return;
+    }
+    this.telegraphStandard(onImpact);
   }
 
   public defeat(reward: number, onComplete: () => void): void {
     this.scene.tweens.killTweensOf(this.enemy);
-    const banner = this.scene.add.text(540, 420, 'WAVE CRUSHED!', {
+    const banner = this.scene.add.text(540, 420, this.eliteId ? 'ELITE CRUSHED!' : 'WAVE CRUSHED!', {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '55px',
       color: '#fff5a8',
@@ -174,5 +198,78 @@ export class EnemyView {
   public reset(): void {
     this.scene.tweens.killTweensOf(this.enemy);
     this.enemy.setPosition(540, 575).setAngle(0).setAlpha(1).setDisplaySize(this.displaySize, this.displaySize);
+  }
+
+  private telegraphStandard(onImpact: () => void): void {
+    const ring = this.scene.add.circle(this.enemy.x, this.enemy.y + 20, 86, this.accentColor, 0.07)
+      .setStrokeStyle(9, this.accentColor, 0.78)
+      .setDepth(700)
+      .setScale(0.6);
+    this.scene.tweens.add({ targets: ring, scaleX: 1.9, scaleY: 1.9, alpha: 0.1, duration: 520, ease: 'Cubic.Out' });
+    this.scene.tweens.add({ targets: this.enemy, y: this.enemy.y - 20, scaleX: this.enemy.scaleX * 1.04, scaleY: this.enemy.scaleY * 0.96, duration: 250, ease: 'Back.Out' });
+    this.scene.time.delayedCall(540, () => {
+      ring.destroy();
+      onImpact();
+      this.recover();
+    });
+  }
+
+  private telegraphBerserk(onImpact: () => void): void {
+    const first = this.scene.add.circle(this.enemy.x, this.enemy.y + 10, 70, this.accentColor, 0.08)
+      .setStrokeStyle(10, this.accentColor, 0.88).setDepth(700).setScale(0.45);
+    const second = this.scene.add.circle(this.enemy.x, this.enemy.y + 10, 70, 0xfff0aa, 0.04)
+      .setStrokeStyle(6, 0xfff0aa, 0.75).setDepth(701).setScale(0.35);
+    this.scene.tweens.add({ targets: first, scaleX: 2.05, scaleY: 2.05, alpha: 0.05, duration: 360, ease: 'Cubic.Out' });
+    this.scene.tweens.add({ targets: second, scaleX: 1.75, scaleY: 1.75, alpha: 0.04, duration: 270, delay: 95, ease: 'Cubic.Out' });
+    this.scene.tweens.add({ targets: this.enemy, y: this.enemy.y - 34, angle: -4, scaleX: this.enemy.scaleX * 1.06, duration: 190, yoyo: true, ease: 'Back.Out' });
+    this.scene.time.delayedCall(405, () => {
+      first.destroy();
+      second.destroy();
+      onImpact();
+      this.recover(180);
+    });
+  }
+
+  private telegraphBulwark(onImpact: () => void): void {
+    const outer = this.scene.add.circle(this.enemy.x, this.enemy.y + 10, 170, this.accentColor, 0.035)
+      .setStrokeStyle(14, this.accentColor, 0.72).setDepth(700).setScale(1.35);
+    const inner = this.scene.add.circle(this.enemy.x, this.enemy.y + 10, 118, 0xffffff, 0.02)
+      .setStrokeStyle(5, 0xffffff, 0.42).setDepth(701).setScale(1.45);
+    this.scene.tweens.add({ targets: [outer, inner], scaleX: 0.72, scaleY: 0.72, alpha: 0.48, duration: 610, ease: 'Cubic.In' });
+    this.scene.tweens.add({ targets: this.enemy, scaleX: this.enemy.scaleX * 0.96, scaleY: this.enemy.scaleY * 1.05, duration: 300, yoyo: true, ease: 'Sine.InOut' });
+    this.scene.time.delayedCall(630, () => {
+      outer.destroy();
+      inner.destroy();
+      onImpact();
+      this.recover(250);
+    });
+  }
+
+  private telegraphSiege(onImpact: () => void): void {
+    const left = this.scene.add.rectangle(410, 610, 38, 330, this.accentColor, 0.12)
+      .setStrokeStyle(7, this.accentColor, 0.82).setDepth(700).setScale(1, 0.12);
+    const right = this.scene.add.rectangle(670, 610, 38, 330, this.accentColor, 0.12)
+      .setStrokeStyle(7, this.accentColor, 0.82).setDepth(700).setScale(1, 0.12);
+    const center = this.scene.add.rectangle(540, 630, 62, 380, 0xfff0b0, 0.08)
+      .setStrokeStyle(5, 0xfff0b0, 0.62).setDepth(701).setScale(1, 0.08);
+    this.scene.tweens.add({ targets: [left, right, center], scaleY: 1, alpha: 0.55, duration: 560, ease: 'Cubic.Out' });
+    this.scene.tweens.add({ targets: left, x: 482, duration: 590, ease: 'Sine.In' });
+    this.scene.tweens.add({ targets: right, x: 598, duration: 590, ease: 'Sine.In' });
+    this.scene.tweens.add({ targets: this.enemy, y: this.enemy.y - 18, scaleX: this.enemy.scaleX * 1.05, scaleY: this.enemy.scaleY * 0.95, duration: 290, yoyo: true, ease: 'Back.Out' });
+    this.scene.time.delayedCall(620, () => {
+      left.destroy();
+      right.destroy();
+      center.destroy();
+      onImpact();
+      this.recover(250);
+    });
+  }
+
+  private recover(duration = 220): void {
+    this.scene.tweens.add({ targets: this.enemy, y: 575, angle: 0, duration, ease: 'Back.Out' });
+  }
+
+  private cssColor(color: number): string {
+    return `#${color.toString(16).padStart(6, '0')}`;
   }
 }

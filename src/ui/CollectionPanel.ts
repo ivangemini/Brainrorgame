@@ -55,11 +55,14 @@ export class CollectionPanel {
       this.createRarityPill(55, -519, 'prismatic', 152),
       this.createRarityPill(258, -519, 'crowned', 190)
     ]);
-    const achievementLabel = this.scene.add.text(-420, 63, 'ACHIEVEMENTS', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#ffd984' });
+    const ascensionNote = this.scene.add.text(0, 53, 'T3 TWINS • SAME RARITY → ASCEND', {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: '#bfefff', stroke: '#171a37', strokeThickness: 4
+    }).setOrigin(0.5);
+    const achievementLabel = this.scene.add.text(-420, 89, 'ACHIEVEMENTS', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#ffd984' });
 
     this.cardsRoot = this.scene.add.container(0, 0);
     this.achievementsRoot = this.scene.add.container(0, 0);
-    this.root = this.scene.add.container(540, 960, [blocker, panel, icon, title, this.titleCount, closeBg, close, closeHit, collectionLabel, rarityLegend, achievementLabel, this.cardsRoot, this.achievementsRoot]).setDepth(1850).setVisible(false);
+    this.root = this.scene.add.container(540, 960, [blocker, panel, icon, title, this.titleCount, closeBg, close, closeHit, collectionLabel, rarityLegend, ascensionNote, achievementLabel, this.cardsRoot, this.achievementsRoot]).setDepth(1850).setVisible(false);
   }
 
   public update(progress: CollectionProgress): void {
@@ -130,7 +133,7 @@ export class CollectionPanel {
     this.achievementsRoot.removeAll(true);
     ACHIEVEMENTS.forEach((achievement, index) => {
       const status = achievementProgress(progress, achievement.id);
-      const y = 132 + index * 88;
+      const y = 156 + index * 88;
       const row = this.scene.add.graphics();
       row.fillStyle(status.claimed ? 0x1a2940 : status.ready ? 0x392c56 : 0x1d2140, 0.98);
       row.fillRoundedRect(-412, -35, 824, 70, 22);
