@@ -1,4 +1,9 @@
 import { getBossForChapter, scaleBoss, type BossPresentation } from '../content/bosses';
+import {
+  applyEliteModifier,
+  getEliteModifierForWave,
+  type EliteModifierDefinition
+} from '../content/eliteModifiers';
 import { getEnemyForWave, scaleEnemy } from '../content/enemies';
 
 export const WAVES_PER_CHAPTER = 3 as const;
@@ -20,6 +25,7 @@ interface EncounterSpecBase {
 
 export interface WaveEncounterSpec extends EncounterSpecBase {
   readonly kind: 'wave';
+  readonly elite: EliteModifierDefinition | null;
 }
 
 export interface BossEncounterSpec extends EncounterSpecBase {
@@ -61,7 +67,9 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
 
   const waveNumber = (step + 1) as 1 | 2 | 3;
   const enemy = getEnemyForWave(safeChapter, waveNumber);
-  const scaled = scaleEnemy(enemy, safeChapter);
+  const base = scaleEnemy(enemy, safeChapter);
+  const elite = getEliteModifierForWave(safeChapter, waveNumber);
+  const scaled = elite ? applyEliteModifier(base, elite) : { ...base, displayScale: 1 };
   return {
     kind: 'wave',
     id: enemy.id,
@@ -71,9 +79,10 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
     damage: scaled.damage,
     attackMs: scaled.attackMs,
     reward: scaled.reward,
-    accentColor: enemy.accentColor,
-    projectileColor: enemy.projectileColor,
-    displaySize: enemy.displaySize
+    accentColor: elite?.accentColor ?? enemy.accentColor,
+    projectileColor: elite?.projectileColor ?? enemy.projectileColor,
+    displaySize: Math.round(enemy.displaySize * scaled.displayScale),
+    elite
   };
 }
 
