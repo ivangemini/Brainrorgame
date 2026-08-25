@@ -18,8 +18,12 @@ import {
   tickCurrentActiveAbilityRuntime,
   tryCastCurrentActiveAbility
 } from './activeAbilities';
+import { resetCurrentChaosPerks, syncCurrentChaosPerks } from './chaosDraft';
 
-afterEach(() => resetActiveAbilityRuntime());
+afterEach(() => {
+  resetActiveAbilityRuntime();
+  resetCurrentChaosPerks();
+});
 
 describe('active combat abilities', () => {
   it('caps shared combat energy and gains charge from combat events', () => {
@@ -32,6 +36,15 @@ describe('active combat abilities', () => {
     recordCrewAttackEnergy();
     recordFortressHitEnergy();
     expect(getCurrentActiveAbilityRuntime().energy).toBe(6);
+  });
+
+  it('preserves fractional capacitor gains so four crew hits produce five energy', () => {
+    syncCurrentChaosPerks(['chaos-capacitor']);
+    beginActiveAbilityEncounter('capacitor-wave');
+    for (let index = 0; index < 4; index += 1) recordCrewAttackEnergy();
+    expect(getCurrentActiveAbilityRuntime().energy).toBe(5);
+    recordFortressHitEnergy();
+    expect(getCurrentActiveAbilityRuntime().energy).toBe(10);
   });
 
   it('requires matching family synergy, an active target and enough energy', () => {
