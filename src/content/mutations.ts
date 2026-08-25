@@ -95,6 +95,14 @@ export function mergeMutation(a: MutationId, b: MutationId): MutationId {
   return first.rank >= second.rank ? first.id : second.id;
 }
 
+export function ascendMutationPair(a: MutationId, b: MutationId): MutationId | null {
+  if (a !== b) return null;
+  if (a === 'none') return 'charged';
+  if (a === 'charged') return 'prismatic';
+  if (a === 'prismatic') return 'crowned';
+  return null;
+}
+
 export function mutatedDamage(baseDamage: number, mutation: MutationId): number {
   return Math.max(1, Math.round(baseDamage * getMutationDefinition(mutation).damageMultiplier));
 }
