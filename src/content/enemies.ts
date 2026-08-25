@@ -6,6 +6,8 @@ export type EnemyId =
   | 'vacuum-capybara'
   | 'cactus-tv-crab';
 
+export type EnemyWaveNumber = 1 | 2 | 3 | 4 | 5;
+
 export interface EnemyDefinition {
   readonly id: EnemyId;
   readonly name: string;
@@ -133,7 +135,7 @@ export function getAllEnemies(): readonly EnemyDefinition[] {
   return ENEMIES;
 }
 
-export function getEnemyForWave(chapter: number, waveNumber: 1 | 2 | 3): EnemyDefinition {
+export function getEnemyForWave(chapter: number, waveNumber: EnemyWaveNumber): EnemyDefinition {
   const safeChapter = Math.max(1, Math.floor(chapter));
   const offset = (safeChapter - 1 + waveNumber - 1) % ENEMIES.length;
   const enemy = ENEMIES[offset];
