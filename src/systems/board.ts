@@ -1,5 +1,10 @@
 import type { CreatureFamily } from '../content/creatures';
-import { getMutationDefinition, mergeMutation, type MutationId } from '../content/mutations';
+import {
+  ascendMutationPair,
+  getMutationDefinition,
+  mergeMutation,
+  type MutationId
+} from '../content/mutations';
 
 export interface BoardUnit {
   readonly id: string;
@@ -14,6 +19,7 @@ export interface BoardActionResult {
   readonly action: 'move' | 'merge' | 'swap' | 'noop';
   readonly upgraded?: BoardUnit;
   readonly mutationPromoted?: boolean;
+  readonly ascended?: boolean;
 }
 
 export function createStarterBoard(size = 12): BoardState {
@@ -71,8 +77,30 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
       board: next,
       action: 'merge',
       upgraded,
-      mutationPromoted: getMutationDefinition(mutation).rank > previousRank
+      mutationPromoted: getMutationDefinition(mutation).rank > previousRank,
+      ascended: false
     };
+  }
+
+  if (source.family === target.family && source.level === 3 && target.level === 3) {
+    const mutation = ascendMutationPair(source.mutation, target.mutation);
+    if (mutation) {
+      const upgraded: BoardUnit = {
+        id: `ascended-${source.family}-${mutation}-${source.id}-${target.id}`,
+        family: source.family,
+        level: 3,
+        mutation
+      };
+      next[from] = null;
+      next[to] = upgraded;
+      return {
+        board: next,
+        action: 'merge',
+        upgraded,
+        mutationPromoted: true,
+        ascended: true
+      };
+    }
   }
 
   next[from] = target;
