@@ -79,10 +79,13 @@ describe('meta progression', () => {
     expect(coinRewardMultiplier({ power: 0, armor: 0, bounty: 4 })).toBeCloseTo(2.9736);
   });
 
-  it('accelerates core rewards every five chapters with a cap', () => {
+  it('accelerates normal core rewards while layering authored world-finale bonuses', () => {
     expect(bossCoreReward(1)).toBe(1);
-    expect(bossCoreReward(5)).toBe(1);
+    expect(bossCoreReward(5)).toBe(3);
     expect(bossCoreReward(6)).toBe(2);
+    expect(bossCoreReward(10)).toBe(5);
+    expect(bossCoreReward(15)).toBe(8);
+    expect(bossCoreReward(16)).toBe(4);
     expect(bossCoreReward(26)).toBe(6);
     expect(bossCoreReward(100)).toBe(8);
   });

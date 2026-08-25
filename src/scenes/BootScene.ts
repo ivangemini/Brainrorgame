@@ -3,6 +3,7 @@ import { getAllBosses } from '../content/bosses';
 import { getAllCreatures } from '../content/creatures';
 import { getAllEnemies } from '../content/enemies';
 import { getMutationOverlayDefinitions } from '../content/mutations';
+import { getAllWorlds } from '../content/worlds';
 
 export class BootScene extends Phaser.Scene {
   public constructor() {
@@ -29,7 +30,9 @@ export class BootScene extends Phaser.Scene {
       title.setScale(1 + progress * 0.025);
     });
 
-    this.load.svg('bg-candy-crater', 'assets/backgrounds/candy-crater.svg', { width: 1080, height: 1920 });
+    for (const world of getAllWorlds()) {
+      this.load.svg(world.texture, world.assetPath, { width: 1080, height: 1920 });
+    }
     for (const creature of getAllCreatures()) {
       this.load.svg(creature.texture, creature.assetPath, { width: 512, height: 512 });
     }

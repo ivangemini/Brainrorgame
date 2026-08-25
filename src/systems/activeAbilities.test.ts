@@ -47,6 +47,15 @@ describe('active combat abilities', () => {
     expect(getCurrentActiveAbilityRuntime().energy).toBe(10);
   });
 
+  it('stacks biome energy pacing with Chaos Draft energy gain', () => {
+    syncCurrentChaosPerks(['chaos-capacitor']);
+    beginActiveAbilityEncounter('neon-wave', 1.18);
+    for (let index = 0; index < 4; index += 1) recordCrewAttackEnergy();
+    expect(getCurrentActiveAbilityRuntime().energy).toBeCloseTo(5.9);
+    recordFortressHitEnergy();
+    expect(getCurrentActiveAbilityRuntime().energy).toBeCloseTo(11.8);
+  });
+
   it('requires matching family synergy, an active target and enough energy', () => {
     const state = createActiveAbilityRuntimeState(100);
     expect(canCastActiveAbility('slipstream-burst', state, 0, true)).toBe('locked');

@@ -10,6 +10,12 @@ import {
   type EliteModifierDefinition
 } from '../content/eliteModifiers';
 import { getEnemyForWave, scaleEnemy, type EnemyWaveNumber } from '../content/enemies';
+import {
+  applyWorldPressure,
+  getWorldEnergyGainMultiplier,
+  getWorldForChapter,
+  isWorldFinalChapter
+} from '../content/worlds';
 import { beginActiveAbilityEncounter } from './activeAbilities';
 import {
   currentBossAttackIntervalMultiplier,
@@ -79,10 +85,15 @@ export function isBossStep(step: EncounterStep): boolean {
 export function getEncounterSpec(chapter: number, step: EncounterStep): EncounterSpec {
   const safeChapter = Math.max(1, Math.floor(chapter));
   const mutator = getChapterMutator(safeChapter);
+  const energyGainMultiplier = getWorldEnergyGainMultiplier(safeChapter);
   if (step === BOSS_STEP) {
-    beginActiveAbilityEncounter(`chapter:${safeChapter}:boss`);
+    beginActiveAbilityEncounter(`chapter:${safeChapter}:boss`, energyGainMultiplier);
     const boss = getBossForChapter(safeChapter);
-    const scaled = applyChapterMutator(scaleBoss(boss, safeChapter), mutator);
+    const mutated = applyChapterMutator(scaleBoss(boss, safeChapter), mutator);
+    const scaled = applyWorldPressure(mutated, safeChapter, 1200);
+    const worldBonus = isWorldFinalChapter(safeChapter)
+      ? getWorldForChapter(safeChapter).completionCoins
+      : 0;
     return {
       kind: 'boss',
       id: boss.id,
@@ -95,7 +106,7 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
       get attackMs(): number {
         return Math.max(1200, Math.round(scaled.attackMs * currentBossAttackIntervalMultiplier()));
       },
-      reward: scaled.reward,
+      reward: scaled.reward + worldBonus,
       accentColor: boss.accentColor,
       projectileColor: boss.projectileColor,
       displaySize: boss.displaySize,
@@ -106,7 +117,7 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
   }
 
   const waveNumber = (step + 1) as EnemyWaveNumber;
-  beginActiveAbilityEncounter(`chapter:${safeChapter}:wave:${waveNumber}`);
+  beginActiveAbilityEncounter(`chapter:${safeChapter}:wave:${waveNumber}`, energyGainMultiplier);
   const enemy = getEnemyForWave(safeChapter, waveNumber);
   const base = scaleEnemy(enemy, safeChapter);
   const elite = waveNumber <= 3
@@ -122,15 +133,16 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
     reward: Math.max(1, Math.round(eliteScaled.reward * pressure.reward))
   };
   const mutated = applyChapterMutator(pressured, mutator);
+  const scaled = applyWorldPressure(mutated, safeChapter, 1450);
   return {
     kind: 'wave',
     id: enemy.id,
     name: gauntlet ? `Chaos Gate ${enemy.name}` : enemy.name,
     texture: enemy.texture,
-    hp: mutated.hp,
-    damage: mutated.damage,
-    attackMs: mutated.attackMs,
-    reward: mutated.reward,
+    hp: scaled.hp,
+    damage: scaled.damage,
+    attackMs: scaled.attackMs,
+    reward: scaled.reward,
     accentColor: elite?.accentColor ?? enemy.accentColor,
     projectileColor: elite?.projectileColor ?? enemy.projectileColor,
     displaySize: Math.round(enemy.displaySize * eliteScaled.displayScale * pressure.display),

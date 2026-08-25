@@ -1,3 +1,4 @@
+import { getWorldForChapter, isWorldFinalChapter } from '../content/worlds';
 import {
   currentActiveGuardMultiplier,
   currentActiveRewardMultiplier,
@@ -108,7 +109,10 @@ export function coinRewardMultiplier(levels: MetaUpgradeLevels): number {
 }
 
 export function bossCoreReward(chapter: number): number {
-  return Math.min(8, 1 + Math.floor((Math.max(1, chapter) - 1) / 5));
+  const safeChapter = Math.max(1, Math.floor(chapter));
+  const baseReward = Math.min(8, 1 + Math.floor((safeChapter - 1) / 5));
+  if (!isWorldFinalChapter(safeChapter)) return baseReward;
+  return baseReward + getWorldForChapter(safeChapter).completionCoreShards;
 }
 
 export function effectValueText(id: MetaUpgradeId, level: number): string {

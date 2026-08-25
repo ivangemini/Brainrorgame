@@ -69,6 +69,10 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Elite-specific pressure/reward scaling, badges and telegraph choreography
 - [x] Five-wave -> boss encounter loop
 - [x] Wave 4 pressure ramp + guaranteed Wave 5 Chaos Gate before every boss
+- [x] Three-world progression: Candy Crater -> Neon Sewer -> Appliance Wasteland
+- [x] Five authored chapters per world with endless Appliance Wasteland after Chapter 15
+- [x] Distinct biome combat/economy/Chaos Energy rules and original background art
+- [x] World-finale coin/Core Shard rewards and animated world transition HUD
 - [x] Real-time auto combat for waves and boss
 - [x] Enemy/boss telegraphs, fortress pressure and defeat loop
 - [x] Data-driven rotating boss roster with distinct idle, telegraph and defeat choreography
