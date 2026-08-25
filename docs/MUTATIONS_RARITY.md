@@ -17,7 +17,7 @@ The direct-roll weighted average is about **1.040x baseline DPS**, so rarity add
 
 ## Merge inheritance
 
-A normal merge still requires matching family + creature level and a level below T3.
+A normal merge requires matching family + creature level below T3.
 
 - Common + Common -> Common.
 - Matching Charged + Charged -> Prismatic.
@@ -28,6 +28,20 @@ A normal merge still requires matching family + creature level and a level below
 
 This makes rarity useful even when a rare recruit is paired with a common duplicate and creates a long-tail target for assembling promoted mutations.
 
+## T3 ascension
+
+T3 is no longer a dead-end board state. Two T3 units can perform an **ascension merge** when family and mutation are both identical.
+
+- Stable T3 + Stable T3 -> Charged T3.
+- Charged T3 + Charged T3 -> Prismatic T3.
+- Prismatic T3 + Prismatic T3 -> Crowned T3.
+- Crowned T3 is the ceiling and cannot be consumed by another ascension.
+- T3 units with different mutation IDs do not merge, preventing accidental loss of a valuable unit.
+
+Ascension consumes one board slot exactly like a normal merge but keeps creature level at T3 and promotes rarity. It reuses the existing mutation combat modifiers, overlay art, merge animation and rarity reveal, so no new save field or migration is required.
+
+The rule creates an endless-board pressure release and a deterministic route toward Legendary that complements the 0.5% direct recruit jackpot instead of replacing it.
+
 ## Visual language
 
 Mutation readability cannot rely on a border alone.
@@ -36,7 +50,7 @@ Mutation readability cannot rely on a border alone.
 - **Prismatic / Epic:** crystal-wing secondary silhouette, emissive cyan/purple shards, double aura and a slow shimmer/sway.
 - **Crowned / Legendary:** elevated chaos crown/halo, satellite star-orbs, gold energy language and a floating crown motion.
 
-The base creature remains unobscured so Pinguino, Toastodilo and Lampalotl stay recognizable at board scale. Board badges use `R`, `E` and `L`; Chaos Codex includes the same rarity legend.
+The base creature remains unobscured so Pinguino, Toastodilo, Lampalotl and Dishnail stay recognizable at board scale. Board badges use `R`, `E` and `L`; Chaos Codex includes the same rarity legend plus the T3 ascension rule.
 
 All three overlay assets are original project-owned SVGs at 1024x1024 master size and 256x256 runtime preload size.
 
@@ -57,7 +71,7 @@ Roll boundaries are deterministic-testable and use one uniform random sample per
 
 ## Persistence
 
-Adding per-unit mutation state changes the durable board schema, so save format advances from **v6 to v7**.
+Adding per-unit mutation state changed the durable board schema from **v6 to v7**. T3 ascension does not add any new persisted field and therefore remains on v7.
 
 - v1-v5 follow the existing migration chain.
 - v6 boards migrate to v7 with `mutation: "none"` on every legacy unit.
@@ -68,7 +82,7 @@ No currency or collection progress is reset by the migration.
 
 ## Analytics
 
-`first_merge`, `merge` and `recruit` now include the bounded mutation ID. This lets balance analysis compare rarity acquisition and progression without logging player identifiers or high-frequency combat events.
+`first_merge`, `merge` and `recruit` include the bounded mutation ID. T3 ascension travels through the existing `merge` event with level `3` and the promoted mutation, so the progression can be measured without introducing high-frequency combat telemetry.
 
 ## IP / provenance
 
