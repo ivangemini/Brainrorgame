@@ -25,7 +25,7 @@
 - [x] 8–12 bosses: 8 authored bosses.
 - [x] Multiple worlds/biomes.
 - [x] Collection, achievements, balancing foundations and onboarding.
-- [x] Localization framework: typed English/Russian dictionaries and locale resolution.
+- [x] Localization framework plus localized primary HUD, Daily Chaos and Core Lab shells.
 - [x] Yandex SDK + moderation checklist.
 - [x] Performance and asset-size pass: vendor split plus purpose-sized runtime textures.
 - [ ] First external playtest and balance pass.
@@ -35,7 +35,9 @@
 - [x] Poki adapter/build foundation.
 - [x] Playgama adapter/build foundation.
 - [x] GameDistribution adapter/build foundation.
-- [ ] Creative/store-page A/B asset variants.
+- [x] Creative/store-page A/B asset variants: two Yandex cover concepts plus localized store copy.
+- [x] Machine-validated Yandex release metadata gate in `npm run verify`.
+- [ ] Portal-specific upload packages and screenshots captured from a final candidate build.
 
 ## Phase 5 — live ops
 - [ ] Limited bosses/mutations.
@@ -59,10 +61,15 @@
 - [x] Yandex, CrazyGames, Poki, Playgama and GameDistribution adapter foundations.
 - [x] Typed privacy-safe analytics.
 - [x] Typed EN/RU localization framework with `?lang=` QA override.
+- [x] Primary HUD, Recruit/Anomaly readout, world transitions, Daily Chaos and Core Lab use runtime localization.
 - [x] Yandex moderation/release checklist.
 - [x] Purpose-sized runtime textures: creatures/enemies 384, mutation overlays 192, bosses 640.
 - [x] Project-owned provenance records for Phase 3 creature/boss art.
 - [x] Phase 3 content design sheet with silhouette, role, material, animation hooks and IP-distance checks.
+- [x] EN/RU Yandex store metadata with validated required fields.
+- [x] Two store-cover A/B variants: chaos-roster promise and boss-combat promise.
+- [x] `release:check` is part of the production verification pipeline.
+- [ ] Localize remaining secondary panels and authored gameplay-content labels/descriptions.
 - [ ] First external playtest on representative desktop and mid-range mobile hardware.
 - [ ] Balance pass from actual first-session, boss and retention telemetry.
-- [ ] Store-page creative A/B variants.
+- [ ] Capture final candidate screenshots and portal upload packages.
