@@ -456,13 +456,9 @@ export class GameScene extends Phaser.Scene {
 
   private async tryRewardedRevive(): Promise<boolean> {
     if (this.reviveUsedThisEncounter) return false;
-    let rewarded = false;
-    try {
-      const result = await this.platform.showRewarded();
-      rewarded = result.rewarded;
-    } catch {
-      rewarded = false;
-    }
+    const rewarded = await this.platform.showRewarded()
+      .then((result) => result.rewarded)
+      .catch(() => false);
     this.analytics.rewardedAdResult('fortress_revive', rewarded);
     if (!rewarded) return false;
 
@@ -616,6 +612,7 @@ export class GameScene extends Phaser.Scene {
 
   private applyOfflineReward(reward: OfflineReward): void {
     if (reward.coins <= 0) return;
+    const reviveFlowActive = this.revivePanel.isOpen();
     this.coins += reward.coins;
     this.analytics.offlineReward(reward.coins, reward.rewardedSeconds, this.chapter);
     this.syncUi();
@@ -623,18 +620,13 @@ export class GameScene extends Phaser.Scene {
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
-    if (this.revivePanel.isOpen()) this.revivePanel.hide();
-    this.offlinePanel.show(reward);
+    if (!reviveFlowActive) this.offlinePanel.show(reward);
   }
 
   private async doubleOfflineReward(reward: OfflineReward): Promise<boolean> {
-    let rewarded = false;
-    try {
-      const result = await this.platform.showRewarded();
-      rewarded = result.rewarded;
-    } catch {
-      rewarded = false;
-    }
+    const rewarded = await this.platform.showRewarded()
+      .then((result) => result.rewarded)
+      .catch(() => false);
     this.analytics.rewardedAdResult('offline_double', rewarded);
     if (!rewarded) return false;
 
