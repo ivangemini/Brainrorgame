@@ -1,5 +1,6 @@
 import type * as Phaser from 'phaser';
 import { getAllCreatures } from '../content/creatures';
+import { getMutationDefinition, type MutationId } from '../content/mutations';
 import {
   ACHIEVEMENTS,
   achievementProgress,
@@ -56,6 +57,11 @@ export class CollectionPanel {
     const collectionLabel = this.scene.add.text(-420, -532, 'DISCOVERIES', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#ffd984'
     });
+    const rarityLegend = this.scene.add.container(0, 0, [
+      this.createRarityPill(-112, -519, 'charged', 142),
+      this.createRarityPill(55, -519, 'prismatic', 152),
+      this.createRarityPill(258, -519, 'crowned', 190)
+    ]);
     const achievementLabel = this.scene.add.text(-420, 63, 'ACHIEVEMENTS', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#ffd984'
     });
@@ -72,6 +78,7 @@ export class CollectionPanel {
       close,
       closeHit,
       collectionLabel,
+      rarityLegend,
       achievementLabel,
       this.cardsRoot,
       this.achievementsRoot
@@ -114,6 +121,19 @@ export class CollectionPanel {
 
   public isOpen(): boolean {
     return this.opened;
+  }
+
+  private createRarityPill(x: number, y: number, mutationId: Exclude<MutationId, 'none'>, width: number): Phaser.GameObjects.Container {
+    const mutation = getMutationDefinition(mutationId);
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(0x111832, 0.9);
+    bg.fillRoundedRect(-width / 2, -17, width, 34, 13);
+    bg.lineStyle(2, mutation.accentColor, 0.68);
+    bg.strokeRoundedRect(-width / 2, -17, width, 34, 13);
+    const text = this.scene.add.text(0, 0, `${mutation.shortLabel} ${mutation.rarity.toUpperCase()}`, {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '13px', color: '#f5fbff'
+    }).setOrigin(0.5);
+    return this.scene.add.container(x, y, [bg, text]);
   }
 
   private renderCreatureCards(progress: CollectionProgress): void {

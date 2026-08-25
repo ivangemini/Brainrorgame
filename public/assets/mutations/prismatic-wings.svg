@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="prismL" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#88ffff"/><stop offset=".38" stop-color="#7fb0ff"/><stop offset=".72" stop-color="#d889ff"/><stop offset="1" stop-color="#ff91dd"/>
+    </linearGradient>
+    <linearGradient id="prismR" x1="1" y1="0" x2="0" y2="1">
+      <stop stop-color="#fff3a8"/><stop offset=".35" stop-color="#ff91df"/><stop offset=".72" stop-color="#9c92ff"/><stop offset="1" stop-color="#75f7ff"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="16" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <path d="M319 356 109 261l88 211-111 91 202 38-63 191 214-178-120-258Z" fill="url(#prismL)" opacity=".9" stroke="#eaffff" stroke-width="14" filter="url(#glow)"/>
+  <path d="m705 356 210-95-88 211 111 91-202 38 63 191-214-178 120-258Z" fill="url(#prismR)" opacity=".9" stroke="#fff7ff" stroke-width="14" filter="url(#glow)"/>
+  <path d="M185 350 277 386l-55 55Z" fill="#ffffff" opacity=".72"/>
+  <path d="m839 350-92 36 55 55Z" fill="#ffffff" opacity=".72"/>
+  <path d="M337 761 438 690l-8 144-67 69Z" fill="url(#prismL)" stroke="#eaffff" stroke-width="12"/>
+  <path d="m687 761-101-71 8 144 67 69Z" fill="url(#prismR)" stroke="#fff7ff" stroke-width="12"/>
+  <ellipse cx="512" cy="548" rx="382" ry="326" fill="none" stroke="#dd9aff" stroke-width="22" opacity=".19"/>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fffbd1"/><stop offset=".3" stop-color="#ffe36f"/><stop offset=".7" stop-color="#ffae45"/><stop offset="1" stop-color="#ff72c8"/>
+    </linearGradient>
+    <linearGradient id="gem" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffffff"/><stop offset=".32" stop-color="#8ffaff"/><stop offset=".68" stop-color="#b986ff"/><stop offset="1" stop-color="#ff75ce"/>
+    </linearGradient>
+    <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <ellipse cx="512" cy="258" rx="235" ry="78" fill="none" stroke="url(#gold)" stroke-width="30" filter="url(#glow)" opacity=".95"/>
+  <path d="M337 228 390 93l122 113L635 93l52 135-29 109H366Z" fill="url(#gold)" stroke="#fff9d9" stroke-width="18" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="m512 198 44 53-44 52-44-52Z" fill="url(#gem)" stroke="#fff" stroke-width="10"/>
+  <circle cx="310" cy="566" r="34" fill="url(#gem)" stroke="#fff" stroke-width="10" filter="url(#glow)"/>
+  <circle cx="714" cy="566" r="34" fill="url(#gem)" stroke="#fff" stroke-width="10" filter="url(#glow)"/>
+  <path d="M202 520 225 573l56 5-44 36 14 55-49-29-49 29 14-55-44-36 56-5Z" fill="url(#gold)" filter="url(#glow)"/>
+  <path d="m822 520 23 53 56 5-44 36 14 55-49-29-49 29 14-55-44-36 56-5Z" fill="url(#gold)" filter="url(#glow)"/>
+  <ellipse cx="512" cy="587" rx="386" ry="331" fill="none" stroke="#ffd86d" stroke-width="24" opacity=".2"/>
+</svg>

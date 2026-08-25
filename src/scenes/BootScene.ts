@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { getAllBosses } from '../content/bosses';
 import { getAllCreatures } from '../content/creatures';
 import { getAllEnemies } from '../content/enemies';
+import { getMutationOverlayDefinitions } from '../content/mutations';
 
 export class BootScene extends Phaser.Scene {
   public constructor() {
@@ -31,6 +32,10 @@ export class BootScene extends Phaser.Scene {
     this.load.svg('bg-candy-crater', 'assets/backgrounds/candy-crater.svg', { width: 1080, height: 1920 });
     for (const creature of getAllCreatures()) {
       this.load.svg(creature.texture, creature.assetPath, { width: 512, height: 512 });
+    }
+    for (const mutation of getMutationOverlayDefinitions()) {
+      if (!mutation.texture || !mutation.assetPath) continue;
+      this.load.svg(mutation.texture, mutation.assetPath, { width: 256, height: 256 });
     }
     for (const enemy of getAllEnemies()) {
       this.load.svg(enemy.texture, enemy.assetPath, { width: 512, height: 512 });

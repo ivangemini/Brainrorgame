@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
@@ -28,18 +29,21 @@ export type GameAnalyticsEvent =
       readonly elapsedMs: number;
       readonly family: CreatureFamily;
       readonly resultingLevel: number;
+      readonly mutation: MutationId;
     }
   | {
       readonly name: 'merge';
       readonly elapsedMs: number;
       readonly family: CreatureFamily;
       readonly resultingLevel: number;
+      readonly mutation: MutationId;
       readonly chapter: number;
     }
   | {
       readonly name: 'recruit';
       readonly elapsedMs: number;
       readonly family: CreatureFamily;
+      readonly mutation: MutationId;
       readonly coinsAfter: number;
     }
   | {

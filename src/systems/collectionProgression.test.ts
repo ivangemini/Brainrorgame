@@ -24,7 +24,7 @@ describe('collection progression', () => {
 
   it('backfills lower tiers and minimum legacy stats', () => {
     const board = [...createStarterBoard()];
-    board[0] = { id: 'legacy', family: 'pinguino', level: 3 };
+    board[0] = { id: 'legacy', family: 'pinguino', level: 3, mutation: 'none' };
     board[1] = null;
     const progress = backfillCollectionProgress(board, 4, 2, 7, { power: 1, armor: 2, bounty: 0 });
     expect(progress.discovered).toContain('pinguino-3');

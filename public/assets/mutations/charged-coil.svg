@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="coil" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#d8ffff"/><stop offset=".45" stop-color="#5ff5ff"/><stop offset="1" stop-color="#4b7cff"/>
+    </linearGradient>
+    <radialGradient id="node" cx="50%" cy="40%" r="60%">
+      <stop stop-color="#fffbd0"/><stop offset=".38" stop-color="#89ffff"/><stop offset="1" stop-color="#5079ff"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <ellipse cx="512" cy="552" rx="372" ry="314" fill="none" stroke="#5befff" stroke-width="34" opacity=".18"/>
+  <path d="M168 602c84-36 109-95 144-176-6 111 19 170 96 222-86-22-145-12-226 48 42-45 47-71-14-94Z" fill="url(#coil)" filter="url(#glow)" opacity=".92"/>
+  <path d="M856 602c-84-36-109-95-144-176 6 111-19 170-96 222 86-22 145-12 226 48-42-45-47-71 14-94Z" fill="url(#coil)" filter="url(#glow)" opacity=".92"/>
+  <path d="M360 242c47-54 90-73 152-73s105 19 152 73" fill="none" stroke="url(#coil)" stroke-width="34" stroke-linecap="round"/>
+  <path d="M405 246 463 330l-53-3 39 82-112-116 62 2Z" fill="#fff59b" filter="url(#glow)"/>
+  <path d="m619 246-58 84 53-3-39 82 112-116-62 2Z" fill="#fff59b" filter="url(#glow)"/>
+  <circle cx="512" cy="177" r="67" fill="url(#node)" stroke="#f4ffff" stroke-width="18" filter="url(#glow)"/>
+  <circle cx="486" cy="153" r="18" fill="#fff" opacity=".9"/>
+</svg>

@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { getCreature } from '../content/creatures';
+import { getMutationDefinition } from '../content/mutations';
 import type { GameFx } from '../presentation/GameFx';
 import type { BoardState, BoardUnit } from '../systems/board';
 
@@ -69,14 +70,73 @@ export class BoardView {
   }
 
   private createUnitView(slot: number, unit: BoardUnit): Phaser.GameObjects.Container {
-    const position = this.slotPosition(slot); const creature = getCreature(unit.family, unit.level);
+    const position = this.slotPosition(slot);
+    const creature = getCreature(unit.family, unit.level);
+    const mutation = getMutationDefinition(unit.mutation);
     const image = this.scene.add.image(0, 4, creature.texture).setDisplaySize(172, 172);
     const shadow = this.scene.add.ellipse(0, 72, 128, 30, 0x030919, 0.28).setDepth(-1);
-    const badge = this.scene.add.graphics(); badge.fillStyle(creature.accentColor, 1); badge.fillCircle(67, -67, 27); badge.lineStyle(4, 0xffffff, 0.7); badge.strokeCircle(67, -67, 27);
+    const children: Phaser.GameObjects.GameObject[] = [shadow];
+
+    let mutationAura: Phaser.GameObjects.Graphics | null = null;
+    let mutationArt: Phaser.GameObjects.Image | null = null;
+    if (mutation.rank > 0) {
+      mutationAura = this.scene.add.graphics();
+      mutationAura.lineStyle(5, mutation.accentColor, 0.34 + mutation.rank * 0.08);
+      mutationAura.strokeCircle(0, 4, 88);
+      if (mutation.rank >= 2) {
+        mutationAura.lineStyle(3, mutation.projectileColor, 0.22);
+        mutationAura.strokeCircle(0, 4, 96);
+      }
+      children.push(mutationAura);
+      if (mutation.texture) {
+        mutationArt = this.scene.add.image(0, mutation.id === 'crowned' ? -5 : 2, mutation.texture)
+          .setDisplaySize(mutation.id === 'crowned' ? 202 : 192, mutation.id === 'crowned' ? 202 : 192)
+          .setAlpha(0.92);
+        children.push(mutationArt);
+      }
+    }
+
+    children.push(image);
+    const badge = this.scene.add.graphics();
+    badge.fillStyle(mutation.rank > 0 ? mutation.accentColor : creature.accentColor, 1);
+    badge.fillCircle(67, -67, 27);
+    badge.lineStyle(4, 0xffffff, 0.7);
+    badge.strokeCircle(67, -67, 27);
     const level = this.scene.add.text(67, -68, `${unit.level}`, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '25px', color: '#10213a' }).setOrigin(0.5);
-    const view = this.scene.add.container(position.x, position.y, [shadow, image, badge, level]);
+    children.push(badge, level);
+
+    if (mutation.rank > 0) {
+      const rarityPlate = this.scene.add.graphics();
+      rarityPlate.fillStyle(0x10172f, 0.94);
+      rarityPlate.fillRoundedRect(-87, -87, 46, 38, 13);
+      rarityPlate.lineStyle(3, mutation.accentColor, 0.92);
+      rarityPlate.strokeRoundedRect(-87, -87, 46, 38, 13);
+      const rarityText = this.scene.add.text(-64, -68, mutation.shortLabel, {
+        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '19px', color: '#ffffff'
+      }).setOrigin(0.5);
+      children.push(rarityPlate, rarityText);
+    }
+
+    const view = this.scene.add.container(position.x, position.y, children);
     view.setSize(176, 176).setInteractive({ useHandCursor: true }); view.setData('meta', { slot, unitId: unit.id } satisfies UnitViewMeta); this.scene.input.setDraggable(view);
-    this.scene.time.delayedCall(Phaser.Math.Between(0, 450), () => { if (!view.active) return; this.scene.tweens.add({ targets: image, y: -3, scaleX: image.scaleX * 1.018, scaleY: image.scaleY * 0.982, duration: 1050 + Phaser.Math.Between(-120, 160), yoyo: true, repeat: -1, ease: 'Sine.InOut' }); });
+
+    this.scene.time.delayedCall(Phaser.Math.Between(0, 450), () => {
+      if (!view.active) return;
+      this.scene.tweens.add({ targets: image, y: -3, scaleX: image.scaleX * 1.018, scaleY: image.scaleY * 0.982, duration: 1050 + Phaser.Math.Between(-120, 160), yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      if (mutationAura) {
+        this.scene.tweens.add({ targets: mutationAura, alpha: 0.58, duration: 720 + mutation.rank * 120, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      }
+      if (mutationArt) {
+        if (mutation.id === 'charged') {
+          this.scene.tweens.add({ targets: mutationArt, scaleX: mutationArt.scaleX * 1.035, scaleY: mutationArt.scaleY * 1.035, alpha: 0.72, duration: 610, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+        } else if (mutation.id === 'prismatic') {
+          this.scene.tweens.add({ targets: mutationArt, angle: 3.5, alpha: 0.76, duration: 980, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+        } else {
+          this.scene.tweens.add({ targets: mutationArt, y: -11, angle: 2.2, duration: 930, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+        }
+      }
+    });
+
     view.on('dragstart', () => { if (this.isLocked()) return; view.setDepth(1000); this.scene.tweens.add({ targets: view, scaleX: 1.08, scaleY: 1.08, duration: 110, ease: 'Back.Out' }); });
     view.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => { if (!this.isLocked()) view.setPosition(dragX, dragY); });
     view.on('dragend', () => { const meta = view.getData('meta') as UnitViewMeta; if (this.isLocked()) { this.snapHome(view, meta.slot); return; } this.onDrop(view, meta.slot, this.closestSlot(view.x, view.y)); });

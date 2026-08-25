@@ -1,4 +1,5 @@
-import { isCreatureFamily } from '../content/creatures';
+import { isCreatureFamily, type CreatureFamily } from '../content/creatures';
+import { isMutationId } from '../content/mutations';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import type { BoardState, BoardUnit } from '../systems/board';
 import {
@@ -25,7 +26,14 @@ import {
   type OnboardingState
 } from '../systems/onboarding';
 
-export const SAVE_VERSION = 6 as const;
+export const SAVE_VERSION = 7 as const;
+
+export interface LegacyBoardUnit {
+  readonly id: string;
+  readonly family: CreatureFamily;
+  readonly level: 1 | 2 | 3;
+}
+export type LegacyBoardState = readonly (LegacyBoardUnit | null)[];
 
 export interface GameSaveV1 {
   readonly version: 1;
@@ -36,7 +44,7 @@ export interface GameSaveV1 {
   readonly bossHpMax: number;
   readonly bossHp: number;
   readonly recruitSerial: number;
-  readonly board: BoardState;
+  readonly board: LegacyBoardState;
 }
 
 export interface GameSaveV2 {
@@ -49,7 +57,7 @@ export interface GameSaveV2 {
   readonly targetHpMax: number;
   readonly targetHp: number;
   readonly recruitSerial: number;
-  readonly board: BoardState;
+  readonly board: LegacyBoardState;
 }
 
 export interface GameSaveV3 extends Omit<GameSaveV2, 'version'> {
@@ -69,11 +77,16 @@ export interface GameSaveV5 extends Omit<GameSaveV4, 'version'> {
 }
 
 export interface GameSaveV6 extends Omit<GameSaveV5, 'version'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 6;
   readonly onboarding: OnboardingState;
 }
 
-export type GameSave = GameSaveV6;
+export interface GameSaveV7 extends Omit<GameSaveV6, 'version' | 'board'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly board: BoardState;
+}
+
+export type GameSave = GameSaveV7;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -113,7 +126,9 @@ interface V5ProgressFields extends V4ProgressFields {
   readonly collection: CollectionProgress;
 }
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV6 {
+type BoardParser = (value: unknown) => BoardState | null;
+
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV7 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -149,37 +164,56 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v3 = v2 ? migrateV2ToV3(v2) : null;
     const v4 = v3 ? migrateV3ToV4(v3) : null;
     const v5 = v4 ? migrateV4ToV5(v4) : null;
-    return v5 ? migrateV5ToV6(v5) : null;
+    const v6 = v5 ? migrateV5ToV6(v5) : null;
+    return v6 ? migrateV6ToV7(v6) : null;
   }
   if (value.version === 2) {
     const v3 = migrateV2ToV3(value);
     const v4 = v3 ? migrateV3ToV4(v3) : null;
     const v5 = v4 ? migrateV4ToV5(v4) : null;
-    return v5 ? migrateV5ToV6(v5) : null;
+    const v6 = v5 ? migrateV5ToV6(v5) : null;
+    return v6 ? migrateV6ToV7(v6) : null;
   }
   if (value.version === 3) {
     const v4 = migrateV3ToV4(value);
     const v5 = v4 ? migrateV4ToV5(v4) : null;
-    return v5 ? migrateV5ToV6(v5) : null;
+    const v6 = v5 ? migrateV5ToV6(v5) : null;
+    return v6 ? migrateV6ToV7(v6) : null;
   }
   if (value.version === 4) {
     const v5 = migrateV4ToV5(value);
-    return v5 ? migrateV5ToV6(v5) : null;
+    const v6 = v5 ? migrateV5ToV6(v5) : null;
+    return v6 ? migrateV6ToV7(v6) : null;
   }
-  if (value.version === 5) return migrateV5ToV6(value);
+  if (value.version === 5) {
+    const v6 = migrateV5ToV6(value);
+    return v6 ? migrateV6ToV7(v6) : null;
+  }
+  if (value.version === 6) return migrateV6ToV7(value);
   if (value.version !== SAVE_VERSION) return null;
 
-  const v5 = parseV5Fields(value);
+  const v5 = parseV5Fields(value, parseCurrentBoard);
   if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
   return { version: SAVE_VERSION, ...v5, onboarding: cloneOnboarding(value.onboarding) };
 }
 
-function migrateV5ToV6(value: unknown): GameSaveV6 | null {
+function migrateV6ToV7(value: unknown): GameSaveV7 | null {
   if (!isRecord(value)) return null;
-  const v5 = parseV5Fields(value);
-  if (!v5) return null;
+  const v5 = parseV5Fields(value, parseLegacyCompatibleBoard);
+  if (!v5 || !isValidOnboardingState(value.onboarding)) return null;
   return {
     version: SAVE_VERSION,
+    ...v5,
+    onboarding: cloneOnboarding(value.onboarding)
+  };
+}
+
+function migrateV5ToV6(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  const v5 = parseV5Fields(value, parseLegacyCompatibleBoard);
+  if (!v5) return null;
+  return {
+    version: 6,
     ...v5,
     onboarding: createCompletedOnboardingState(v5.updatedAt)
   };
@@ -187,7 +221,7 @@ function migrateV5ToV6(value: unknown): GameSaveV6 | null {
 
 function migrateV4ToV5(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const v4 = parseV4Fields(value);
+  const v4 = parseV4Fields(value, parseLegacyCompatibleBoard);
   if (!v4) return null;
   const collection = backfillCollectionProgress(
     v4.board,
@@ -201,7 +235,7 @@ function migrateV4ToV5(value: unknown): Record<string, unknown> | null {
 
 function migrateV3ToV4(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const common = parseCommonFields(value);
+  const common = parseCommonFields(value, parseLegacyCompatibleBoard);
   const upgrades = parseUpgrades(value.upgrades);
   if (!common || !upgrades || !isFiniteNumber(value.coreShards)) return null;
   return {
@@ -215,7 +249,7 @@ function migrateV3ToV4(value: unknown): Record<string, unknown> | null {
 
 function migrateV2ToV3(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const common = parseCommonFields(value);
+  const common = parseCommonFields(value, parseLegacyCompatibleBoard);
   if (!common) return null;
   return {
     version: 3,
@@ -227,7 +261,7 @@ function migrateV2ToV3(value: unknown): Record<string, unknown> | null {
 
 function migrateV1ToV2(value: unknown): Record<string, unknown> | null {
   if (!isRecord(value)) return null;
-  const board = parseBoard(value.board);
+  const board = parseLegacyCompatibleBoard(value.board);
   if (!board) return null;
   if (!isFiniteNumber(value.updatedAt) || !isFiniteNumber(value.coins) || !isFiniteNumber(value.baseHp)) return null;
   if (!isFiniteNumber(value.bossRound) || !isFiniteNumber(value.bossHpMax) || !isFiniteNumber(value.bossHp)) return null;
@@ -248,15 +282,15 @@ function migrateV1ToV2(value: unknown): Record<string, unknown> | null {
   };
 }
 
-function parseV5Fields(value: Record<string, unknown>): V5ProgressFields | null {
-  const v4 = parseV4Fields(value);
+function parseV5Fields(value: Record<string, unknown>, boardParser: BoardParser): V5ProgressFields | null {
+  const v4 = parseV4Fields(value, boardParser);
   const collection = parseCollection(value.collection);
   if (!v4 || !collection) return null;
   return { ...v4, collection };
 }
 
-function parseV4Fields(value: Record<string, unknown>): V4ProgressFields | null {
-  const common = parseCommonFields(value);
+function parseV4Fields(value: Record<string, unknown>, boardParser: BoardParser): V4ProgressFields | null {
+  const common = parseCommonFields(value, boardParser);
   const upgrades = parseUpgrades(value.upgrades);
   const daily = parseDaily(value.daily);
   if (!common || !upgrades || !daily || !isFiniteNumber(value.coreShards)) return null;
@@ -268,8 +302,8 @@ function parseV4Fields(value: Record<string, unknown>): V4ProgressFields | null 
   };
 }
 
-function parseCommonFields(value: Record<string, unknown>): CommonProgressFields | null {
-  const board = parseBoard(value.board);
+function parseCommonFields(value: Record<string, unknown>, boardParser: BoardParser): CommonProgressFields | null {
+  const board = boardParser(value.board);
   if (!board) return null;
   if (!isFiniteNumber(value.updatedAt) || !isFiniteNumber(value.coins) || !isFiniteNumber(value.baseHp)) return null;
   if (!isFiniteNumber(value.chapter) || !isEncounterStep(value.encounterStep)) return null;
@@ -369,7 +403,15 @@ function cloneOnboarding(onboarding: OnboardingState): OnboardingState {
   return { step: onboarding.step, completedAt: onboarding.completedAt };
 }
 
-function parseBoard(value: unknown): BoardState | null {
+function parseCurrentBoard(value: unknown): BoardState | null {
+  return parseBoard(value, true);
+}
+
+function parseLegacyCompatibleBoard(value: unknown): BoardState | null {
+  return parseBoard(value, false);
+}
+
+function parseBoard(value: unknown, requireMutation: boolean): BoardState | null {
   if (!Array.isArray(value) || value.length !== 12) return null;
   const board: Array<BoardUnit | null> = [];
   for (const slot of value) {
@@ -377,20 +419,29 @@ function parseBoard(value: unknown): BoardState | null {
       board.push(null);
       continue;
     }
-    if (!isBoardUnit(slot)) return null;
-    board.push({ id: slot.id, family: slot.family, level: slot.level });
+    const parsed = parseBoardUnit(slot, requireMutation);
+    if (!parsed) return null;
+    board.push(parsed);
   }
   return board;
 }
 
-function cloneBoard(board: BoardState): BoardState {
-  return board.map((unit) => (unit ? { ...unit } : null));
+function parseBoardUnit(value: unknown, requireMutation: boolean): BoardUnit | null {
+  if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 160) return null;
+  if (!isCreatureFamily(value.family)) return null;
+  if (value.level !== 1 && value.level !== 2 && value.level !== 3) return null;
+  if (requireMutation && !isMutationId(value.mutation)) return null;
+  if (value.mutation !== undefined && !isMutationId(value.mutation)) return null;
+  return {
+    id: value.id,
+    family: value.family,
+    level: value.level,
+    mutation: isMutationId(value.mutation) ? value.mutation : 'none'
+  };
 }
 
-function isBoardUnit(value: unknown): value is BoardUnit {
-  if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 160) return false;
-  if (!isCreatureFamily(value.family)) return false;
-  return value.level === 1 || value.level === 2 || value.level === 3;
+function cloneBoard(board: BoardState): BoardState {
+  return board.map((unit) => (unit ? { ...unit } : null));
 }
 
 function isEncounterStep(value: unknown): value is EncounterStep {

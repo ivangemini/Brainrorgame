@@ -8,7 +8,7 @@ Measure acquisition-to-retention quality without collecting player PII. Gameplay
 
 Do not put names, email addresses, IP addresses, advertising identifiers, raw user-agent strings, free-form user text, exact location, device fingerprints, save payloads or account IDs into game analytics events.
 
-Use aggregate gameplay state only: chapter, encounter step, elapsed duration, reward amount, upgrade level and similar bounded values.
+Use aggregate gameplay state only: chapter, encounter step, elapsed duration, reward amount, upgrade level, bounded creature family/mutation IDs and similar bounded values.
 
 ## Core funnel
 
@@ -20,12 +20,15 @@ Use aggregate gameplay state only: chapter, encounter step, elapsed duration, re
 6. `meta_upgrade_purchase`
 7. return-session `session_start.returning=true`
 
+`first_merge`, `merge` and `recruit` include the current bounded mutation ID (`none`, `charged`, `prismatic`, `crowned`) so rarity acquisition and merge promotion can be balanced without tracking every combat hit.
+
 ## Retention signals
 
 - `offline_reward`
 - `daily_reward_claim`
 - `daily_mission_claim`
 - repeat `session_start`
+- mutation mix on `recruit` and `merge`
 
 ## Failure / balance signals
 
@@ -33,6 +36,7 @@ Use aggregate gameplay state only: chapter, encounter step, elapsed duration, re
 - encounter completion duration
 - fortress HP remaining
 - chapter and encounter step
+- creature family + mutation distribution on progression events
 
 ## Event quality rules
 

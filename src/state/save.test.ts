@@ -25,25 +25,30 @@ function makeSnapshot() {
   };
 }
 
+function makeLegacyBoard() {
+  return createStarterBoard().map((unit) => unit ? { id: unit.id, family: unit.family, level: unit.level } : null);
+}
+
 describe('game save', () => {
-  it('round-trips a valid v6 snapshot', () => {
+  it('round-trips a valid v7 snapshot', () => {
     const save = createGameSave(makeSnapshot(), 12345);
+    expect(save.version).toBe(7);
     expect(parseGameSave(save)).toEqual(save);
   });
 
-  it('round-trips the new Lampalotl family without changing the save version', () => {
+  it('round-trips a mutated Lampalotl unit', () => {
     const snapshot = makeSnapshot();
     const board = [...snapshot.board];
-    board[8] = { id: 'lamp-save', family: 'lampalotl', level: 2 };
+    board[8] = { id: 'lamp-save', family: 'lampalotl', level: 2, mutation: 'prismatic' };
     const collection = discoverCreature(snapshot.collection, 'lampalotl-2');
     const save = createGameSave({ ...snapshot, board, collection }, 22222);
     const parsed = parseGameSave(save);
-    expect(parsed?.version).toBe(6);
-    expect(parsed?.board[8]).toEqual({ id: 'lamp-save', family: 'lampalotl', level: 2 });
+    expect(parsed?.version).toBe(7);
+    expect(parsed?.board[8]).toEqual({ id: 'lamp-save', family: 'lampalotl', level: 2, mutation: 'prismatic' });
     expect(parsed?.collection.discovered).toContain('lampalotl-2');
   });
 
-  it('migrates v2 saves through v6 and preserves progression', () => {
+  it('migrates v2 saves through v7 and preserves progression', () => {
     const oldSave = {
       version: 2,
       updatedAt: Date.parse('2026-08-24T12:00:00.000Z'),
@@ -54,16 +59,17 @@ describe('game save', () => {
       targetHpMax: 500,
       targetHp: 300,
       recruitSerial: 2,
-      board: createStarterBoard()
+      board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(6);
+    expect(migrated?.version).toBe(7);
     expect(migrated?.coreShards).toBe(3);
     expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
     expect(migrated?.daily.streak).toBe(0);
     expect(migrated?.collection.discovered).toEqual(['pinguino-1', 'toastodilo-1']);
     expect(migrated?.collection.stats.bosses).toBe(3);
     expect(migrated?.onboarding.step).toBe('complete');
+    expect(migrated?.board[0]?.mutation).toBe('none');
   });
 
   it('migrates v3 saves with fresh daily state and collection backfill', () => {
@@ -79,10 +85,10 @@ describe('game save', () => {
       targetHpMax: 950,
       targetHp: 700,
       recruitSerial: 8,
-      board: createStarterBoard()
+      board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(6);
+    expect(migrated?.version).toBe(7);
     expect(migrated?.daily.dayKey).toBe('2026-08-25');
     expect(migrated?.daily.counters).toEqual({ merge: 0, defeat: 0, recruit: 0 });
     expect(migrated?.collection.stats.bosses).toBe(5);
@@ -105,10 +111,10 @@ describe('game save', () => {
       targetHpMax: snapshot.targetHpMax,
       targetHp: snapshot.targetHp,
       recruitSerial: snapshot.recruitSerial,
-      board: snapshot.board
+      board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(6);
+    expect(migrated?.version).toBe(7);
     expect(migrated?.daily).toEqual(snapshot.daily);
     expect(migrated?.collection.stats.recruits).toBe(snapshot.recruitSerial);
     expect(migrated?.onboarding.step).toBe('complete');
@@ -130,11 +136,35 @@ describe('game save', () => {
       targetHpMax: snapshot.targetHpMax,
       targetHp: snapshot.targetHp,
       recruitSerial: snapshot.recruitSerial,
-      board: snapshot.board
+      board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(6);
+    expect(migrated?.version).toBe(7);
     expect(migrated?.onboarding).toEqual({ step: 'complete', completedAt: 777 });
+  });
+
+  it('migrates v6 boards to explicit common mutation state', () => {
+    const snapshot = makeSnapshot();
+    const oldSave = {
+      version: 6,
+      updatedAt: 888,
+      coins: snapshot.coins,
+      coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades,
+      daily: snapshot.daily,
+      collection: snapshot.collection,
+      onboarding: { step: 'complete', completedAt: 777 },
+      baseHp: snapshot.baseHp,
+      chapter: snapshot.chapter,
+      encounterStep: snapshot.encounterStep,
+      targetHpMax: snapshot.targetHpMax,
+      targetHp: snapshot.targetHp,
+      recruitSerial: snapshot.recruitSerial,
+      board: makeLegacyBoard()
+    };
+    const migrated = parseGameSave(oldSave);
+    expect(migrated?.version).toBe(7);
+    expect(migrated?.board.filter(Boolean).every((unit) => unit?.mutation === 'none')).toBe(true);
   });
 
   it('clamps upgrade levels, collection stats and target HP to supported maximums', () => {
@@ -173,9 +203,18 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, upgrades: { power: 'max', armor: 0, bounty: 0 } })).toBeNull();
   });
 
-  it('rejects malformed board data', () => {
+  it('rejects malformed board mutation data in v7', () => {
     const save = createGameSave(makeSnapshot());
-    const broken = { ...save, board: [{ id: 'x', family: 'copycat', level: 1 }] };
-    expect(parseGameSave(broken)).toBeNull();
+    const board = [...save.board];
+    const first = board[0];
+    if (!first) throw new Error('Expected starter unit');
+    board[0] = { ...first, mutation: 'impossible' } as never;
+    expect(parseGameSave({ ...save, board })).toBeNull();
+  });
+
+  it('rejects v7 board units that omit mutation', () => {
+    const save = createGameSave(makeSnapshot());
+    const board = save.board.map((unit) => unit ? { id: unit.id, family: unit.family, level: unit.level } : null);
+    expect(parseGameSave({ ...save, board })).toBeNull();
   });
 });

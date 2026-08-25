@@ -69,10 +69,16 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Data-driven rotating boss roster with distinct idle, telegraph and defeat choreography
 - [x] Recruit currency sink and encounter reward loop
 - [x] Three-way recruit pool with balanced / heavy / rapid-fire family identities
+- [x] Four-tier mutation rarity: Common / Rare Charged / Epic Prismatic / Legendary Crowned
+- [x] Mutation roll rates, combat modifiers, merge inheritance and rarity-promotion rules
+- [x] Project-owned mutation secondary-silhouette overlays with animated board presentation
+- [x] Mutation rarity legend in Chaos Codex and rarity-aware recruit / merge feedback
+- [x] Mutation IDs added to bounded recruit / merge analytics events
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
-- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6
+- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5 -> v6 -> v7
+- [x] v6 -> v7 mutation migration preserving legacy boards as Common
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
 - [x] Capped offline coin progression on reload/background resume
@@ -98,6 +104,6 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Onboarding funnel telemetry and first-session skill/doc
 - [x] Yandex GameplayAPI start/stop wired to real Phaser lifecycle
 - [ ] Expand playable creature families and boss roster toward retention MVP targets (creatures: 9 / 20–30 target, bosses: 3 / 4–6 target)
-- [ ] Mutations / rarity system
+- [x] Mutations / rarity system
 - [ ] CrazyGames / Poki / Playgama / GameDistribution adapters
 - [ ] First external playtest and balance pass

@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GameAnalytics } from '../analytics/GameAnalytics';
 import { GameAudio } from '../audio/GameAudio';
 import { getCreature, getRecruitableFamilies, type CreatureFamily } from '../content/creatures';
+import { getMutationDefinition, mutatedAttackMs, mutatedDamage, rollMutation } from '../content/mutations';
 import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { createGameSave, type GameSave } from '../state/save';
@@ -226,9 +227,10 @@ export class GameScene extends Phaser.Scene {
       const unit = this.board[slot];
       if (!unit) continue;
       const creature = getCreature(unit.family, unit.level);
+      const attackMs = mutatedAttackMs(creature.attackMs, unit.mutation);
       const elapsed = (this.attackClocks.get(unit.id) ?? 0) + delta;
-      if (elapsed >= creature.attackMs) {
-        this.attackClocks.set(unit.id, elapsed - creature.attackMs);
+      if (elapsed >= attackMs) {
+        this.attackClocks.set(unit.id, elapsed - attackMs);
         this.fireUnitAttack(slot, unit);
       } else {
         this.attackClocks.set(unit.id, elapsed);
@@ -284,10 +286,14 @@ export class GameScene extends Phaser.Scene {
           this.resolvingBoard = false;
           this.audio.merge(result.upgraded?.level ?? 1);
           if (result.upgraded) {
-            this.analytics.merge(result.upgraded.family, result.upgraded.level, this.chapter);
+            this.analytics.merge(result.upgraded.family, result.upgraded.level, result.upgraded.mutation, this.chapter);
             this.collection = recordLifetimeEvent(this.collection, 'merge');
             this.collection = discoverCreature(this.collection, `${result.upgraded.family}-${result.upgraded.level}`);
             this.collectionPanel.update(this.collection);
+            if (result.mutationPromoted) {
+              const mutation = getMutationDefinition(result.upgraded.mutation);
+              this.fx.showHint(`${mutation.rarity.toUpperCase()} • ${mutation.name.toUpperCase()} MUTATION`, 1015, `#${mutation.accentColor.toString(16).padStart(6, '0')}`);
+            }
           }
           this.recordDailyProgress('merge');
           this.advanceOnboardingAction('merged');
@@ -320,13 +326,16 @@ export class GameScene extends Phaser.Scene {
     this.audio.button();
     this.coins -= RECRUIT_COST;
     const family = Phaser.Math.RND.pick<CreatureFamily>([...getRecruitableFamilies()]);
+    const mutationId = rollMutation(Phaser.Math.RND.frac());
+    const mutation = getMutationDefinition(mutationId);
     this.recruitSerial += 1;
     this.board = addUnit(this.board, {
       id: `recruit-${this.recruitSerial}-${family}`,
       family,
-      level: 1
+      level: 1,
+      mutation: mutationId
     });
-    this.analytics.recruit(family, this.coins);
+    this.analytics.recruit(family, mutationId, this.coins);
     this.collection = recordLifetimeEvent(this.collection, 'recruit');
     this.collection = discoverCreature(this.collection, `${family}-1`);
     this.collectionPanel.update(this.collection);
@@ -335,7 +344,12 @@ export class GameScene extends Phaser.Scene {
     this.syncUi();
     this.boardView.render(this.board, empty);
     const position = this.boardView.slotPosition(empty);
-    this.fx.burst(position.x, position.y, getCreature(family, 1).accentColor, 11, 150);
+    const recruitColor = mutation.rank > 0 ? mutation.accentColor : getCreature(family, 1).accentColor;
+    this.fx.burst(position.x, position.y, recruitColor, mutation.rank > 0 ? 18 : 11, mutation.rank > 0 ? 190 : 150);
+    if (mutation.rank > 0) {
+      this.fx.flashRing(position.x, position.y, mutation.accentColor);
+      this.fx.showHint(`${mutation.rarity.toUpperCase()} RECRUIT • ${mutation.name.toUpperCase()}`, 1015, `#${mutation.accentColor.toString(16).padStart(6, '0')}`);
+    }
     this.persistSoon();
   }
 
@@ -344,19 +358,22 @@ export class GameScene extends Phaser.Scene {
     const origin = this.boardView.attackKick(slot);
     if (!origin) return;
     const creature = getCreature(unit.family, unit.level);
+    const mutation = getMutationDefinition(unit.mutation);
     const target = this.targetPoint();
-    const damage = Math.max(1, Math.round(creature.damage * squadDamageMultiplier(this.upgrades)));
+    const damage = Math.max(1, Math.round(mutatedDamage(creature.damage, unit.mutation) * squadDamageMultiplier(this.upgrades)));
+    const projectileColor = mutation.rank > 0 ? mutation.projectileColor : creature.projectileColor;
     this.audio.shot();
-    const projectile = this.add.circle(origin.x, origin.y - 72, 13 + unit.level * 3, creature.projectileColor, 1)
+    const projectile = this.add.circle(origin.x, origin.y - 72, 13 + unit.level * 3 + mutation.rank * 2, projectileColor, 1)
       .setStrokeStyle(5, 0xffffff, 0.65)
       .setDepth(800);
-    const trail = this.add.circle(origin.x, origin.y - 72, 28 + unit.level * 4, creature.projectileColor, 0.16).setDepth(799);
+    const trail = this.add.circle(origin.x, origin.y - 72, 28 + unit.level * 4 + mutation.rank * 3, projectileColor, mutation.rank > 0 ? 0.24 : 0.16).setDepth(799);
     this.tweens.add({
       targets: [projectile, trail], x: target.x, y: target.y, scaleX: 0.6, scaleY: 0.6, duration: 245, ease: 'Cubic.In',
       onComplete: () => {
         projectile.destroy();
         trail.destroy();
-        this.damageTarget(damage, creature.projectileColor);
+        if (mutation.rank >= 2) this.fx.burst(target.x, target.y, projectileColor, mutation.rank + 2, 90);
+        this.damageTarget(damage, projectileColor);
       }
     });
   }

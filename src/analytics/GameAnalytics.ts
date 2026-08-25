@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
@@ -35,16 +36,16 @@ export class GameAnalytics {
     this.send({ name: 'onboarding_complete', elapsedMs: this.elapsed() });
   }
 
-  public merge(family: CreatureFamily, resultingLevel: number, chapter: number): void {
+  public merge(family: CreatureFamily, resultingLevel: number, mutation: MutationId, chapter: number): void {
     if (!this.firstMergeSent) {
       this.firstMergeSent = true;
-      this.send({ name: 'first_merge', elapsedMs: this.elapsed(), family, resultingLevel });
+      this.send({ name: 'first_merge', elapsedMs: this.elapsed(), family, resultingLevel, mutation });
     }
-    this.send({ name: 'merge', elapsedMs: this.elapsed(), family, resultingLevel, chapter });
+    this.send({ name: 'merge', elapsedMs: this.elapsed(), family, resultingLevel, mutation, chapter });
   }
 
-  public recruit(family: CreatureFamily, coinsAfter: number): void {
-    this.send({ name: 'recruit', elapsedMs: this.elapsed(), family, coinsAfter });
+  public recruit(family: CreatureFamily, mutation: MutationId, coinsAfter: number): void {
+    this.send({ name: 'recruit', elapsedMs: this.elapsed(), family, mutation, coinsAfter });
   }
 
   public encounterStart(kind: EncounterKind, chapter: number, step: number): void {
