@@ -70,7 +70,7 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Merge / combat / reward VFX hierarchy
 - [x] Authored procedural SFX palette with browser-safe audio unlock
 - [x] Versioned persistent save through PlatformAdapter
-- [x] Save migrations v1 -> v2 -> v3 -> v4
+- [x] Save migrations v1 -> v2 -> v3 -> v4 -> v5
 - [x] Boss-only Core Shard permanent currency
 - [x] Three permanent upgrade tracks and Core Lab UI
 - [x] Capped offline coin progression on reload/background resume
@@ -80,6 +80,8 @@ Success condition: 60 seconds of gameplay already looks and feels commercially p
 - [x] Daily Chaos drawer + notification state
 - [x] Typed privacy-safe analytics event contract and gameplay funnel instrumentation
 - [x] Analytics agent skill and vendor-independent PlatformAdapter sink
-- [ ] Collection / achievements
+- [x] Chaos Codex collection with discovered / hidden creature forms
+- [x] Lifetime stats + six claimable achievements
+- [x] Conservative collection backfill for pre-v5 saves
 - [ ] Platform SDK adapters beyond web
 - [ ] First external playtest and balance pass
