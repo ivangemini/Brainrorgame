@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getEnemyForWave, scaleEnemy } from '../content/enemies';
 import { BOSS_STEP, GAUNTLET_STEP, WAVES_PER_CHAPTER, getEncounterSpec, nextEncounter } from './encounters';
 
 describe('encounter progression', () => {
@@ -38,17 +39,18 @@ describe('encounter progression', () => {
   });
 
   it('adds a fifth-wave Chaos Gate without replacing the rotating elite system', () => {
-    const fourth = getEncounterSpec(3, 3);
     const gate = getEncounterSpec(3, GAUNTLET_STEP);
-    expect(fourth.kind).toBe('wave');
+    const baseline = scaleEnemy(getEnemyForWave(3, 5), 3);
     expect(gate.kind).toBe('wave');
-    if (fourth.kind !== 'wave' || gate.kind !== 'wave') throw new Error('Expected waves');
+    if (gate.kind !== 'wave') throw new Error('Expected wave');
     expect(gate.waveNumber).toBe(5);
     expect(gate.gauntlet).toBe(true);
     expect(gate.elite).toBeNull();
     expect(gate.name.startsWith('Chaos Gate ')).toBe(true);
-    expect(gate.hp).toBeGreaterThan(fourth.hp);
-    expect(gate.reward).toBeGreaterThan(fourth.reward);
+    expect(gate.hp).toBeGreaterThan(baseline.hp);
+    expect(gate.damage).toBeGreaterThanOrEqual(baseline.damage);
+    expect(gate.attackMs).toBeLessThan(baseline.attackMs);
+    expect(gate.reward).toBeGreaterThan(baseline.reward);
   });
 
   it('walks through all five waves before advancing past the boss', () => {
