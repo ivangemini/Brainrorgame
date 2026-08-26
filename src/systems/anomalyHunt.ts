@@ -1,4 +1,5 @@
 import type { MutationId } from '../content/mutations';
+import { getCurrentAscensionEffects } from './ascension';
 
 export const ANOMALY_PITY_MAX = 18 as const;
 export const ANOMALY_SECRET_PITY_MAX = 70 as const;
@@ -51,7 +52,8 @@ export function rollAnomalyHunt(state: AnomalyHuntState, roll: number): AnomalyR
     };
   }
 
-  const chargedChance = 0.055 + nextCharge * 0.006;
+  const mutationLuck = getCurrentAscensionEffects().mutationLuckShift;
+  const chargedChance = 0.055 + nextCharge * 0.006 + mutationLuck;
   const epicChance = 0.010 + nextCharge * 0.0015;
   const legendaryChance = 0.0015 + nextCharge * 0.00035;
   let mutation: MutationId = 'none';
