@@ -17,9 +17,13 @@ interface DifficultyStats {
 export function getCampaignPressure(chapter: number, kind: EncounterDifficultyKind): CampaignPressure {
   const safeChapter = Math.max(1, Math.floor(chapter));
   const depth = safeChapter - 1;
+
+  // Base enemy/boss data already grows by chapter and world modifiers stack on
+  // top. Keep campaign pressure meaningful without multiplying those curves
+  // into a hard progression wall around world-final bosses.
   const hpMultiplier = kind === 'boss'
-    ? Math.min(7.5, 1.50 + depth * 0.30)
-    : Math.min(9.5, 1.35 + depth * 0.34);
+    ? Math.min(5, 1.50 + depth * 0.14)
+    : Math.min(6, 1.35 + depth * 0.18);
 
   return {
     hpMultiplier,
