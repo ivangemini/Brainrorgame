@@ -1,5 +1,6 @@
 import type * as Phaser from 'phaser';
-import { translate } from '../i18n';
+import { translate, resolveLocale } from '../i18n';
+import { getAscensionCopy } from '../i18n/ascensionCopy';
 import { localizedMetaEffect, localizedMetaUpgrade } from '../i18n/gameplayContent';
 import {
   META_UPGRADES,
@@ -7,6 +8,7 @@ import {
   type MetaUpgradeId,
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
+import { AscensionPanel } from './AscensionPanel';
 
 interface CardView {
   readonly id: MetaUpgradeId;
@@ -21,6 +23,7 @@ export class MetaUpgradePanel {
   private overlay!: Phaser.GameObjects.Rectangle;
   private drawer!: Phaser.GameObjects.Container;
   private shardText!: Phaser.GameObjects.Text;
+  private ascensionPanel!: AscensionPanel;
   private readonly cards = new Map<MetaUpgradeId, CardView>();
   private opened = false;
   private shards = 0;
@@ -46,14 +49,28 @@ export class MetaUpgradePanel {
     const closeLabel = this.scene.add.text(-96, 405, translate('common.close'), { fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '14px', color: '#dcecff' }).setOrigin(0.5);
     const closeHit = this.scene.add.rectangle(-96, 405, 120, 62, 0xffffff, 0.001).setInteractive({ useHandCursor: true }); closeHit.on('pointerdown', () => this.hide()); children.push(closeBg, closeLabel, closeHit);
     META_UPGRADES.forEach((definition, index) => { const centerY = 585 + index * 330; const card = this.createCard(definition.id, centerY); children.push(...card.children); this.cards.set(definition.id, card.view); });
+
+    const ascensionCopy = getAscensionCopy(resolveLocale());
+    const ascensionBg = this.scene.add.graphics();
+    ascensionBg.fillStyle(0x6f3eb8, 0.96); ascensionBg.fillRoundedRect(-552, 1410, 484, 92, 34);
+    ascensionBg.lineStyle(3, 0xd9b8ff, 0.4); ascensionBg.strokeRoundedRect(-552, 1410, 484, 92, 34);
+    const ascensionLabel = this.scene.add.text(-310, 1456, `★  ${ascensionCopy.title}`, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: '#f8efff' }).setOrigin(0.5);
+    const ascensionHit = this.scene.add.rectangle(-310, 1456, 500, 102, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    ascensionHit.on('pointerdown', () => {
+      this.scene.tweens.add({ targets: ascensionLabel, scaleX: 0.96, scaleY: 0.96, duration: 70, yoyo: true, ease: 'Quad.Out' });
+      void this.ascensionPanel.show();
+    });
+    children.push(ascensionBg, ascensionLabel, ascensionHit);
     children.push(this.scene.add.text(-565, 1530, translate('lab.hint'), { fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '18px', color: '#8297c8', wordWrap: { width: 500 } }));
     this.drawer = this.scene.add.container(1700, 0, children).setDepth(2101).setVisible(false);
+    this.ascensionPanel = new AscensionPanel(this.scene);
+    this.ascensionPanel.create();
   }
 
   public show(shards: number, levels: MetaUpgradeLevels): void { this.shards = shards; this.levels = levels; this.refresh(); if (this.opened) return; this.opened = true; this.overlay.setVisible(true).setAlpha(0); this.drawer.setVisible(true).setX(1700); this.scene.tweens.add({ targets: this.overlay, alpha: 1, duration: 180, ease: 'Quad.Out' }); this.scene.tweens.add({ targets: this.drawer, x: 1080, duration: 330, ease: 'Back.Out' }); }
-  public hide(): void { if (!this.opened) return; this.opened = false; this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 150, ease: 'Quad.In' }); this.scene.tweens.add({ targets: this.drawer, x: 1700, duration: 220, ease: 'Quad.In', onComplete: () => { if (!this.opened) { this.drawer.setVisible(false); this.overlay.setVisible(false); } } }); }
+  public hide(): void { if (!this.opened || this.ascensionPanel.isOpen()) return; this.opened = false; this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 150, ease: 'Quad.In' }); this.scene.tweens.add({ targets: this.drawer, x: 1700, duration: 220, ease: 'Quad.In', onComplete: () => { if (!this.opened) { this.drawer.setVisible(false); this.overlay.setVisible(false); } } }); }
   public update(shards: number, levels: MetaUpgradeLevels): void { this.shards = shards; this.levels = levels; this.refresh(); }
-  public isOpen(): boolean { return this.opened; }
+  public isOpen(): boolean { return this.opened || this.ascensionPanel.isOpen(); }
 
   private createCard(id: MetaUpgradeId, centerY: number): { children: Phaser.GameObjects.GameObject[]; view: CardView } {
     const definition = META_UPGRADES.find((item) => item.id === id)!; const localized = localizedMetaUpgrade(id); const children: Phaser.GameObjects.GameObject[] = []; const background = this.scene.add.graphics();
