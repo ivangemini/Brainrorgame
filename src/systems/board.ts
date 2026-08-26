@@ -7,6 +7,10 @@ import {
 } from '../content/mutations';
 import { consumeAscensionRecruitCredit, recordAscensionMerge } from './ascensionRuntime';
 
+export const BOARD_COLUMNS = 5 as const;
+export const BOARD_ROWS = 3 as const;
+export const BOARD_SIZE = BOARD_COLUMNS * BOARD_ROWS;
+
 export interface BoardUnit {
   readonly id: string;
   readonly family: CreatureFamily;
@@ -21,18 +25,17 @@ export interface BoardActionResult {
   readonly upgraded?: BoardUnit;
   readonly mutationPromoted?: boolean;
   readonly ascended?: boolean;
-  readonly emergencyFusion?: boolean;
   readonly ascensionRecruitCreditsEarned?: number;
   readonly ascensionCatalystApplied?: boolean;
 }
 
-export function createStarterBoard(size = 12): BoardState {
+export function createStarterBoard(size = BOARD_SIZE): BoardState {
   if (size < 6) throw new Error('Starter board requires at least 6 slots');
   const board: BoardSlot[] = Array.from({ length: size }, () => null);
   board[0] = { id: 'starter-p1a', family: 'pinguino', level: 1, mutation: 'none' };
   board[1] = { id: 'starter-p1b', family: 'pinguino', level: 1, mutation: 'none' };
-  board[4] = { id: 'starter-t1a', family: 'toastodilo', level: 1, mutation: 'none' };
-  board[5] = { id: 'starter-t1b', family: 'toastodilo', level: 1, mutation: 'none' };
+  board[5] = { id: 'starter-t1a', family: 'toastodilo', level: 1, mutation: 'none' };
+  board[6] = { id: 'starter-t1b', family: 'toastodilo', level: 1, mutation: 'none' };
   return board;
 }
 
@@ -137,46 +140,9 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
     }
   }
 
-  // A full 12-slot board can otherwise become a permanent soft-lock when every
-  // family/level combination is unique. Only in that exact state, allow an
-  // emergency same-level fusion. The drop target's family survives, so the
-  // player still controls which lineage is kept. Normal merge rules are
-  // untouched whenever the board has an empty slot or any legal merge.
-  if (isBoardDeadlocked(board) && source.level === target.level) {
-    const previousRank = Math.max(
-      getMutationDefinition(source.mutation).rank,
-      getMutationDefinition(target.mutation).rank
-    );
-    const resultingLevel = source.level < 3 ? (source.level + 1) as 2 | 3 : 3;
-    const emergencyMutation = source.level === 3
-      ? ascendMutationPair(source.mutation, target.mutation) ?? mergeMutation(source.mutation, target.mutation)
-      : mergeMutation(source.mutation, target.mutation);
-    const ascension = recordAscensionMerge(
-      resultingLevel,
-      emergencyMutation,
-      source.level < 3 && resultingLevel === 3
-    );
-    const upgraded: BoardUnit = {
-      id: `unjam-${target.family}-${resultingLevel}-${source.id}-${target.id}`,
-      family: target.family,
-      level: resultingLevel,
-      mutation: ascension.mutation
-    };
-    const promoted = getMutationDefinition(ascension.mutation).rank > previousRank;
-    next[from] = null;
-    next[to] = upgraded;
-    return {
-      board: next,
-      action: 'merge',
-      upgraded,
-      mutationPromoted: promoted,
-      ascended: source.level === 3 && promoted,
-      emergencyFusion: true,
-      ascensionRecruitCreditsEarned: ascension.recruitCreditsEarned,
-      ascensionCatalystApplied: ascension.catalystApplied
-    };
-  }
-
+  // Different families never merge. Deadlock prevention belongs in recruit
+  // planning so the game avoids generating an impossible board instead of
+  // breaking the player's learned merge rule after the fact.
   next[from] = target;
   next[to] = source;
   return { board: next, action: 'swap' };
