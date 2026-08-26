@@ -85,6 +85,18 @@ import {
   type OnboardingState
 } from '../systems/onboarding';
 import { calculateOfflineReward, type OfflineReward } from '../systems/offlineProgression';
+import {
+  advanceWeeklyChaosRun,
+  claimWeeklyChaosMilestone,
+  createDefaultWeeklyChaosProgress,
+  failWeeklyChaosRun,
+  getWeeklyChaosModifiers,
+  hasWeeklyChaosClaimAvailable,
+  rollWeeklyChaosProgress,
+  startWeeklyChaosRun,
+  weeklyRecruitCost,
+  type WeeklyChaosProgress
+} from '../systems/weeklyChaos';
 import { ChaosDraftPanel } from '../ui/ChaosDraftPanel';
 import { CollectionPanel } from '../ui/CollectionPanel';
 import { DailyPanel } from '../ui/DailyPanel';
@@ -93,6 +105,7 @@ import { MetaUpgradePanel } from '../ui/MetaUpgradePanel';
 import { OfflineRewardPanel } from '../ui/OfflineRewardPanel';
 import { OnboardingCoach } from '../ui/OnboardingCoach';
 import { RevivePanel } from '../ui/RevivePanel';
+import { WeeklyChaosPanel } from '../ui/WeeklyChaosPanel';
 import { BoardView } from '../views/BoardView';
 import { BossView } from '../views/BossView';
 import { EnemyView } from '../views/EnemyView';
@@ -111,6 +124,7 @@ export class GameScene extends Phaser.Scene {
   private metaPanel!: MetaUpgradePanel;
   private offlinePanel!: OfflineRewardPanel;
   private dailyPanel!: DailyPanel;
+  private weeklyPanel!: WeeklyChaosPanel;
   private collectionPanel!: CollectionPanel;
   private revivePanel!: RevivePanel;
   private chaosDraftPanel!: ChaosDraftPanel;
@@ -124,6 +138,7 @@ export class GameScene extends Phaser.Scene {
   private daily: DailyRetentionState = createDefaultDailyState();
   private collection: CollectionProgress = createDefaultCollectionProgress(this.board);
   private mutationAlbum: MutationAlbumProgress = backfillMutationAlbumProgress(this.collection, this.board);
+  private weeklyChaos: WeeklyChaosProgress = createDefaultWeeklyChaosProgress();
   private onboarding: OnboardingState = createDefaultOnboardingState();
   private anomalyHunt: AnomalyHuntState = createDefaultAnomalyHuntState();
   private chaosPerks: readonly ChaosPerkId[] = [];
@@ -154,7 +169,11 @@ export class GameScene extends Phaser.Scene {
     const reward = calculateOfflineReward(this.lastForegroundAt, now, this.chapter, this.upgrades);
     this.lastForegroundAt = now;
     this.daily = rollDailyState(this.daily, now);
+    const weeklyWasActive = this.weeklyChaos.active;
+    this.weeklyChaos = rollWeeklyChaosProgress(this.weeklyChaos, now);
+    if (weeklyWasActive && !this.weeklyChaos.active) this.reconcileCurrentTargetToWeekly(false);
     this.dailyPanel.update(this.daily);
+    this.weeklyPanel.update(this.weeklyChaos);
     this.syncUi();
     this.applyOfflineReward(reward);
   };
@@ -186,6 +205,7 @@ export class GameScene extends Phaser.Scene {
       () => this.recruitUnit(),
       () => this.toggleMetaPanel(),
       () => this.toggleDailyPanel(),
+      () => this.toggleWeeklyPanel(),
       () => this.toggleCollectionPanel()
     );
     this.metaPanel = new MetaUpgradePanel(this, (id) => this.buyMetaUpgrade(id));
@@ -198,6 +218,11 @@ export class GameScene extends Phaser.Scene {
       this,
       () => this.claimDailyCalendarReward(),
       (id) => this.claimDailyMissionReward(id)
+    );
+    this.weeklyPanel = new WeeklyChaosPanel(
+      this,
+      () => this.startWeeklyChaosAttempt(),
+      (target) => this.claimWeeklyChaosReward(target)
     );
     this.collectionPanel = new CollectionPanel(
       this,
@@ -224,6 +249,7 @@ export class GameScene extends Phaser.Scene {
     this.metaPanel.create();
     this.offlinePanel.create();
     this.dailyPanel.create();
+    this.weeklyPanel.create();
     this.collectionPanel.create();
     this.revivePanel.create();
     this.chaosDraftPanel.create();
@@ -234,6 +260,8 @@ export class GameScene extends Phaser.Scene {
     this.onboardingCoach.create();
     this.onboardingCoach.update(this.onboarding);
     this.daily = rollDailyState(this.daily);
+    this.weeklyChaos = rollWeeklyChaosProgress(this.weeklyChaos);
+    this.reconcileCurrentTargetToWeekly(false);
     this.presentEncounter(true);
     const resumeDraft = isOnboardingComplete(this.onboarding) && needsChaosDraft(this.encounterStep, this.chaosPerks.length);
     if (resumeDraft) {
@@ -245,6 +273,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.metaPanel.update(this.coreShards, this.upgrades);
     this.dailyPanel.update(this.daily);
+    this.weeklyPanel.update(this.weeklyChaos);
     this.collectionPanel.update(this.collection, this.mutationAlbum);
     this.lastForegroundAt = Date.now();
     document.addEventListener('visibilitychange', this.visibilityHandler);
@@ -267,11 +296,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateUnitAttacks(delta: number): void {
+    const weekly = getWeeklyChaosModifiers(this.weeklyChaos);
+    const perkCadence = getCurrentChaosPerkMultipliers().attackIntervalMultiplier;
     for (let slot = 0; slot < this.board.length; slot += 1) {
       const unit = this.board[slot];
       if (!unit) continue;
       const creature = getCreature(unit.family, unit.level);
-      const attackMs = mutatedAttackMs(creature.attackMs, unit.mutation);
+      const attackMs = mutatedAttackMs(creature.attackMs, unit.mutation) * weekly.attackInterval * perkCadence;
       const elapsed = (this.attackClocks.get(unit.id) ?? 0) + delta;
       if (elapsed >= attackMs) {
         this.attackClocks.set(unit.id, elapsed - attackMs);
@@ -290,7 +321,8 @@ export class GameScene extends Phaser.Scene {
     if (isBoss) this.audio.bossTelegraph();
     this.telegraphTarget(() => {
       if (!this.targetAlive || this.isBlockingPanelOpen()) return;
-      const damage = Math.max(1, Math.round(this.encounter.damage * incomingDamageMultiplier(this.upgrades)));
+      const weekly = getWeeklyChaosModifiers(this.weeklyChaos);
+      const damage = Math.max(1, Math.round(this.encounter.damage * incomingDamageMultiplier(this.upgrades) * weekly.incomingDamage));
       this.baseHp = Math.max(0, this.baseHp - damage);
       this.syncUi();
       if (this.baseHp > 0) this.persistSoon();
@@ -364,13 +396,14 @@ export class GameScene extends Phaser.Scene {
       this.fx.showHint('BOARD FULL — MERGE!', 1732, '#ffdda0');
       return;
     }
-    if (this.coins < RECRUIT_COST) {
+    const recruitCost = weeklyRecruitCost(RECRUIT_COST, this.weeklyChaos);
+    if (this.coins < recruitCost) {
       this.fx.showHint('NEED MORE COINS', 1732, '#ff9fa8');
       return;
     }
 
     this.audio.button();
-    this.coins -= RECRUIT_COST;
+    this.coins -= recruitCost;
     const family = Phaser.Math.RND.pick<CreatureFamily>([...getRecruitableFamilies()]);
     const anomalyBefore = this.anomalyHunt;
     const anomalyResult = rollAnomalyHunt(anomalyBefore, Phaser.Math.RND.frac());
@@ -429,7 +462,14 @@ export class GameScene extends Phaser.Scene {
     const creature = getCreature(unit.family, unit.level);
     const mutation = getMutationDefinition(unit.mutation);
     const target = this.targetPoint();
-    const damage = Math.max(1, Math.round(mutatedDamage(creature.damage, unit.mutation) * squadDamageMultiplier(this.upgrades)));
+    const weekly = getWeeklyChaosModifiers(this.weeklyChaos);
+    const perkDamage = getCurrentChaosPerkMultipliers().squadDamageMultiplier;
+    const damage = Math.max(1, Math.round(
+      mutatedDamage(creature.damage, unit.mutation)
+      * squadDamageMultiplier(this.upgrades)
+      * perkDamage
+      * weekly.squadDamage
+    ));
     const projectileColor = mutation.rank > 0 ? mutation.projectileColor : creature.projectileColor;
     this.audio.shot();
     const projectile = this.add.circle(origin.x, origin.y - 72, 13 + unit.level * 3 + mutation.rank * 2, projectileColor, 1)
@@ -467,13 +507,19 @@ export class GameScene extends Phaser.Scene {
     setActiveAbilityCombatActive(false);
     this.targetAttackClock = 0;
     const isBoss = this.encounterStep === BOSS_STEP;
-    const coinReward = Math.max(1, Math.round(this.encounter.reward * coinRewardMultiplier(this.upgrades)));
+    const weeklyModifiers = getWeeklyChaosModifiers(this.weeklyChaos);
+    const coinReward = Math.max(1, Math.round(
+      this.encounter.reward
+      * coinRewardMultiplier(this.upgrades)
+      * weeklyModifiers.coinRewards
+    ));
     this.coins += coinReward;
     this.collection = recordLifetimeEvent(this.collection, 'defeat');
     if (isBoss) this.collection = recordLifetimeEvent(this.collection, 'boss');
     this.collectionPanel.update(this.collection, this.mutationAlbum);
     this.recordDailyProgress('defeat');
     this.advanceOnboardingAction('defeated_target');
+    this.recordWeeklyClear();
     let coreReward = 0;
     if (isBoss) {
       coreReward = bossCoreReward(this.chapter);
@@ -496,6 +542,29 @@ export class GameScene extends Phaser.Scene {
 
     if (isBoss) this.bossView.defeat(coinReward, () => this.advanceEncounter(true));
     else this.enemyView.defeat(coinReward, () => this.advanceEncounter(false));
+  }
+
+  private recordWeeklyClear(): void {
+    if (!this.weeklyChaos.active) return;
+    const before = this.weeklyChaos;
+    const result = advanceWeeklyChaosRun(before);
+    this.weeklyChaos = result.progress;
+    this.weeklyPanel.update(this.weeklyChaos);
+
+    if (result.reachedMilestone) {
+      this.analytics.weeklyRunMilestone(before.weekId, result.reachedMilestone.target);
+      this.time.delayedCall(240, () => {
+        this.audio.reward();
+        this.fx.showHint(`WEEKLY CACHE UNLOCKED • ${result.reachedMilestone?.target}/12`, 1070, '#ffe59a');
+      });
+    }
+    if (result.completed) {
+      this.analytics.weeklyRunEnd(before.weekId, 'completed', result.progress.depth, result.progress.bestDepth);
+      this.time.delayedCall(520, () => {
+        this.fx.flashRing(540, 1030, 0x78e9ff);
+        this.fx.showHint('WEEKLY CHAOS RUN COMPLETE', 1010, '#bffaff');
+      });
+    }
   }
 
   private advanceEncounter(wasBoss: boolean): void {
@@ -530,7 +599,7 @@ export class GameScene extends Phaser.Scene {
     this.chapter = next.chapter;
     this.encounterStep = next.step;
     this.encounter = getEncounterSpec(this.chapter, this.encounterStep);
-    this.targetHpMax = this.encounter.hp;
+    this.targetHpMax = this.currentEncounterMaxHp();
     this.targetHp = this.targetHpMax;
     this.baseHp = Math.min(100, this.baseHp + (wasBoss ? 20 : 4 + extraHeal));
     this.targetAlive = true;
@@ -568,6 +637,9 @@ export class GameScene extends Phaser.Scene {
     this.chaosPerks = addChaosPerk(this.chaosPerks, id);
     if (this.chaosPerks.length === previousLength) return;
     syncCurrentChaosPerks(this.chaosPerks);
+    if (this.weeklyChaos.active) {
+      this.analytics.weeklyRunBuildChoice(this.weeklyChaos.weekId, this.weeklyChaos.depth, this.chapter, id);
+    }
     this.chaosDraftPanel.hide();
     const definition = getChaosPerkDefinition(id);
     this.audio.reward();
@@ -585,11 +657,13 @@ export class GameScene extends Phaser.Scene {
     const label = this.encounter.kind === 'boss'
       ? `BOSS ${this.chapter} INCOMING`
       : `WAVE ${this.encounterStep + 1}: ${this.encounter.name.toUpperCase()}`;
-    this.fx.showHint(label, 1015, this.encounter.kind === 'boss' ? '#fff0a6' : '#c7f7ff');
+    const weeklyPrefix = this.weeklyChaos.active ? `WEEKLY ${this.weeklyChaos.depth}/12 • ` : '';
+    this.fx.showHint(`${weeklyPrefix}${label}`, 1015, this.encounter.kind === 'boss' ? '#fff0a6' : '#c7f7ff');
     this.persistNow();
   }
 
   private shouldShowChapterInterstitial(): boolean {
+    if (this.weeklyChaos.active) return false;
     const now = Date.now();
     return shouldRequestChapterInterstitial({
       completedChapter: this.chapter,
@@ -601,6 +675,7 @@ export class GameScene extends Phaser.Scene {
   private loseEncounter(): void {
     if (!this.targetAlive) return;
     this.analytics.fortressFailed(this.encounter.kind, this.chapter, this.encounterStep);
+    if (this.weeklyChaos.active) this.failWeeklyChaosAttempt();
     this.targetAlive = false;
     this.resolvingBoard = true;
     setActiveAbilityCombatActive(false);
@@ -615,6 +690,17 @@ export class GameScene extends Phaser.Scene {
       banner.destroy();
       this.revivePanel.show(!this.reviveUsedThisEncounter);
     });
+  }
+
+  private failWeeklyChaosAttempt(): void {
+    const before = this.weeklyChaos;
+    const result = failWeeklyChaosRun(before);
+    if (!result.failed) return;
+    this.weeklyChaos = result.progress;
+    this.analytics.weeklyRunEnd(before.weekId, 'failed', result.depth, result.progress.bestDepth);
+    this.weeklyPanel.update(this.weeklyChaos);
+    this.reconcileCurrentTargetToWeekly(false);
+    this.fx.showHint(`WEEKLY RUN ENDED • ${result.depth}/12`, 1080, '#ffb1c3');
   }
 
   private async tryRewardedRevive(): Promise<boolean> {
@@ -642,6 +728,7 @@ export class GameScene extends Phaser.Scene {
 
   private freeRetryEncounter(): void {
     this.baseHp = 100;
+    this.targetHpMax = this.currentEncounterMaxHp();
     this.targetHp = this.targetHpMax;
     this.targetAlive = true;
     this.resolvingBoard = false;
@@ -658,6 +745,7 @@ export class GameScene extends Phaser.Scene {
     if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
     this.audio.button();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
+    if (this.weeklyPanel.isOpen()) this.weeklyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     else this.metaPanel.show(this.coreShards, this.upgrades);
@@ -669,10 +757,77 @@ export class GameScene extends Phaser.Scene {
     this.daily = rollDailyState(this.daily);
     this.dailyPanel.update(this.daily);
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
+    if (this.weeklyPanel.isOpen()) this.weeklyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     else this.dailyPanel.show(this.daily);
     this.syncUi();
+  }
+
+  private toggleWeeklyPanel(): void {
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
+    this.audio.button();
+    const weeklyWasActive = this.weeklyChaos.active;
+    this.weeklyChaos = rollWeeklyChaosProgress(this.weeklyChaos);
+    if (weeklyWasActive && !this.weeklyChaos.active) this.reconcileCurrentTargetToWeekly(false);
+    this.weeklyPanel.update(this.weeklyChaos);
+    if (this.metaPanel.isOpen()) this.metaPanel.hide();
+    if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
+    if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
+    if (this.weeklyPanel.isOpen()) this.weeklyPanel.hide();
+    else this.weeklyPanel.show(this.weeklyChaos);
+    this.syncUi();
+  }
+
+  private startWeeklyChaosAttempt(): void {
+    if (this.weeklyChaos.active || !this.targetAlive || this.resolvingBoard) return;
+    const result = startWeeklyChaosRun(this.weeklyChaos);
+    this.weeklyChaos = result.progress;
+    this.weeklyPanel.update(this.weeklyChaos);
+    if (!result.started) {
+      this.audio.button();
+      this.syncUi();
+      return;
+    }
+
+    this.analytics.weeklyRunStart(this.weeklyChaos, this.chapter);
+    this.reviveUsedThisEncounter = false;
+    this.targetAttackClock = 0;
+    this.attackClocks.clear();
+    this.reconcileCurrentTargetToWeekly(true);
+    this.presentEncounter(true);
+    this.weeklyPanel.hide();
+    this.audio.reward();
+    this.fx.flashRing(540, 1030, 0x78e9ff);
+    this.fx.burst(540, 1030, 0xffd568, 18, 210);
+    this.fx.showHint('WEEKLY CHAOS ACTIVE • TARGET RESET', 1015, '#bffaff');
+    this.persistNow();
+  }
+
+  private claimWeeklyChaosReward(target: number): void {
+    const result = claimWeeklyChaosMilestone(this.weeklyChaos, target);
+    this.weeklyChaos = result.progress;
+    if (!result.claimed) {
+      this.audio.button();
+      this.weeklyPanel.update(this.weeklyChaos);
+      this.syncUi();
+      return;
+    }
+
+    this.coins += result.reward.coins;
+    this.coreShards += result.reward.coreShards;
+    this.analytics.weeklyRunClaim(this.weeklyChaos.weekId, target, result.reward.coins, result.reward.coreShards);
+    this.audio.reward();
+    this.fx.flashRing(540, 1030, 0x78e9ff);
+    this.fx.burst(540, 1030, 0xffd568, 20, 220);
+    this.fx.showHint(`WEEKLY CACHE +${result.reward.coins} COINS`, 1010, '#ffe59a');
+    if (result.reward.coreShards > 0) {
+      this.time.delayedCall(260, () => this.fx.showHint(`CORE SHARD +${result.reward.coreShards}`, 1070, '#bffaff'));
+    }
+    this.weeklyPanel.update(this.weeklyChaos);
+    this.metaPanel.update(this.coreShards, this.upgrades);
+    this.syncUi();
+    this.persistNow();
   }
 
   private toggleCollectionPanel(): void {
@@ -681,6 +836,7 @@ export class GameScene extends Phaser.Scene {
     this.collectionPanel.update(this.collection, this.mutationAlbum);
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
+    if (this.weeklyPanel.isOpen()) this.weeklyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
     else this.collectionPanel.show(this.collection, this.mutationAlbum);
     this.syncUi();
@@ -810,6 +966,7 @@ export class GameScene extends Phaser.Scene {
     this.persistNow();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
+    if (this.weeklyPanel.isOpen()) this.weeklyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
     if (!reviveFlowActive && !draftPending && isOnboardingComplete(this.onboarding)) this.offlinePanel.show(reward);
   }
@@ -839,6 +996,20 @@ export class GameScene extends Phaser.Scene {
     }
     this.syncUi();
     if (!initial) this.cameras.main.flash(120, 215, 245, 255, false);
+  }
+
+  private currentEncounterMaxHp(): number {
+    const weekly = getWeeklyChaosModifiers(this.weeklyChaos);
+    return Math.max(1, Math.round(this.encounter.hp * weekly.enemyHp));
+  }
+
+  private reconcileCurrentTargetToWeekly(refill: boolean): void {
+    const previousMax = Math.max(1, this.targetHpMax);
+    const healthRatio = Phaser.Math.Clamp(this.targetHp / previousMax, 0, 1);
+    const nextMax = this.currentEncounterMaxHp();
+    this.targetHpMax = nextMax;
+    this.targetHp = refill ? nextMax : Math.min(nextMax, Math.max(0, Math.round(nextMax * healthRatio)));
+    if (this.bossView && this.enemyView) this.setTargetHealth();
   }
 
   private targetPoint(): Phaser.Math.Vector2 {
@@ -908,6 +1079,7 @@ export class GameScene extends Phaser.Scene {
     this.onboarding = save.onboarding;
     this.anomalyHunt = save.anomalyHunt;
     this.mutationAlbum = save.mutationAlbum;
+    this.weeklyChaos = rollWeeklyChaosProgress(save.weeklyChaos);
     this.chaosPerks = save.chaosPerks;
     syncCurrentChaosPerks(this.chaosPerks);
     this.baseHp = save.baseHp;
@@ -916,6 +1088,10 @@ export class GameScene extends Phaser.Scene {
     this.encounter = getEncounterSpec(this.chapter, this.encounterStep);
     this.targetHpMax = save.targetHpMax;
     this.targetHp = Math.min(save.targetHp, save.targetHpMax);
+    const previousMax = Math.max(1, this.targetHpMax);
+    const healthRatio = Phaser.Math.Clamp(this.targetHp / previousMax, 0, 1);
+    this.targetHpMax = this.currentEncounterMaxHp();
+    this.targetHp = Math.min(this.targetHpMax, Math.max(0, Math.round(this.targetHpMax * healthRatio)));
     this.recruitSerial = save.recruitSerial;
   }
 
@@ -938,6 +1114,7 @@ export class GameScene extends Phaser.Scene {
       onboarding: this.onboarding,
       anomalyHunt: this.anomalyHunt,
       mutationAlbum: this.mutationAlbum,
+      weeklyChaos: this.weeklyChaos,
       baseHp: this.baseHp,
       chapter: this.chapter,
       encounterStep: this.encounterStep,
@@ -951,6 +1128,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private syncUi(): void {
+    const recruitCost = weeklyRecruitCost(RECRUIT_COST, this.weeklyChaos);
     this.hud.update(
       this.coins,
       this.coreShards,
@@ -959,6 +1137,10 @@ export class GameScene extends Phaser.Scene {
       this.encounterStep,
       hasDailyClaimAvailable(this.daily),
       hasAchievementClaimAvailable(this.collection) || hasMutationAlbumMilestoneClaimAvailable(this.mutationAlbum),
+      hasWeeklyChaosClaimAvailable(this.weeklyChaos),
+      this.weeklyChaos.active,
+      this.weeklyChaos.depth,
+      recruitCost,
       this.anomalyHunt
     );
     this.setTargetHealth();
@@ -968,6 +1150,7 @@ export class GameScene extends Phaser.Scene {
     return this.metaPanel.isOpen()
       || this.offlinePanel.isOpen()
       || this.dailyPanel.isOpen()
+      || this.weeklyPanel.isOpen()
       || this.collectionPanel.isOpen()
       || this.revivePanel.isOpen()
       || this.chaosDraftPanel.isOpen();
