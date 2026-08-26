@@ -204,7 +204,7 @@ export class BossHuntPanel {
 
     const rows = getAllBosses().map((entry) => {
       const tier = this.trophies.trophies[entry.id];
-      return `${entry.shortName}: ${tier ? tier.toUpperCase() : '—'}`;
+      return `${entry.name.split(' ')[0]}: ${tier ? tier.toUpperCase() : '—'}`;
     });
     this.trophyText.setText(rows.join('   •   '));
   }
