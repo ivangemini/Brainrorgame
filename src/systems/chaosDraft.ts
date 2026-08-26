@@ -10,7 +10,7 @@ export const CHAOS_PERK_IDS = [
 ] as const;
 
 export type ChaosPerkId = (typeof CHAOS_PERK_IDS)[number];
-export type ChaosDraftCheckpoint = 1 | 2;
+export type ChaosDraftCheckpoint = 1 | 2 | 3;
 
 export interface ChaosPerkDefinition {
   readonly id: ChaosPerkId;
@@ -44,14 +44,15 @@ export function getChaosPerkDefinition(id: ChaosPerkId): ChaosPerkDefinition { r
 export function getAllChaosPerkDefinitions(): readonly ChaosPerkDefinition[] { return CHAOS_PERK_IDS.map((id) => DEFINITIONS[id]); }
 export function isChaosPerkId(value: unknown): value is ChaosPerkId { return typeof value === 'string' && (CHAOS_PERK_IDS as readonly string[]).includes(value); }
 
-export function chaosDraftCheckpointForStep(step: EncounterStep): ChaosDraftCheckpoint | null {
+export function chaosDraftCheckpointForStep(step: EncounterStep, allowThird = false): ChaosDraftCheckpoint | null {
   if (step === 2) return 1;
   if (step === 4) return 2;
+  if (allowThird && step === 5) return 3;
   return null;
 }
 
-export function needsChaosDraft(step: EncounterStep, selectedCount: number): boolean {
-  const checkpoint = chaosDraftCheckpointForStep(step);
+export function needsChaosDraft(step: EncounterStep, selectedCount: number, allowThird = false): boolean {
+  const checkpoint = chaosDraftCheckpointForStep(step, allowThird);
   if (checkpoint === null) return false;
   return Math.max(0, Math.floor(selectedCount)) < checkpoint;
 }
@@ -66,8 +67,9 @@ export function getChaosPerkOffers(chapter: number, checkpoint: ChaosDraftCheckp
   return [pool[0] ?? 'impact-jelly', pool[1] ?? 'tempo-worm', pool[2] ?? 'fortress-foam'];
 }
 
-export function addChaosPerk(selected: readonly ChaosPerkId[], id: ChaosPerkId): readonly ChaosPerkId[] {
-  if (selected.includes(id) || selected.length >= 2) return [...selected];
+export function addChaosPerk(selected: readonly ChaosPerkId[], id: ChaosPerkId, maxSelected = 2): readonly ChaosPerkId[] {
+  const cap = Math.max(0, Math.min(3, Math.floor(maxSelected)));
+  if (selected.includes(id) || selected.length >= cap) return [...selected];
   return [...selected, id];
 }
 
