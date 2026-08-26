@@ -21,6 +21,8 @@ interface CardView {
   readonly button: Phaser.GameObjects.Container;
 }
 
+type ResetCopyState = 'idle' | 'confirm' | 'resetting' | 'failed';
+
 export class MetaUpgradePanel {
   private overlay!: Phaser.GameObjects.Rectangle;
   private drawer!: Phaser.GameObjects.Container;
@@ -75,7 +77,7 @@ export class MetaUpgradePanel {
     children.push(this.scene.add.text(-565, 1520, translate('lab.hint'), { fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '16px', color: '#8297c8', wordWrap: { width: 500 } }));
 
     this.resetBackground = this.scene.add.graphics();
-    this.resetLabel = this.scene.add.text(-310, 1590, 'RESET PROGRESS', {
+    this.resetLabel = this.scene.add.text(-310, 1590, this.resetCopy('idle'), {
       fontFamily: 'Arial Black, system-ui, sans-serif',
       fontSize: '15px',
       color: '#ffb3bd'
@@ -111,7 +113,7 @@ export class MetaUpgradePanel {
   private handleResetTap(): void {
     if (!this.resetArmed) {
       this.resetArmed = true;
-      this.resetLabel.setText('TAP AGAIN TO RESET');
+      this.resetLabel.setText(this.resetCopy('confirm'));
       this.paintResetButton(true);
       this.resetTimer?.remove(false);
       this.resetTimer = this.scene.time.delayedCall(4000, () => this.disarmReset());
@@ -121,12 +123,12 @@ export class MetaUpgradePanel {
     this.resetTimer?.remove(false);
     this.resetTimer = null;
     this.resetArmed = false;
-    this.resetLabel.setText('RESETTING…');
+    this.resetLabel.setText(this.resetCopy('resetting'));
     this.resetHit.disableInteractive();
     this.paintResetButton(true);
     void this.resetProgress().catch(() => {
       this.resetHit.setInteractive({ useHandCursor: true });
-      this.resetLabel.setText('RESET FAILED — TRY AGAIN');
+      this.resetLabel.setText(this.resetCopy('failed'));
       this.paintResetButton(true);
       this.resetTimer = this.scene.time.delayedCall(2200, () => this.disarmReset());
     });
@@ -146,13 +148,21 @@ export class MetaUpgradePanel {
     window.location.reload();
   }
 
+  private resetCopy(state: ResetCopyState): string {
+    const russian = resolveLocale() === 'ru';
+    if (state === 'confirm') return russian ? 'НАЖМИ ЕЩЁ РАЗ ДЛЯ СБРОСА' : 'TAP AGAIN TO RESET';
+    if (state === 'resetting') return russian ? 'СБРОС…' : 'RESETTING…';
+    if (state === 'failed') return russian ? 'ОШИБКА — ПОПРОБУЙ ЕЩЁ' : 'RESET FAILED — TRY AGAIN';
+    return russian ? 'СБРОСИТЬ ПРОГРЕСС' : 'RESET PROGRESS';
+  }
+
   private disarmReset(): void {
     this.resetTimer?.remove(false);
     this.resetTimer = null;
     this.resetArmed = false;
     if (!this.resetHit || !this.resetLabel) return;
     this.resetHit.setInteractive({ useHandCursor: true });
-    this.resetLabel.setText('RESET PROGRESS');
+    this.resetLabel.setText(this.resetCopy('idle'));
     this.paintResetButton(false);
   }
 
