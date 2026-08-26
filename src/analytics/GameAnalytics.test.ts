@@ -136,6 +136,31 @@ describe('GameAnalytics', () => {
     ]);
   });
 
+  it('records bounded Boss Hunt attempt, milestone, claim and trophy signals', () => {
+    const sink = new CaptureSink();
+    const analytics = new GameAnalytics(sink, () => 1000);
+    analytics.bossHuntAttempt(202635, 'fridgino-maximo', 'enraged', 3, 840, 2400, 52);
+    analytics.bossHuntMilestone(202635, 'fridgino-maximo', 'enraged', 50);
+    analytics.bossHuntClaim(202635, 'fridgino-maximo', 50, 360, 1);
+    analytics.bossHuntTrophy(202635, 'fridgino-maximo', 'enraged');
+
+    expect(sink.events).toEqual([
+      {
+        name: 'boss_hunt_attempt', elapsedMs: 0, huntId: 202635, boss: 'fridgino-maximo', tier: 'enraged',
+        attempt: 3, damage: 840, totalDamage: 2400, completionPercent: 52
+      },
+      {
+        name: 'boss_hunt_milestone', elapsedMs: 0, huntId: 202635, boss: 'fridgino-maximo', tier: 'enraged', percent: 50
+      },
+      {
+        name: 'boss_hunt_claim', elapsedMs: 0, huntId: 202635, boss: 'fridgino-maximo', percent: 50, coins: 360, coreShards: 1
+      },
+      {
+        name: 'boss_hunt_trophy', elapsedMs: 0, huntId: 202635, boss: 'fridgino-maximo', trophy: 'enraged'
+      }
+    ]);
+  });
+
   it('records monetization placement and rewarded outcome', () => {
     const sink = new CaptureSink();
     const analytics = new GameAnalytics(sink, () => 1000);
