@@ -5,6 +5,7 @@ import {
   mergeMutation,
   type MutationId
 } from '../content/mutations';
+import { recordAscensionMerge } from './ascensionRuntime';
 
 export interface BoardUnit {
   readonly id: string;
@@ -20,6 +21,8 @@ export interface BoardActionResult {
   readonly upgraded?: BoardUnit;
   readonly mutationPromoted?: boolean;
   readonly ascended?: boolean;
+  readonly ascensionRecruitCreditsEarned?: number;
+  readonly ascensionCatalystApplied?: boolean;
 }
 
 export function createStarterBoard(size = 12): BoardState {
@@ -60,7 +63,9 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
   }
 
   if (source.family === target.family && source.level === target.level && source.level < 3) {
-    const mutation = mergeMutation(source.mutation, target.mutation);
+    const baseMutation = mergeMutation(source.mutation, target.mutation);
+    const resultingLevel = (source.level + 1) as 2 | 3;
+    const ascension = recordAscensionMerge(resultingLevel, baseMutation, resultingLevel === 3);
     const previousRank = Math.max(
       getMutationDefinition(source.mutation).rank,
       getMutationDefinition(target.mutation).rank
@@ -68,8 +73,8 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
     const upgraded: BoardUnit = {
       id: `${source.family}-${source.level + 1}-${source.id}-${target.id}`,
       family: source.family,
-      level: (source.level + 1) as 2 | 3,
-      mutation
+      level: resultingLevel,
+      mutation: ascension.mutation
     };
     next[from] = null;
     next[to] = upgraded;
@@ -77,14 +82,17 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
       board: next,
       action: 'merge',
       upgraded,
-      mutationPromoted: getMutationDefinition(mutation).rank > previousRank,
-      ascended: false
+      mutationPromoted: getMutationDefinition(ascension.mutation).rank > previousRank,
+      ascended: false,
+      ascensionRecruitCreditsEarned: ascension.recruitCreditsEarned,
+      ascensionCatalystApplied: ascension.catalystApplied
     };
   }
 
   if (source.family === target.family && source.level === 3 && target.level === 3) {
     const mutation = ascendMutationPair(source.mutation, target.mutation);
     if (mutation) {
+      const ascension = recordAscensionMerge(3, mutation, false);
       const upgraded: BoardUnit = {
         id: `ascended-${source.family}-${mutation}-${source.id}-${target.id}`,
         family: source.family,
@@ -98,7 +106,9 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
         action: 'merge',
         upgraded,
         mutationPromoted: true,
-        ascended: true
+        ascended: true,
+        ascensionRecruitCreditsEarned: ascension.recruitCreditsEarned,
+        ascensionCatalystApplied: false
       };
     }
   }
