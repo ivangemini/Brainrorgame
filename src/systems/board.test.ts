@@ -70,20 +70,22 @@ describe('board rules', () => {
     expect(second.ascensionCatalystApplied).toBe(false);
   });
 
-  it('earns a Recruit credit on every eighth merge with Merge Echo', () => {
+  it('earns and consumes a free Recruit credit every eighth merge with Merge Echo', () => {
     syncCurrentAscensionProgress({
       ...createDefaultAscensionProgress(),
       purchasedNodes: ['merge-seed-cache', 'merge-echo']
     });
     beginAscensionRunRuntime();
-    expect(getAscensionRecruitCredits()).toBe(2);
+    expect(getAscensionRecruitCredits()).toBe(0);
     for (let index = 0; index < 8; index += 1) {
       const board = Array.from({ length: 4 }, () => null) as Array<null | { id: string; family: 'pinguino'; level: 1; mutation: 'none' }>;
       board[0] = { id: `a-${index}`, family: 'pinguino', level: 1, mutation: 'none' };
       board[1] = { id: `b-${index}`, family: 'pinguino', level: 1, mutation: 'none' };
       moveOrMerge(board, 0, 1);
     }
-    expect(getAscensionRecruitCredits()).toBe(3);
+    expect(getAscensionRecruitCredits()).toBe(1);
+    addUnit(createStarterBoard(), { id: 'recruit-99-pinguino', family: 'pinguino', level: 1, mutation: 'none' });
+    expect(getAscensionRecruitCredits()).toBe(0);
   });
 
   it('ascends matching common T3 twins into a rare T3 instead of dead-ending', () => {
