@@ -6,7 +6,7 @@ import {
   type BoardState,
   type BoardUnit
 } from './board';
-import { planRecruit } from './recruitPlanner';
+import { planRecruit, recruitFamilyWeight } from './recruitPlanner';
 
 function unit(id: string, family: BoardUnit['family'], level: BoardUnit['level']): BoardUnit {
   return { id, family, level, mutation: 'none' };
@@ -43,6 +43,46 @@ describe('recruit planner', () => {
     board[0] = unit('p1', 'pinguino', 1);
     const plan = planRecruit(board, ['pinguino', 'toastodilo'], 0);
     expect(plan).toMatchObject({ level: 1, protectedPair: false });
+  });
+
+  it('strongly favors a family where the next recruit creates an immediate pair', () => {
+    const board: BoardState = [
+      unit('p1', 'pinguino', 1),
+      unit('t3', 'toastodilo', 3),
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
+    expect(recruitFamilyWeight(board, 'pinguino')).toBeGreaterThan(recruitFamilyWeight(board, 'toastodilo'));
+  });
+
+  it('downweights a family represented only by max-tier creatures without banning it', () => {
+    const board: BoardState = [
+      unit('p3a', 'pinguino', 3),
+      unit('p3b', 'pinguino', 3),
+      unit('t1', 'toastodilo', 1),
+      ...Array.from({ length: BOARD_SIZE - 3 }, () => null)
+    ];
+    const maxedWeight = recruitFamilyWeight(board, 'pinguino');
+    const usefulWeight = recruitFamilyWeight(board, 'toastodilo');
+    expect(maxedWeight).toBeGreaterThan(0);
+    expect(maxedWeight).toBeLessThan(usefulWeight);
+  });
+
+  it('avoids opening brand-new lineages when only a few cells remain', () => {
+    const board: Array<BoardUnit | null> = [
+      unit('p1', 'pinguino', 1),
+      unit('t2', 'toastodilo', 2),
+      unit('l3', 'lampalotl', 3),
+      unit('d2', 'dishnail', 2),
+      unit('m3', 'mochimoth', 3),
+      unit('r2', 'routeraptor', 2),
+      unit('v3', 'vendinguana', 3),
+      unit('u2', 'umbrellama', 2),
+      unit('o3', 'mopossum', 3),
+      unit('f2', 'fanthom', 2),
+      unit('s3', 'socktopus', 3),
+      null, null, null, null
+    ];
+    expect(recruitFamilyWeight(board, 'pinguino')).toBeGreaterThan(recruitFamilyWeight(board, 'microwhale'));
   });
 
   it('protects the final slot by creating a legal same-family same-level twin', () => {
