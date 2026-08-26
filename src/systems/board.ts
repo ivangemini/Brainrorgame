@@ -30,7 +30,7 @@ export interface BoardActionResult {
 }
 
 export function createStarterBoard(size = BOARD_SIZE): BoardState {
-  if (size < 6) throw new Error('Starter board requires at least 6 slots');
+  if (size < 7) throw new Error('Starter board requires at least 7 slots');
   const board: BoardSlot[] = Array.from({ length: size }, () => null);
   board[0] = { id: 'starter-p1a', family: 'pinguino', level: 1, mutation: 'none' };
   board[1] = { id: 'starter-p1b', family: 'pinguino', level: 1, mutation: 'none' };
