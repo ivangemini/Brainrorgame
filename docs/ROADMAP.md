@@ -39,8 +39,8 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [ ] Ascension tree: Merge, Combat, Chaos and Collection branches with rule-changing unlocks rather than only flat stat inflation.
 - [x] Mutation Album: track Normal / Charged / Prismatic / Crowned state for every form, exposing up to 144 collection targets from the existing 36-form roster.
 - [x] Mutation Album milestone rewards and Codex completion surfaces.
-- [ ] Weekly Chaos Run: deterministic weekly seed, rotating rules, weekly progression milestones and bounded rewards.
-- [ ] Weekly-run analytics: start, milestone, completion/failure depth and build-choice signals without player PII.
+- [x] Weekly Chaos Run: deterministic weekly seed, rotating rules, weekly progression milestones and bounded rewards.
+- [x] Weekly-run analytics: start, milestone, completion/failure depth and build-choice signals without player PII.
 
 ### A-tier systems
 - [ ] Boss Hunt: rotating empowered boss with persistent damage across attempts and a finite reward track.
@@ -59,7 +59,7 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 ### Retention design constraints
 - [ ] Rewarded ads remain optional acceleration/recovery; no progression wall requires an ad.
 - [ ] Prestige must create new decisions, not merely reset the same numbers.
-- [ ] Weekly content must remain deterministic/testable and not require server authority for core play.
+- [x] Weekly content remains deterministic/testable and does not require server authority for core play.
 - [ ] Collection expansion should preferentially reuse existing production art through authored mutation presentation before adding dozens of new base families.
 - [ ] New currencies require a named sink, bounded source and save-migration plan before implementation.
 
@@ -91,12 +91,15 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [x] Chaos Draft, active abilities, crew synergies, mutations and Core Lab meta progression.
 - [x] Chaos Codex target follows the live roster instead of a hard-coded 21-form total.
 - [x] Mutation Album persists all 144 form/state targets, records recruit/merge discoveries and exposes claimable Codex milestones.
+- [x] Weekly Chaos Run adds a 12-encounter deterministic weekly challenge with three rotating rules, best-depth progression and four finite milestone caches.
+- [x] Weekly rules modify live combat HP, damage, cadence, combat coins and recruit cost while preserving the player's normal campaign/board progression.
 - [x] Fifteen long-tail achievements, daily rewards/missions and offline progression.
-- [x] Save migrations through v11, including evidence-safe Mutation Album backfill from v1–v10 saves.
+- [x] Save migrations through v12, including evidence-safe Mutation Album backfill and fresh Weekly Chaos state for legacy saves.
 - [x] Yandex, CrazyGames, Poki, Playgama and GameDistribution adapter foundations.
-- [x] Typed privacy-safe analytics.
+- [x] Typed privacy-safe analytics, including bounded Weekly Run start/depth/build/outcome/reward signals.
 - [x] Typed EN/RU localization framework with `?lang=` QA override.
 - [x] Primary HUD, Recruit/Anomaly readout, world transitions, Daily Chaos and Chaos Codex use runtime localization.
+- [x] Weekly Chaos panel/rules/progression copy is available in EN/RU; weekly Recruit pricing is reflected live in the HUD.
 - [x] Onboarding coach, revive flow and offline-reward flow use EN/RU runtime localization.
 - [x] All six Chaos Draft perk names/descriptions are localized without coupling language to balance definitions.
 - [x] Active ability HUD/status labels are localized; localized names/descriptions are available by ability id.
