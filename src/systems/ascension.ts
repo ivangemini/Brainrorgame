@@ -1,5 +1,5 @@
-import { createStarterBoard, type BoardState } from './board';
 import { getMutationDefinition, type MutationId } from '../content/mutations';
+import { createStarterBoard, type BoardState } from './board';
 
 export const ASCENSION_NODE_IDS = [
   'loaded-grid',
@@ -68,8 +68,18 @@ export const ASCENSION_NODES: readonly AscensionNodeDefinition[] = [
   { id: 'mutation-anchor', branch: 'collection', cost: 2, requires: 'album-bounty', accentColor: 0x93f2ff }
 ] as const;
 
+let currentProgress: AscensionProgress = createDefaultAscensionProgress();
+
 export function createDefaultAscensionProgress(): AscensionProgress {
   return { chaosStars: 0, totalChaosStars: 0, ascensions: 0, highestRiftTier: 0, purchased: [] };
+}
+
+export function syncCurrentAscensionProgress(progress: AscensionProgress): void {
+  currentProgress = cloneAscensionProgress(progress);
+}
+
+export function getCurrentAscensionProgress(): AscensionProgress {
+  return currentProgress;
 }
 
 export function getAscensionNode(id: AscensionNodeId): AscensionNodeDefinition {
@@ -177,6 +187,14 @@ export function combatEnergyReserve(progress: AscensionProgress): number {
   return hasAscensionNode(progress, 'chaos-reserve') ? CHAOS_RESERVE_ENERGY : 0;
 }
 
+export function currentCombatEnergyReserve(): number {
+  return combatEnergyReserve(currentProgress);
+}
+
 export function albumDiscoveryBounty(progress: AscensionProgress): number {
   return hasAscensionNode(progress, 'album-bounty') ? ALBUM_BOUNTY_COINS : 0;
+}
+
+function cloneAscensionProgress(progress: AscensionProgress): AscensionProgress {
+  return { ...progress, purchased: [...progress.purchased] };
 }
