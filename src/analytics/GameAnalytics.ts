@@ -1,10 +1,12 @@
 import type { CreatureFamily } from '../content/creatures';
 import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
+import type { ChaosPerkId } from '../systems/chaosDraft';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
 import type { OnboardingStep } from '../systems/onboarding';
+import { getWeeklyChaosRules, type WeeklyChaosProgress } from '../systems/weeklyChaos';
 import type { AnalyticsSink, EncounterKind, GameAnalyticsEvent } from './events';
 
 export class GameAnalytics {
@@ -105,6 +107,42 @@ export class GameAnalytics {
 
   public achievementClaim(achievement: AchievementId, coins: number, coreShards: number): void {
     this.send({ name: 'achievement_claim', elapsedMs: this.elapsed(), achievement, coins, coreShards });
+  }
+
+  public weeklyRunStart(progress: WeeklyChaosProgress, chapter: number): void {
+    const [rule1, rule2, rule3] = getWeeklyChaosRules(progress.weekId);
+    if (!rule1 || !rule2 || !rule3) return;
+    this.send({
+      name: 'weekly_run_start',
+      elapsedMs: this.elapsed(),
+      weekId: progress.weekId,
+      attempt: progress.runsStarted,
+      chapter,
+      rule1: rule1.id,
+      rule2: rule2.id,
+      rule3: rule3.id
+    });
+  }
+
+  public weeklyRunMilestone(weekId: number, depth: number): void {
+    this.send({ name: 'weekly_run_milestone', elapsedMs: this.elapsed(), weekId, depth });
+  }
+
+  public weeklyRunBuildChoice(weekId: number, depth: number, chapter: number, perk: ChaosPerkId): void {
+    this.send({ name: 'weekly_run_build_choice', elapsedMs: this.elapsed(), weekId, depth, chapter, perk });
+  }
+
+  public weeklyRunEnd(
+    weekId: number,
+    outcome: 'completed' | 'failed',
+    depth: number,
+    bestDepth: number
+  ): void {
+    this.send({ name: 'weekly_run_end', elapsedMs: this.elapsed(), weekId, outcome, depth, bestDepth });
+  }
+
+  public weeklyRunClaim(weekId: number, target: number, coins: number, coreShards: number): void {
+    this.send({ name: 'weekly_run_claim', elapsedMs: this.elapsed(), weekId, target, coins, coreShards });
   }
 
   public rewardedAdResult(placement: RewardedPlacement, rewarded: boolean): void {
