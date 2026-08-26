@@ -14,6 +14,13 @@ import {
   type AnomalyHuntState
 } from '../systems/anomalyHunt';
 import {
+  effectiveRecruitCost,
+  getCurrentAscensionEffects,
+  getCurrentAscensionState,
+  performAscension,
+  syncCurrentAscensionState
+} from '../systems/ascension';
+import {
   addChaosPerk,
   chaosDraftCheckpointForStep,
   getChaosPerkDefinition,
@@ -68,6 +75,7 @@ import {
   type MetaUpgradeId,
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
+import { observeCurrentMutationAlbumBoard } from '../systems/mutationAlbum';
 import {
   advanceOnboarding,
   blocksCombatForOnboarding,
@@ -85,6 +93,7 @@ import { MetaUpgradePanel } from '../ui/MetaUpgradePanel';
 import { OfflineRewardPanel } from '../ui/OfflineRewardPanel';
 import { OnboardingCoach } from '../ui/OnboardingCoach';
 import { RevivePanel } from '../ui/RevivePanel';
+import { RiftPanel } from '../ui/RiftPanel';
 import { BoardView } from '../views/BoardView';
 import { BossView } from '../views/BossView';
 import { EnemyView } from '../views/EnemyView';
@@ -101,6 +110,7 @@ export class GameScene extends Phaser.Scene {
   private platform!: PlatformAdapter;
   private hud!: GameHud;
   private metaPanel!: MetaUpgradePanel;
+  private riftPanel!: RiftPanel;
   private offlinePanel!: OfflineRewardPanel;
   private dailyPanel!: DailyPanel;
   private collectionPanel!: CollectionPanel;
@@ -150,9 +160,7 @@ export class GameScene extends Phaser.Scene {
     this.applyOfflineReward(reward);
   };
 
-  public constructor() {
-    super('game');
-  }
+  public constructor() { super('game'); }
 
   public create(): void {
     this.platform = this.registry.get('platform') as PlatformAdapter;
@@ -163,6 +171,7 @@ export class GameScene extends Phaser.Scene {
       initialOfflineReward = calculateOfflineReward(initialSave.updatedAt, Date.now(), this.chapter, this.upgrades);
     }
     syncCurrentChaosPerks(this.chaosPerks);
+    observeCurrentMutationAlbumBoard(this.board);
 
     this.analytics = new GameAnalytics(this.platform);
     this.analytics.sessionStart(initialSave !== null, this.chapter);
@@ -176,26 +185,16 @@ export class GameScene extends Phaser.Scene {
       this,
       () => this.recruitUnit(),
       () => this.toggleMetaPanel(),
+      () => this.toggleRiftPanel(),
       () => this.toggleDailyPanel(),
       () => this.toggleCollectionPanel()
     );
     this.metaPanel = new MetaUpgradePanel(this, (id) => this.buyMetaUpgrade(id));
-    this.offlinePanel = new OfflineRewardPanel(
-      this,
-      () => this.audio.reward(),
-      (reward) => this.doubleOfflineReward(reward)
-    );
-    this.dailyPanel = new DailyPanel(
-      this,
-      () => this.claimDailyCalendarReward(),
-      (id) => this.claimDailyMissionReward(id)
-    );
+    this.riftPanel = new RiftPanel(this, () => this.performRiftAscension(), () => this.handleRiftMetaChanged());
+    this.offlinePanel = new OfflineRewardPanel(this, () => this.audio.reward(), (reward) => this.doubleOfflineReward(reward));
+    this.dailyPanel = new DailyPanel(this, () => this.claimDailyCalendarReward(), (id) => this.claimDailyMissionReward(id));
     this.collectionPanel = new CollectionPanel(this, (id) => this.claimAchievementReward(id));
-    this.revivePanel = new RevivePanel(
-      this,
-      () => this.tryRewardedRevive(),
-      () => this.freeRetryEncounter()
-    );
+    this.revivePanel = new RevivePanel(this, () => this.tryRewardedRevive(), () => this.freeRetryEncounter());
     this.chaosDraftPanel = new ChaosDraftPanel(this, (id) => this.selectChaosPerk(id));
     this.boardView = new BoardView(
       this,
@@ -209,6 +208,7 @@ export class GameScene extends Phaser.Scene {
 
     this.hud.create();
     this.metaPanel.create();
+    this.riftPanel.create();
     this.offlinePanel.create();
     this.dailyPanel.create();
     this.collectionPanel.create();
@@ -235,9 +235,7 @@ export class GameScene extends Phaser.Scene {
     this.collectionPanel.update(this.collection);
     this.lastForegroundAt = Date.now();
     document.addEventListener('visibilitychange', this.visibilityHandler);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      document.removeEventListener('visibilitychange', this.visibilityHandler);
-    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => document.removeEventListener('visibilitychange', this.visibilityHandler));
 
     if (initialOfflineReward && initialOfflineReward.coins > 0) {
       this.applyOfflineReward(initialOfflineReward);
@@ -289,15 +287,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDrop(view: Phaser.GameObjects.Container, from: number, to: number): void {
-    if (this.resolvingBoard || this.isBlockingPanelOpen()) {
-      this.boardView.snapHome(view, from);
-      return;
-    }
+    if (this.resolvingBoard || this.isBlockingPanelOpen()) { this.boardView.snapHome(view, from); return; }
     const result = moveOrMerge(this.board, from, to);
-    if (result.action === 'noop') {
-      this.boardView.snapHome(view, from);
-      return;
-    }
+    if (result.action === 'noop') { this.boardView.snapHome(view, from); return; }
     if (this.onboarding.step === 'merge' && result.action !== 'merge') {
       this.boardView.snapHome(view, from);
       this.fx.showHint('MERGE MATCHING TWINS FIRST', 1015, '#fff0a6');
@@ -310,6 +302,7 @@ export class GameScene extends Phaser.Scene {
         to,
         () => {
           this.board = result.board;
+          observeCurrentMutationAlbumBoard(this.board);
           this.boardView.render(this.board, to);
           return this.boardView.getView(to);
         },
@@ -320,6 +313,8 @@ export class GameScene extends Phaser.Scene {
             this.analytics.merge(result.upgraded.family, result.upgraded.level, result.upgraded.mutation, this.chapter);
             this.collection = recordLifetimeEvent(this.collection, 'merge');
             this.collection = discoverCreature(this.collection, `${result.upgraded.family}-${result.upgraded.level}`);
+            const refund = getCurrentAscensionEffects().mergeCoinRefund;
+            if (refund > 0) this.coins += refund;
             this.collectionPanel.update(this.collection);
             if (result.mutationPromoted) {
               const mutation = getMutationDefinition(result.upgraded.mutation);
@@ -328,6 +323,7 @@ export class GameScene extends Phaser.Scene {
           }
           this.recordDailyProgress('merge');
           this.advanceOnboardingAction('merged');
+          this.syncUi();
           this.persistSoon();
         }
       );
@@ -345,17 +341,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const empty = firstEmptySlot(this.board);
-    if (empty < 0) {
-      this.fx.showHint('BOARD FULL — MERGE!', 1732, '#ffdda0');
-      return;
-    }
-    if (this.coins < RECRUIT_COST) {
-      this.fx.showHint('NEED MORE COINS', 1732, '#ff9fa8');
-      return;
-    }
+    if (empty < 0) { this.fx.showHint('BOARD FULL — MERGE!', 1732, '#ffdda0'); return; }
+    const recruitCost = effectiveRecruitCost(RECRUIT_COST);
+    if (this.coins < recruitCost) { this.fx.showHint('NEED MORE COINS', 1732, '#ff9fa8'); return; }
 
     this.audio.button();
-    this.coins -= RECRUIT_COST;
+    this.coins -= recruitCost;
     const family = Phaser.Math.RND.pick<CreatureFamily>([...getRecruitableFamilies()]);
     const anomalyBefore = this.anomalyHunt;
     const anomalyResult = rollAnomalyHunt(anomalyBefore, Phaser.Math.RND.frac());
@@ -363,21 +354,9 @@ export class GameScene extends Phaser.Scene {
     const mutationId = anomalyResult.mutation;
     const mutation = getMutationDefinition(mutationId);
     this.recruitSerial += 1;
-    this.board = addUnit(this.board, {
-      id: `recruit-${this.recruitSerial}-${family}`,
-      family,
-      level: 1,
-      mutation: mutationId
-    });
-    this.analytics.recruit(
-      family,
-      mutationId,
-      this.coins,
-      anomalyBefore.charge,
-      anomalyBefore.secretPity,
-      anomalyResult.guaranteed,
-      anomalyResult.secret
-    );
+    this.board = addUnit(this.board, { id: `recruit-${this.recruitSerial}-${family}`, family, level: 1, mutation: mutationId });
+    observeCurrentMutationAlbumBoard(this.board);
+    this.analytics.recruit(family, mutationId, this.coins, anomalyBefore.charge, anomalyBefore.secretPity, anomalyResult.guaranteed, anomalyResult.secret);
     this.collection = recordLifetimeEvent(this.collection, 'recruit');
     this.collection = discoverCreature(this.collection, `${family}-1`);
     this.collectionPanel.update(this.collection);
@@ -415,15 +394,12 @@ export class GameScene extends Phaser.Scene {
     const damage = Math.max(1, Math.round(mutatedDamage(creature.damage, unit.mutation) * squadDamageMultiplier(this.upgrades)));
     const projectileColor = mutation.rank > 0 ? mutation.projectileColor : creature.projectileColor;
     this.audio.shot();
-    const projectile = this.add.circle(origin.x, origin.y - 72, 13 + unit.level * 3 + mutation.rank * 2, projectileColor, 1)
-      .setStrokeStyle(5, 0xffffff, 0.65)
-      .setDepth(800);
+    const projectile = this.add.circle(origin.x, origin.y - 72, 13 + unit.level * 3 + mutation.rank * 2, projectileColor, 1).setStrokeStyle(5, 0xffffff, 0.65).setDepth(800);
     const trail = this.add.circle(origin.x, origin.y - 72, 28 + unit.level * 4 + mutation.rank * 3, projectileColor, mutation.rank > 0 ? 0.24 : 0.16).setDepth(799);
     this.tweens.add({
       targets: [projectile, trail], x: target.x, y: target.y, scaleX: 0.6, scaleY: 0.6, duration: 245, ease: 'Cubic.In',
       onComplete: () => {
-        projectile.destroy();
-        trail.destroy();
+        projectile.destroy(); trail.destroy();
         if (mutation.rank >= 2) this.fx.burst(target.x, target.y, projectileColor, mutation.rank + 2, 90);
         this.damageTarget(damage, projectileColor);
       }
@@ -458,20 +434,14 @@ export class GameScene extends Phaser.Scene {
     this.recordDailyProgress('defeat');
     this.advanceOnboardingAction('defeated_target');
     let coreReward = 0;
-    if (isBoss) {
-      coreReward = bossCoreReward(this.chapter);
-      this.coreShards += coreReward;
-    }
+    if (isBoss) { coreReward = bossCoreReward(this.chapter); this.coreShards += coreReward; }
     this.syncUi();
     this.metaPanel.update(this.coreShards, this.upgrades);
 
     const point = this.targetPoint();
-    if (isBoss) this.audio.bossDefeat();
-    else this.audio.enemyDefeat();
+    if (isBoss) this.audio.bossDefeat(); else this.audio.enemyDefeat();
     this.time.delayedCall(isBoss ? 250 : 120, () => this.audio.reward());
-    if (coreReward > 0) {
-      this.time.delayedCall(420, () => this.fx.showHint(`CORE SHARD +${coreReward}`, 1010, '#bffaff'));
-    }
+    if (coreReward > 0) this.time.delayedCall(420, () => this.fx.showHint(`CORE SHARD +${coreReward}`, 1010, '#bffaff'));
     this.cameras.main.shake(isBoss ? 260 : 150, isBoss ? 0.008 : 0.0048);
     this.fx.flashScreen(this.encounter.accentColor, isBoss ? 0.2 : 0.12, isBoss ? 260 : 180);
     this.fx.burst(point.x, point.y, this.encounter.accentColor, isBoss ? 30 : 16, isBoss ? 310 : 190);
@@ -482,10 +452,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private advanceEncounter(wasBoss: boolean): void {
-    if (wasBoss && this.shouldShowChapterInterstitial()) {
-      void this.showChapterInterstitialThenAdvance();
-      return;
-    }
+    if (wasBoss && this.shouldShowChapterInterstitial()) { void this.showChapterInterstitialThenAdvance(); return; }
     this.finishAdvanceEncounter(wasBoss);
   }
 
@@ -493,21 +460,14 @@ export class GameScene extends Phaser.Scene {
     const completedChapter = this.chapter;
     this.lastInterstitialRequestAt = Date.now();
     this.analytics.interstitialRequest('chapter_break', completedChapter);
-    try {
-      await this.platform.showInterstitial();
-    } catch {
-      // Ad availability must never block progression.
-    }
+    try { await this.platform.showInterstitial(); } catch { /* Ad availability must never block progression. */ }
     this.analytics.interstitialComplete('chapter_break', completedChapter);
     this.finishAdvanceEncounter(true);
   }
 
   private finishAdvanceEncounter(wasBoss: boolean): void {
     const extraHeal = wasBoss ? 0 : getCurrentChaosPerkMultipliers().waveHealBonus;
-    if (wasBoss) {
-      this.chaosPerks = [];
-      resetCurrentChaosPerks();
-    }
+    if (wasBoss) { this.chaosPerks = []; resetCurrentChaosPerks(); }
 
     const next = nextEncounter(this.chapter, this.encounterStep);
     this.chapter = next.chapter;
@@ -515,7 +475,8 @@ export class GameScene extends Phaser.Scene {
     this.encounter = getEncounterSpec(this.chapter, this.encounterStep);
     this.targetHpMax = this.encounter.hp;
     this.targetHp = this.targetHpMax;
-    this.baseHp = Math.min(100, this.baseHp + (wasBoss ? 20 : 4 + extraHeal));
+    const bossHeal = 20 + getCurrentAscensionEffects().bossVictoryHealBonus;
+    this.baseHp = Math.min(100, this.baseHp + (wasBoss ? bossHeal : 4 + extraHeal));
     this.targetAlive = true;
     this.resolvingBoard = false;
     this.reviveUsedThisEncounter = false;
@@ -530,16 +491,12 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(180, () => this.showChaosDraft());
       return;
     }
-
     this.activateCurrentEncounter();
   }
 
   private showChaosDraft(): void {
     const checkpoint = chaosDraftCheckpointForStep(this.encounterStep);
-    if (checkpoint === null || !needsChaosDraft(this.encounterStep, this.chaosPerks.length)) {
-      this.activateCurrentEncounter();
-      return;
-    }
+    if (checkpoint === null || !needsChaosDraft(this.encounterStep, this.chaosPerks.length)) { this.activateCurrentEncounter(); return; }
     setActiveAbilityCombatActive(false);
     const offers = getChaosPerkOffers(this.chapter, checkpoint, this.chaosPerks);
     this.chaosDraftPanel.show(this.chapter, checkpoint, offers, this.chaosPerks);
@@ -565,20 +522,14 @@ export class GameScene extends Phaser.Scene {
     this.resolvingBoard = false;
     setActiveAbilityCombatActive(true);
     this.analytics.encounterStart(this.encounter.kind, this.chapter, this.encounterStep);
-    const label = this.encounter.kind === 'boss'
-      ? `BOSS ${this.chapter} INCOMING`
-      : `WAVE ${this.encounterStep + 1}: ${this.encounter.name.toUpperCase()}`;
+    const label = this.encounter.kind === 'boss' ? `BOSS ${this.chapter} INCOMING` : `WAVE ${this.encounterStep + 1}: ${this.encounter.name.toUpperCase()}`;
     this.fx.showHint(label, 1015, this.encounter.kind === 'boss' ? '#fff0a6' : '#c7f7ff');
     this.persistNow();
   }
 
   private shouldShowChapterInterstitial(): boolean {
     const now = Date.now();
-    return shouldRequestChapterInterstitial({
-      completedChapter: this.chapter,
-      sessionElapsedMs: now - this.sessionStartedAt,
-      sinceLastRequestMs: this.lastInterstitialRequestAt === null ? null : now - this.lastInterstitialRequestAt
-    });
+    return shouldRequestChapterInterstitial({ completedChapter: this.chapter, sessionElapsedMs: now - this.sessionStartedAt, sinceLastRequestMs: this.lastInterstitialRequestAt === null ? null : now - this.lastInterstitialRequestAt });
   }
 
   private loseEncounter(): void {
@@ -594,20 +545,14 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(1400).setScale(0.5);
     this.tweens.add({ targets: banner, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.Out' });
     this.fx.flashScreen(0x74dfff, 0.22, 420);
-    this.time.delayedCall(720, () => {
-      banner.destroy();
-      this.revivePanel.show(!this.reviveUsedThisEncounter);
-    });
+    this.time.delayedCall(720, () => { banner.destroy(); this.revivePanel.show(!this.reviveUsedThisEncounter); });
   }
 
   private async tryRewardedRevive(): Promise<boolean> {
     if (this.reviveUsedThisEncounter) return false;
-    const rewarded = await this.platform.showRewarded()
-      .then((result) => result.rewarded)
-      .catch(() => false);
+    const rewarded = await this.platform.showRewarded().then((result) => result.rewarded).catch(() => false);
     this.analytics.rewardedAdResult('fortress_revive', rewarded);
     if (!rewarded) return false;
-
     this.reviveUsedThisEncounter = true;
     this.baseHp = REWARDED_REVIVE_HP;
     this.targetAlive = true;
@@ -640,10 +585,19 @@ export class GameScene extends Phaser.Scene {
   private toggleMetaPanel(): void {
     if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
     this.audio.button();
+    if (this.riftPanel.isOpen()) this.riftPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
+    if (this.metaPanel.isOpen()) this.metaPanel.hide(); else this.metaPanel.show(this.coreShards, this.upgrades);
+  }
+
+  private toggleRiftPanel(): void {
+    if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
+    this.audio.button();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
-    else this.metaPanel.show(this.coreShards, this.upgrades);
+    if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
+    if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
+    if (this.riftPanel.isOpen()) this.riftPanel.hide(); else this.riftPanel.show(this.chapter);
   }
 
   private toggleDailyPanel(): void {
@@ -651,10 +605,10 @@ export class GameScene extends Phaser.Scene {
     this.audio.button();
     this.daily = rollDailyState(this.daily);
     this.dailyPanel.update(this.daily);
+    if (this.riftPanel.isOpen()) this.riftPanel.hide();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
-    if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
-    else this.dailyPanel.show(this.daily);
+    if (this.dailyPanel.isOpen()) this.dailyPanel.hide(); else this.dailyPanel.show(this.daily);
     this.syncUi();
   }
 
@@ -662,20 +616,56 @@ export class GameScene extends Phaser.Scene {
     if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
     this.audio.button();
     this.collectionPanel.update(this.collection);
+    if (this.riftPanel.isOpen()) this.riftPanel.hide();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
-    if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
-    else this.collectionPanel.show(this.collection);
+    if (this.collectionPanel.isOpen()) this.collectionPanel.hide(); else this.collectionPanel.show(this.collection);
     this.syncUi();
+  }
+
+  private performRiftAscension(): void {
+    const result = performAscension(getCurrentAscensionState(), this.chapter);
+    if (!result.ascended) {
+      this.fx.showHint('RIFT ASCENSION NOT READY', 1015, '#aebbd4');
+      return;
+    }
+    syncCurrentAscensionState(result.next);
+    this.coins = 120;
+    this.baseHp = 100;
+    this.chapter = 1;
+    this.encounterStep = 0;
+    this.board = createStarterBoard();
+    this.recruitSerial = 0;
+    this.chaosPerks = [];
+    resetCurrentChaosPerks();
+    this.encounter = getEncounterSpec(this.chapter, this.encounterStep);
+    this.targetHpMax = this.encounter.hp;
+    this.targetHp = this.targetHpMax;
+    this.targetAlive = true;
+    this.resolvingBoard = false;
+    this.reviveUsedThisEncounter = false;
+    this.targetAttackClock = 0;
+    this.attackClocks.clear();
+    observeCurrentMutationAlbumBoard(this.board);
+    this.boardView.render(this.board);
+    this.presentEncounter(false);
+    this.audio.reward();
+    this.fx.flashScreen(0xc58cff, 0.24, 420);
+    this.fx.burst(540, 950, 0xffdf76, 34, 340);
+    this.fx.showHint(`RIFT ASCENSION • +${result.starsGained} CHAOS STARS`, 1015, '#fff0a6');
+    this.activateCurrentEncounter();
+  }
+
+  private handleRiftMetaChanged(): void {
+    this.audio.reward();
+    this.riftPanel.refresh(this.chapter);
+    this.syncUi();
+    this.persistNow();
   }
 
   private buyMetaUpgrade(id: MetaUpgradeId): void {
     const result = purchaseMetaUpgrade(this.coreShards, this.upgrades, id);
-    if (!result.purchased) {
-      this.audio.button();
-      this.fx.showHint('NEED MORE CORE SHARDS', 1020, '#ffb2d7');
-      return;
-    }
+    if (!result.purchased) { this.audio.button(); this.fx.showHint('NEED MORE CORE SHARDS', 1020, '#ffb2d7'); return; }
     this.coreShards = result.shards;
     this.upgrades = result.levels;
     this.collection = recordLifetimeEvent(this.collection, 'upgrade');
@@ -690,19 +680,12 @@ export class GameScene extends Phaser.Scene {
   private claimAchievementReward(id: AchievementId): void {
     const result = claimAchievement(this.collection, id);
     this.collection = result.progress;
-    if (!result.claimed) {
-      this.audio.button();
-      this.collectionPanel.update(this.collection);
-      this.syncUi();
-      return;
-    }
+    if (!result.claimed) { this.audio.button(); this.collectionPanel.update(this.collection); this.syncUi(); return; }
     this.coins += result.reward.coins;
     this.coreShards += result.reward.coreShards;
     this.analytics.achievementClaim(id, result.reward.coins, result.reward.coreShards);
     this.audio.reward();
-    const rewardLabel = result.reward.coreShards > 0
-      ? `ACHIEVEMENT +${result.reward.coreShards} CORE SHARD${result.reward.coreShards === 1 ? '' : 'S'}`
-      : `ACHIEVEMENT +${result.reward.coins} COINS`;
+    const rewardLabel = result.reward.coreShards > 0 ? `ACHIEVEMENT +${result.reward.coreShards} CORE SHARD${result.reward.coreShards === 1 ? '' : 'S'}` : `ACHIEVEMENT +${result.reward.coins} COINS`;
     this.fx.showHint(rewardLabel, 1010, result.reward.coreShards > 0 ? '#bffaff' : '#ffe59a');
     this.collectionPanel.update(this.collection);
     this.metaPanel.update(this.coreShards, this.upgrades);
@@ -713,21 +696,14 @@ export class GameScene extends Phaser.Scene {
   private claimDailyCalendarReward(): void {
     const result = claimDailyReward(this.daily);
     this.daily = result.state;
-    if (!result.claimed || !result.reward) {
-      this.audio.button();
-      this.dailyPanel.update(this.daily);
-      this.syncUi();
-      return;
-    }
+    if (!result.claimed || !result.reward) { this.audio.button(); this.dailyPanel.update(this.daily); this.syncUi(); return; }
     const reward = result.reward;
     this.coins += reward.coins;
     this.coreShards += reward.coreShards;
     this.analytics.dailyRewardClaim(reward.day, reward.coins, reward.coreShards);
     this.audio.reward();
     this.fx.showHint(`DAILY +${reward.coins} COINS`, 1010, '#fff0a6');
-    if (reward.coreShards > 0) {
-      this.time.delayedCall(260, () => this.fx.showHint(`CORE SHARD +${reward.coreShards}`, 1070, '#bffaff'));
-    }
+    if (reward.coreShards > 0) this.time.delayedCall(260, () => this.fx.showHint(`CORE SHARD +${reward.coreShards}`, 1070, '#bffaff'));
     this.dailyPanel.update(this.daily);
     this.metaPanel.update(this.coreShards, this.upgrades);
     this.syncUi();
@@ -737,12 +713,7 @@ export class GameScene extends Phaser.Scene {
   private claimDailyMissionReward(id: DailyMissionId): void {
     const result = claimDailyMission(this.daily, id);
     this.daily = result.state;
-    if (!result.claimed) {
-      this.audio.button();
-      this.dailyPanel.update(this.daily);
-      this.syncUi();
-      return;
-    }
+    if (!result.claimed) { this.audio.button(); this.dailyPanel.update(this.daily); this.syncUi(); return; }
     this.coins += result.coins;
     this.analytics.dailyMissionClaim(id, result.coins);
     this.audio.reward();
@@ -766,6 +737,7 @@ export class GameScene extends Phaser.Scene {
     this.analytics.offlineReward(reward.coins, reward.rewardedSeconds, this.chapter);
     this.syncUi();
     this.persistNow();
+    if (this.riftPanel.isOpen()) this.riftPanel.hide();
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
@@ -773,12 +745,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private async doubleOfflineReward(reward: OfflineReward): Promise<boolean> {
-    const rewarded = await this.platform.showRewarded()
-      .then((result) => result.rewarded)
-      .catch(() => false);
+    const rewarded = await this.platform.showRewarded().then((result) => result.rewarded).catch(() => false);
     this.analytics.rewardedAdResult('offline_double', rewarded);
     if (!rewarded) return false;
-
     this.coins += reward.coins;
     this.syncUi();
     this.persistNow();
@@ -788,35 +757,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   private presentEncounter(initial: boolean): void {
-    if (this.encounter.kind === 'boss') {
-      this.enemyView.hide();
-      this.bossView.show(this.encounter);
-    } else {
-      this.bossView.hide();
-      this.enemyView.show(this.encounter, this.encounterStep + 1);
-    }
+    if (this.encounter.kind === 'boss') { this.enemyView.hide(); this.bossView.show(this.encounter); }
+    else { this.bossView.hide(); this.enemyView.show(this.encounter, this.encounterStep + 1); }
     this.syncUi();
     if (!initial) this.cameras.main.flash(120, 215, 245, 255, false);
   }
 
-  private targetPoint(): Phaser.Math.Vector2 {
-    return this.encounter.kind === 'boss' ? this.bossView.targetPoint() : this.enemyView.targetPoint();
-  }
-
-  private hitTarget(color: number): void {
-    if (this.encounter.kind === 'boss') this.bossView.hit(color);
-    else this.enemyView.hit(color);
-  }
-
-  private telegraphTarget(onImpact: () => void): void {
-    if (this.encounter.kind === 'boss') this.bossView.telegraph(onImpact);
-    else this.enemyView.telegraph(onImpact);
-  }
-
-  private setTargetHealth(): void {
-    if (this.encounter.kind === 'boss') this.bossView.setHealth(this.targetHp, this.targetHpMax);
-    else this.enemyView.setHealth(this.targetHp, this.targetHpMax);
-  }
+  private targetPoint(): Phaser.Math.Vector2 { return this.encounter.kind === 'boss' ? this.bossView.targetPoint() : this.enemyView.targetPoint(); }
+  private hitTarget(color: number): void { if (this.encounter.kind === 'boss') this.bossView.hit(color); else this.enemyView.hit(color); }
+  private telegraphTarget(onImpact: () => void): void { if (this.encounter.kind === 'boss') this.bossView.telegraph(onImpact); else this.enemyView.telegraph(onImpact); }
+  private setTargetHealth(): void { if (this.encounter.kind === 'boss') this.bossView.setHealth(this.targetHp, this.targetHpMax); else this.enemyView.setHealth(this.targetHp, this.targetHpMax); }
 
   private startInitialFunnelTelemetry(): void {
     if (isOnboardingComplete(this.onboarding)) {
@@ -835,12 +785,10 @@ export class GameScene extends Phaser.Scene {
     const previousStep = this.onboarding.step;
     const next = advanceOnboarding(this.onboarding, action);
     if (next.step === previousStep) return;
-
     this.onboarding = next;
     this.onboardingCoach.update(this.onboarding);
     this.attackClocks.clear();
     this.targetAttackClock = 0;
-
     if (next.step === 'complete') {
       this.analytics.onboardingComplete();
       this.audio.reward();
@@ -874,15 +822,13 @@ export class GameScene extends Phaser.Scene {
     this.targetHpMax = save.targetHpMax;
     this.targetHp = Math.min(save.targetHp, save.targetHpMax);
     this.recruitSerial = save.recruitSerial;
+    observeCurrentMutationAlbumBoard(this.board);
   }
 
   private persistSoon(): void {
     if (this.savePending) return;
     this.savePending = true;
-    this.time.delayedCall(650, () => {
-      this.savePending = false;
-      this.persistNow();
-    });
+    this.time.delayedCall(650, () => { this.savePending = false; this.persistNow(); });
   }
 
   private persistNow(): void {
@@ -917,11 +863,13 @@ export class GameScene extends Phaser.Scene {
       hasAchievementClaimAvailable(this.collection),
       this.anomalyHunt
     );
+    if (this.riftPanel?.isOpen()) this.riftPanel.refresh(this.chapter);
     this.setTargetHealth();
   }
 
   private isBlockingPanelOpen(): boolean {
     return this.metaPanel.isOpen()
+      || this.riftPanel.isOpen()
       || this.offlinePanel.isOpen()
       || this.dailyPanel.isOpen()
       || this.collectionPanel.isOpen()
