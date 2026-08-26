@@ -1,11 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { getBossForChapter } from '../content/bosses';
+import { createDefaultAscensionProgress } from './ascension';
+import { resetCurrentAscensionProgress, syncCurrentAscensionProgress } from './ascensionRuntime';
 import {
   applyBossAttackInterval,
   applyBossIncomingDamage,
   applyBossOutgoingDamage,
-  getBossPhaseState
+  clearBossPhaseRuntime,
+  currentBossOpeningDelayMs,
+  currentBossOutgoingDamageMultiplier,
+  getBossPhaseState,
+  syncBossPhaseRuntime
 } from './bossPhases';
+
+afterEach(() => {
+  clearBossPhaseRuntime();
+  resetCurrentAscensionProgress();
+});
 
 describe('boss phases', () => {
   const boss = getBossForChapter(1);
@@ -33,6 +44,17 @@ describe('boss phases', () => {
     expect(applyBossAttackInterval(4000, phaseThree)).toBeLessThan(applyBossAttackInterval(4000, phaseTwo));
     expect(applyBossOutgoingDamage(10, phaseTwo)).toBeGreaterThanOrEqual(10);
     expect(applyBossOutgoingDamage(10, phaseThree)).toBeGreaterThanOrEqual(applyBossOutgoingDamage(10, phaseTwo));
+  });
+
+  it('delays only the opening boss attack when Boss Window is owned', () => {
+    syncCurrentAscensionProgress({
+      ...createDefaultAscensionProgress(),
+      purchasedNodes: ['combat-last-stand', 'combat-boss-window']
+    });
+    syncBossPhaseRuntime(boss.phases, 1000, 1000);
+    expect(currentBossOpeningDelayMs()).toBe(1500);
+    currentBossOutgoingDamageMultiplier();
+    expect(currentBossOpeningDelayMs()).toBe(0);
   });
 
   it('keeps every configured boss profile ordered and tactically bounded', () => {
