@@ -12,14 +12,18 @@ import {
 afterEach(() => resetCurrentChaosPerks());
 
 describe('chaos draft', () => {
-  it('offers drafts only before waves 3 and 5', () => {
+  it('offers two standard drafts and an optional ascension boss draft', () => {
     expect(chaosDraftCheckpointForStep(0)).toBeNull();
     expect(chaosDraftCheckpointForStep(2)).toBe(1);
     expect(chaosDraftCheckpointForStep(4)).toBe(2);
+    expect(chaosDraftCheckpointForStep(5)).toBeNull();
+    expect(chaosDraftCheckpointForStep(5, true)).toBe(3);
     expect(needsChaosDraft(2, 0)).toBe(true);
     expect(needsChaosDraft(2, 1)).toBe(false);
     expect(needsChaosDraft(4, 1)).toBe(true);
     expect(needsChaosDraft(4, 2)).toBe(false);
+    expect(needsChaosDraft(5, 2, true)).toBe(true);
+    expect(needsChaosDraft(5, 3, true)).toBe(false);
   });
 
   it('generates deterministic three-card offers and excludes owned perks', () => {
@@ -33,13 +37,15 @@ describe('chaos draft', () => {
     expect(new Set(second).size).toBe(3);
   });
 
-  it('caps a chapter build at two unique perks', () => {
+  it('caps a standard build at two perks and an ascended build at three', () => {
     let selected = addChaosPerk([], 'impact-jelly');
     selected = addChaosPerk(selected, 'impact-jelly');
     expect(selected).toEqual(['impact-jelly']);
     selected = addChaosPerk(selected, 'repair-moss');
     selected = addChaosPerk(selected, 'tempo-worm');
     expect(selected).toEqual(['impact-jelly', 'repair-moss']);
+    selected = addChaosPerk(selected, 'tempo-worm', 3);
+    expect(selected).toEqual(['impact-jelly', 'repair-moss', 'tempo-worm']);
   });
 
   it('derives bounded combat and economy multipliers from the selected build', () => {
