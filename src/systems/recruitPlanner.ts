@@ -21,14 +21,56 @@ function emptySlots(board: BoardState): number {
   return board.reduce((count, slot) => count + (slot === null ? 1 : 0), 0);
 }
 
-function weightedStarterPool(board: BoardState, availableFamilies: readonly CreatureFamily[]): CreatureFamily[] {
+function familyLevelCount(board: BoardState, family: CreatureFamily, level: CreatureLevel): number {
+  return board.reduce(
+    (count, unit) => count + (unit?.family === family && unit.level === level ? 1 : 0),
+    0
+  );
+}
+
+/**
+ * Recruit remains random, but the bag strongly favors pulls that advance an
+ * existing merge chain and de-emphasizes families that only have max-tier
+ * units left. A maxed family is never hard-banned because a second T3 can
+ * still feed mutation ascension/consolidation.
+ */
+export function recruitFamilyWeight(board: BoardState, family: CreatureFamily): number {
+  const tierOne = familyLevelCount(board, family, 1);
+  const tierTwo = familyLevelCount(board, family, 2);
+  const tierThree = familyLevelCount(board, family, 3);
+  const occupied = board.length - emptySlots(board);
+  const crowded = occupied >= Math.max(1, board.length - 4);
+
+  let weight = crowded ? 2 : 3;
+
+  // The strongest signal: one T1 means the next recruit creates an immediate pair.
+  if (tierOne % 2 === 1) weight += 9;
+  else if (tierOne > 0) weight += 4;
+
+  // Keep promising lineages moving toward a T2/T3 pair instead of scattering
+  // the last few cells across new families.
+  if (tierTwo % 2 === 1) weight += tierOne > 0 ? 4 : 2;
+  else if (tierTwo > 0) weight += 1;
+
+  // Once a family is represented only by T3s, lower its normal recruit odds.
+  // It stays in the pool because duplicate T3s are still strategically useful.
+  if (tierThree > 0 && tierOne === 0 && tierTwo === 0) {
+    weight = Math.max(1, weight - Math.min(2, tierThree));
+  }
+
+  // On a crowded board avoid opening a brand-new lineage unless RNG reaches
+  // its deliberately small slice of the bag.
+  if (crowded && tierOne === 0 && tierTwo === 0 && tierThree === 0) {
+    weight = 1;
+  }
+
+  return Math.max(1, Math.min(18, weight));
+}
+
+function smartRecruitPool(board: BoardState, availableFamilies: readonly CreatureFamily[]): CreatureFamily[] {
   const weighted: CreatureFamily[] = [];
   for (const family of availableFamilies) {
-    const matchingTierOne = board.reduce(
-      (count, unit) => count + (unit?.family === family && unit.level === 1 ? 1 : 0),
-      0
-    );
-    const copies = 1 + Math.min(3, matchingTierOne * 2);
+    const copies = recruitFamilyWeight(board, family);
     for (let index = 0; index < copies; index += 1) weighted.push(family);
   }
   return weighted;
@@ -62,6 +104,6 @@ export function planRecruit(
   }
 
   if (availableFamilies.length === 0) return null;
-  const family = pick(weightedStarterPool(board, availableFamilies), roll);
+  const family = pick(smartRecruitPool(board, availableFamilies), roll);
   return family ? { family, level: 1, protectedPair: false } : null;
 }
