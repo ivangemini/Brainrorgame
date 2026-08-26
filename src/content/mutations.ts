@@ -3,6 +3,7 @@ import {
   currentActiveHasteMultiplier,
   recordCrewAttackEnergy
 } from '../systems/activeAbilities';
+import { getCurrentAscensionEffects } from '../systems/ascension';
 import { currentBossIncomingDamageMultiplier } from '../systems/bossPhases';
 import { getCurrentChaosPerkMultipliers } from '../systems/chaosDraft';
 import { getCurrentCrewSynergyState } from '../systems/crewSynergies';
@@ -49,7 +50,8 @@ export function isMutationId(value: unknown): value is MutationId { return typeo
 
 export function rollMutation(roll: number): MutationId {
   const normalized = Number.isFinite(roll) ? Math.min(0.999999999, Math.max(0, roll)) : 0;
-  if (normalized < RARE_START) return 'none';
+  const rareStart = Math.max(0, RARE_START - getCurrentAscensionEffects().mutationLuckShift);
+  if (normalized < rareStart) return 'none';
   if (normalized < EPIC_START) return 'charged';
   if (normalized < LEGENDARY_START) return 'prismatic';
   return 'crowned';
