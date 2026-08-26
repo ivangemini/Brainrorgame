@@ -49,7 +49,7 @@ describe('weekly chaos run', () => {
   it('advances to a bounded 12-clear completion and exposes milestones', () => {
     const now = Date.parse('2026-08-25T12:00:00.000Z');
     let progress = startWeeklyChaosRun(createDefaultWeeklyChaosProgress(now), now).progress;
-    let milestones: number[] = [];
+    const milestones: number[] = [];
     let completed = false;
     for (let index = 0; index < WEEKLY_CHAOS_MAX_DEPTH; index += 1) {
       const result = advanceWeeklyChaosRun(progress);
@@ -63,6 +63,29 @@ describe('weekly chaos run', () => {
     expect(completed).toBe(true);
     expect(milestones).toEqual([3, 6, 9, 12]);
     expect(advanceWeeklyChaosRun(progress).advanced).toBe(false);
+  });
+
+  it('only reports milestone telemetry when the attempt pushes the weekly best', () => {
+    const now = Date.parse('2026-08-25T12:00:00.000Z');
+    let progress = startWeeklyChaosRun(createDefaultWeeklyChaosProgress(now), now).progress;
+    for (let index = 0; index < 4; index += 1) progress = advanceWeeklyChaosRun(progress).progress;
+    progress = failWeeklyChaosRun(progress).progress;
+    progress = startWeeklyChaosRun(progress, now).progress;
+
+    const repeatedMilestones: number[] = [];
+    for (let index = 0; index < 4; index += 1) {
+      const result = advanceWeeklyChaosRun(progress);
+      progress = result.progress;
+      if (result.reachedMilestone) repeatedMilestones.push(result.reachedMilestone.target);
+    }
+    expect(repeatedMilestones).toEqual([]);
+
+    for (let index = 0; index < 2; index += 1) {
+      const result = advanceWeeklyChaosRun(progress);
+      progress = result.progress;
+      if (result.reachedMilestone) repeatedMilestones.push(result.reachedMilestone.target);
+    }
+    expect(repeatedMilestones).toEqual([6]);
   });
 
   it('ends an active attempt on failure while preserving best depth', () => {
