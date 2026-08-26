@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createDefaultAscensionProgress } from './ascension';
+import { resetCurrentAscensionProgress, syncCurrentAscensionProgress } from './ascensionRuntime';
 import { createStarterBoard } from './board';
 import { COLLECTION_KEYS, createDefaultCollectionProgress, discoverCreature } from './collectionProgression';
 import {
@@ -7,6 +9,7 @@ import {
   claimMutationAlbumMilestone,
   createDefaultMutationAlbumProgress,
   discoverMutationAlbumEntry,
+  getAscensionSignalMapLead,
   hasMutationAlbumMilestoneClaimAvailable,
   isMutationAlbumKey,
   mutationAlbumCompletion,
@@ -14,6 +17,8 @@ import {
   mutationAlbumKey,
   nextMutationAlbumMilestone
 } from './mutationAlbum';
+
+afterEach(() => resetCurrentAscensionProgress());
 
 describe('mutation album', () => {
   it('derives 4 collectible mutation states from every live creature form', () => {
@@ -48,6 +53,20 @@ describe('mutation album', () => {
     expect(progress.discovered).toContain('lampalotl-2:prismatic');
     expect(progress.discovered).toContain('microwhale-3:none');
     expect(progress.discovered).not.toContain('microwhale-3:prismatic');
+  });
+
+  it('reveals a deterministic missing Album target only when Signal Map is owned', () => {
+    let progress = createDefaultMutationAlbumProgress();
+    expect(getAscensionSignalMapLead(progress)).toBeNull();
+    syncCurrentAscensionProgress({
+      ...createDefaultAscensionProgress(),
+      purchasedNodes: ['collection-pity-memory', 'collection-album-cache', 'collection-signal-map']
+    });
+    const first = COLLECTION_KEYS[0];
+    if (!first) throw new Error('Expected collection key');
+    expect(getAscensionSignalMapLead(progress)).toBe(`${first}:none`);
+    progress = discoverMutationAlbumEntry(progress, first, 'none');
+    expect(getAscensionSignalMapLead(progress)).toBe(`${first}:charged`);
   });
 
   it('exposes completion and finite claimable milestones', () => {
