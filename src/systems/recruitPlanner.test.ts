@@ -34,7 +34,7 @@ function oneEmptyWithoutMerge(): BoardState {
 
 describe('recruit planner', () => {
   it('uses normal tier-one recruits while the board has breathing room', () => {
-    const board: BoardState = Array.from({ length: BOARD_SIZE }, () => null);
+    const board: Array<BoardUnit | null> = Array.from({ length: BOARD_SIZE }, () => null);
     board[0] = unit('p1', 'pinguino', 1);
     const plan = planRecruit(board, ['pinguino', 'toastodilo'], 0);
     expect(plan).toMatchObject({ level: 1, protectedPair: false });
