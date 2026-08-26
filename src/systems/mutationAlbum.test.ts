@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { COLLECTION_KEYS } from './collectionProgression';
+import { createStarterBoard } from './board';
+import { COLLECTION_KEYS, createDefaultCollectionProgress, discoverCreature } from './collectionProgression';
 import {
   MUTATION_ALBUM_TOTAL,
+  backfillMutationAlbumProgress,
   claimMutationAlbumMilestone,
   createDefaultMutationAlbumProgress,
   discoverMutationAlbumEntry,
+  hasMutationAlbumClaimAvailable,
   isMutationAlbumKey,
   mutationAlbumCompletion,
   mutationAlbumCountForCreature,
@@ -31,6 +34,20 @@ describe('mutation album', () => {
     expect(isMutationAlbumKey('fake-1:crowned')).toBe(false);
   });
 
+  it('backfills legacy discoveries as Normal and preserves rarities visible on the board', () => {
+    const starter = createStarterBoard();
+    const board = [...starter];
+    board[2] = { id: 'rare-lamp', family: 'lampalotl', level: 2, mutation: 'prismatic' };
+    let collection = createDefaultCollectionProgress(starter);
+    collection = discoverCreature(collection, 'lampalotl-2');
+
+    const progress = backfillMutationAlbumProgress(collection, board);
+    expect(progress.discovered).toContain('pinguino-1:none');
+    expect(progress.discovered).toContain('toastodilo-1:none');
+    expect(progress.discovered).toContain('lampalotl-2:none');
+    expect(progress.discovered).toContain('lampalotl-2:prismatic');
+  });
+
   it('exposes completion and finite claimable milestones', () => {
     let progress = createDefaultMutationAlbumProgress();
     for (const creature of COLLECTION_KEYS.slice(0, 3)) {
@@ -40,10 +57,12 @@ describe('mutation album', () => {
     }
     expect(mutationAlbumCompletion(progress)).toEqual({ current: 12, total: 144, percent: 8 });
     expect(nextMutationAlbumMilestone(progress)?.target).toBe(12);
+    expect(hasMutationAlbumClaimAvailable(progress)).toBe(true);
     const claimed = claimMutationAlbumMilestone(progress, 12);
     expect(claimed.claimed).toBe(true);
     expect(claimed.reward.coins).toBe(150);
     expect(nextMutationAlbumMilestone(claimed.progress)?.target).toBe(36);
+    expect(hasMutationAlbumClaimAvailable(claimed.progress)).toBe(false);
     expect(claimMutationAlbumMilestone(claimed.progress, 12).claimed).toBe(false);
   });
 });
