@@ -1,4 +1,5 @@
 import type { BossPhaseProfile } from '../content/bosses';
+import { getCurrentAscensionEffects } from './ascensionRuntime';
 import { getCurrentCrewSynergyState } from './crewSynergies';
 
 export type BossPhase = 1 | 2 | 3;
@@ -16,6 +17,7 @@ export interface BossPhaseState {
 }
 
 let currentState: BossPhaseState | null = null;
+let openingDelayPending = false;
 
 export function getBossPhaseState(profile: BossPhaseProfile, currentHp: number, maxHp: number): BossPhaseState {
   const safeMax = Math.max(1, Number.isFinite(maxHp) ? maxHp : 1);
@@ -48,11 +50,15 @@ export function getBossPhaseState(profile: BossPhaseProfile, currentHp: number, 
 }
 
 export function syncBossPhaseRuntime(profile: BossPhaseProfile, currentHp: number, maxHp: number): BossPhaseState {
+  if (currentState === null) openingDelayPending = getCurrentAscensionEffects().bossOpeningDelayMs > 0;
   currentState = getBossPhaseState(profile, currentHp, maxHp);
   return currentState;
 }
 
-export function clearBossPhaseRuntime(): void { currentState = null; }
+export function clearBossPhaseRuntime(): void {
+  currentState = null;
+  openingDelayPending = false;
+}
 export function getCurrentBossPhaseState(): BossPhaseState | null { return currentState; }
 
 export function currentBossIncomingDamageMultiplier(): number {
@@ -61,7 +67,13 @@ export function currentBossIncomingDamageMultiplier(): number {
 }
 
 export function currentBossAttackIntervalMultiplier(): number { return currentState?.attackIntervalMultiplier ?? 1; }
-export function currentBossOutgoingDamageMultiplier(): number { return currentState?.outgoingDamageMultiplier ?? 1; }
+export function currentBossOpeningDelayMs(): number {
+  return openingDelayPending ? getCurrentAscensionEffects().bossOpeningDelayMs : 0;
+}
+export function currentBossOutgoingDamageMultiplier(): number {
+  if (openingDelayPending) openingDelayPending = false;
+  return currentState?.outgoingDamageMultiplier ?? 1;
+}
 
 export function applyBossIncomingDamage(amount: number, state: BossPhaseState): number {
   const safeAmount = Math.max(0, Number.isFinite(amount) ? amount : 0);
