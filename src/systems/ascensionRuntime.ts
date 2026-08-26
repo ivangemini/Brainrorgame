@@ -47,7 +47,11 @@ export function beginAscensionRunRuntime(): void {
   rerollsUsedByChapter.clear();
 }
 
-export function recordAscensionMerge(resultingLevel: 1 | 2 | 3, mutation: MutationId): {
+export function recordAscensionMerge(
+  resultingLevel: 1 | 2 | 3,
+  mutation: MutationId,
+  catalystEligible = true
+): {
   readonly mutation: MutationId;
   readonly recruitCreditsEarned: number;
   readonly catalystApplied: boolean;
@@ -61,7 +65,8 @@ export function recordAscensionMerge(resultingLevel: 1 | 2 | 3, mutation: Mutati
   }
 
   const catalystApplied = Boolean(
-    effects.tierThreeMutationBoost
+    catalystEligible
+    && effects.tierThreeMutationBoost
     && resultingLevel === 3
     && mutationCatalystChapter !== currentChapter
   );
