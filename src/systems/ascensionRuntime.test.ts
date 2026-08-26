@@ -57,9 +57,9 @@ describe('Ascension runtime bridge', () => {
     expect(getCurrentAscensionProgress()).toEqual(source);
   });
 
-  it('initializes Seed Cache and Last Stand charges for a new run', () => {
+  it('initializes Last Stand while Seed Cache remains persisted through reset coins', () => {
     own(['merge-seed-cache', 'combat-last-stand']);
-    expect(getAscensionRecruitCredits()).toBe(2);
+    expect(getAscensionRecruitCredits()).toBe(0);
     expect(getAscensionLastStandCharges()).toBe(1);
     expect(consumeAscensionLastStand()).toBe(true);
     expect(consumeAscensionLastStand()).toBe(false);
@@ -71,7 +71,7 @@ describe('Ascension runtime bridge', () => {
       expect(recordAscensionMerge(2, 'none').recruitCreditsEarned).toBe(0);
     }
     expect(recordAscensionMerge(2, 'none').recruitCreditsEarned).toBe(1);
-    expect(getAscensionRecruitCredits()).toBe(3);
+    expect(getAscensionRecruitCredits()).toBe(1);
   });
 
   it('applies Mutation Catalyst once per chapter and never exceeds Crowned', () => {
