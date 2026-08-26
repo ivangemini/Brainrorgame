@@ -11,18 +11,16 @@ export interface MutationAlbumProgress {
 
 export interface MutationAlbumMilestone {
   readonly target: number;
-  readonly coins: number;
-  readonly coreShards: number;
   readonly chaosStars: number;
 }
 
 export const MUTATION_ALBUM_TOTAL = COLLECTION_KEYS.length * MUTATION_IDS.length;
 export const MUTATION_ALBUM_MILESTONES: readonly MutationAlbumMilestone[] = [
-  { target: 12, coins: 150, coreShards: 0, chaosStars: 1 },
-  { target: 36, coins: 300, coreShards: 1, chaosStars: 1 },
-  { target: 72, coins: 500, coreShards: 2, chaosStars: 2 },
-  { target: 108, coins: 750, coreShards: 3, chaosStars: 3 },
-  { target: MUTATION_ALBUM_TOTAL, coins: 1000, coreShards: 5, chaosStars: 6 }
+  { target: 12, chaosStars: 1 },
+  { target: 36, chaosStars: 1 },
+  { target: 72, chaosStars: 2 },
+  { target: 108, chaosStars: 3 },
+  { target: MUTATION_ALBUM_TOTAL, chaosStars: 6 }
 ] as const;
 
 let currentProgress: MutationAlbumProgress = createDefaultMutationAlbumProgress();
@@ -71,17 +69,17 @@ export function nextMutationAlbumMilestone(progress: MutationAlbumProgress): Mut
 
 export function claimMutationAlbumMilestone(progress: MutationAlbumProgress, target: number, bonusChaosStars = 0): {
   readonly claimed: boolean;
-  readonly reward: { readonly coins: number; readonly coreShards: number; readonly chaosStars: number };
+  readonly chaosStars: number;
   readonly progress: MutationAlbumProgress;
 } {
   const milestone = MUTATION_ALBUM_MILESTONES.find((entry) => entry.target === target);
   if (!milestone || progress.claimedMilestones.includes(target) || progress.discovered.length < target) {
-    return { claimed: false, reward: { coins: 0, coreShards: 0, chaosStars: 0 }, progress };
+    return { claimed: false, chaosStars: 0, progress };
   }
   const bonus = Math.max(0, Math.floor(Number.isFinite(bonusChaosStars) ? bonusChaosStars : 0));
   return {
     claimed: true,
-    reward: { coins: milestone.coins, coreShards: milestone.coreShards, chaosStars: milestone.chaosStars + bonus },
+    chaosStars: milestone.chaosStars + bonus,
     progress: { ...progress, claimedMilestones: [...progress.claimedMilestones, target] }
   };
 }
