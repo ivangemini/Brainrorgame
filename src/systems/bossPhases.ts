@@ -1,4 +1,5 @@
 import type { BossPhaseProfile } from '../content/bosses';
+import { getCurrentAscensionEffects } from './ascension';
 import { getCurrentCrewSynergyState } from './crewSynergies';
 
 export type BossPhase = 1 | 2 | 3;
@@ -57,7 +58,12 @@ export function getCurrentBossPhaseState(): BossPhaseState | null { return curre
 
 export function currentBossIncomingDamageMultiplier(): number {
   const phaseMultiplier = currentState?.incomingDamageMultiplier ?? 1;
-  return phaseMultiplier * (currentState ? getCurrentCrewSynergyState().bossDamageMultiplier : 1);
+  const crewMultiplier = currentState ? getCurrentCrewSynergyState().bossDamageMultiplier : 1;
+  const effects = getCurrentAscensionEffects();
+  const executeMultiplier = currentState && effects.bossExecuteRatio > 0 && currentState.hpRatio <= effects.bossExecuteRatio
+    ? effects.bossExecuteDamageMultiplier
+    : 1;
+  return phaseMultiplier * crewMultiplier * executeMultiplier;
 }
 
 export function currentBossAttackIntervalMultiplier(): number { return currentState?.attackIntervalMultiplier ?? 1; }

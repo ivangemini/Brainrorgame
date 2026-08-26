@@ -34,21 +34,30 @@
 ## Phase 3.5 — retention expansion
 Goal: turn the strong launch loop into a weeks-long meta loop without requiring a proportional increase in art production.
 
-### S-tier systems
-- [ ] Ascension / Prestige: reset chapter progress after a meaningful Rift milestone for permanent Chaos Stars while preserving collection-critical progress.
-- [ ] Ascension tree: Merge, Combat, Chaos and Collection branches with rule-changing unlocks rather than only flat stat inflation.
-- [ ] Mutation Album: track Normal / Charged / Prismatic / Crowned state for every form, exposing up to 144 collection targets from the existing 36-form roster.
-- [ ] Mutation Album milestone rewards and Codex completion surfaces.
+### S-tier meta progression
+- [ ] Rift Ascension / Prestige: reset run progress after a meaningful Endless Rift milestone for permanent Chaos Stars while preserving collection-critical progress. **In progress: PR #29.**
+- [ ] Ascension Tree: Merge, Combat, Chaos and Collection branches with rule-changing unlocks rather than only flat stat inflation. **In progress: PR #29.**
+- [ ] Mutation Album: track Normal / Charged / Prismatic / Crowned state for every form, exposing 144 collection targets from the existing 36-form roster. **In progress: PR #29.**
+- [ ] Mutation Album milestone rewards and Codex completion surfaces. **In progress: PR #29.**
 - [ ] Weekly Chaos Run: deterministic weekly seed, rotating rules, weekly progression milestones and bounded rewards.
 - [ ] Weekly-run analytics: start, milestone, completion/failure depth and build-choice signals without player PII.
 
-### A-tier systems
+### S-tier run/build depth
+- [ ] Relics / Artifacts: boss/post-elite draftable run modifiers with meaningful upside/downside trade-offs.
+- [ ] Evolved Chaos Perks: upgrade or branch selected perks into stronger rule-changing versions instead of flat stacking.
+- [ ] Cross-family Combo Synergies: authored two-family combinations that create new combat behaviors and encourage composition variety.
+- [ ] Chaos Contracts: optional difficulty modifiers selected before a run for bounded reward multipliers and late-game challenge.
+- [ ] Endless Rift 2.0: authored tier milestones, dual elites/bosses, corrupted perks and Nightmare rules instead of HP-only scaling.
+
+### A-tier recurring goals
 - [ ] Boss Hunt: rotating empowered boss with persistent damage across attempts and a finite reward track.
 - [ ] Boss Trophy Room: Normal / Enraged / Nightmare trophy progression for authored bosses.
 - [ ] Creature Mastery: family-specific XP from merges, combat and boss participation with milestone cosmetics/perks.
 - [ ] Secret Evolutions: original hidden cross-family recipes, discoverable hints and dedicated secret-form Codex section.
 - [ ] Chaos Events: short rule-breaking events such as Merge Fever, Tiny Invasion, Golden Creature and surprise boss interruptions.
-- [ ] World Map: turn chapter progression into a visible journey with world nodes, boss gates and unlock previews.
+- [ ] World Map: turn chapter progression into a visible journey with world nodes, boss gates, optional routes and unlock previews.
+- [ ] Collection Sets: themed sets spanning creatures, mutations and bosses with finite completion rewards.
+- [ ] Deeper boss mechanics: destructible nodes, temporary board locks, polarity/family checks and other boss-specific interaction rules.
 
 ### Later retention/live-ops layer
 - [ ] 28-day lightweight season framework using existing actions for XP.
@@ -57,11 +66,13 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [ ] Trend-reactive original content with IP-distance review.
 
 ### Retention design constraints
-- [ ] Rewarded ads remain optional acceleration/recovery; no progression wall requires an ad.
+- [x] Rewarded ads remain optional acceleration/recovery; no progression wall requires an ad.
 - [ ] Prestige must create new decisions, not merely reset the same numbers.
 - [ ] Weekly content must remain deterministic/testable and not require server authority for core play.
 - [ ] Collection expansion should preferentially reuse existing production art through authored mutation presentation before adding dozens of new base families.
 - [ ] New currencies require a named sink, bounded source and save-migration plan before implementation.
+- [ ] Run modifiers must include bounded trade-offs or build decisions; avoid endless additive +damage inflation.
+- [ ] New recurring modes need an explicit return cadence, finite reward track and analytics before production rollout.
 
 ## Phase 4 — distribution
 - [x] CrazyGames adapter/build foundation.
@@ -91,7 +102,7 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [x] Chaos Draft, active abilities, crew synergies, mutations and Core Lab meta progression.
 - [x] Chaos Codex target follows the live roster instead of a hard-coded 21-form total.
 - [x] Fifteen long-tail achievements, daily rewards/missions and offline progression.
-- [x] Save migrations through v10.
+- [x] Save migrations through v10 on stable main; v11 Ascension/Album migration is in PR #29.
 - [x] Yandex, CrazyGames, Poki, Playgama and GameDistribution adapter foundations.
 - [x] Typed privacy-safe analytics.
 - [x] Typed EN/RU localization framework with `?lang=` QA override.
@@ -118,5 +129,4 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [ ] Capture final candidate screenshots and portal upload packages.
 
 ## Hard boundary
-
 The remaining unchecked launch items require observations or artifacts from a running accepted candidate: real-device/human playtest results, observed telemetry, and screenshots captured from that exact build. They must not be marked complete from static code review or CI alone.
