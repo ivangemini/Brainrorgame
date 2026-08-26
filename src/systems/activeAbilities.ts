@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import { currentCombatEnergyReserve } from './ascension';
 import { getCurrentChaosPerkMultipliers } from './chaosDraft';
 import { getCurrentCrewSynergyState, type CrewSynergyTier } from './crewSynergies';
 
@@ -163,7 +164,7 @@ export function beginActiveAbilityEncounter(key: string, energyGainMultiplier = 
   currentEnergyGainMultiplier = normalizeEnergyGainMultiplier(energyGainMultiplier);
   if (key === currentEncounterKey) return;
   currentEncounterKey = key;
-  currentState = createActiveAbilityRuntimeState();
+  currentState = createActiveAbilityRuntimeState(currentCombatEnergyReserve());
   combatActive = true;
 }
 
