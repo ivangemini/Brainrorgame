@@ -1,5 +1,6 @@
 import type * as Phaser from 'phaser';
 import { translate } from '../i18n';
+import { localizedDailyMissionName } from '../i18n/gameplayContent';
 import {
   DAILY_CHAOS_CHEST_REWARD_COINS,
   DAILY_MISSIONS,
@@ -35,11 +36,7 @@ export class DailyPanel {
   private opened = false;
   private state!: DailyRetentionState;
 
-  public constructor(
-    private readonly scene: Phaser.Scene,
-    private readonly onDailyClaim: () => void,
-    private readonly onMissionClaim: (id: DailyMissionId) => void
-  ) {}
+  public constructor(private readonly scene: Phaser.Scene, private readonly onDailyClaim: () => void, private readonly onMissionClaim: (id: DailyMissionId) => void) {}
 
   public create(): void {
     this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x040714, 0.44).setOrigin(0).setDepth(2200).setInteractive().setVisible(false);
@@ -83,7 +80,7 @@ export class DailyPanel {
   private createMissionCard(id: DailyMissionId, centerY: number): { children: Phaser.GameObjects.GameObject[]; view: MissionCard } {
     const mission = getDailyMission(id); const children: Phaser.GameObjects.GameObject[] = []; const background = this.scene.add.graphics();
     background.fillStyle(0x151f42, 0.98); background.fillRoundedRect(62, centerY - 118, 510, 236, 38); background.lineStyle(3, 0x8feaff, 0.15); background.strokeRoundedRect(62, centerY - 118, 510, 236, 38);
-    const name = this.scene.add.text(94, centerY - 84, mission.name.toUpperCase(), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#f4f8ff' });
+    const name = this.scene.add.text(94, centerY - 84, localizedDailyMissionName(id).toUpperCase(), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#f4f8ff' });
     const progressText = this.scene.add.text(94, centerY - 30, '0 / 0', { fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '22px', color: '#9feeff' });
     const rewardText = this.scene.add.text(94, centerY + 18, `+${mission.rewardCoins} ${translate('common.coins')}`, { fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '19px', color: '#ffe59a' });
     const buttonBackground = this.scene.add.graphics(); const buttonLabel = this.scene.add.text(0, 0, translate('common.claim'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '18px', color: '#23304b' }).setOrigin(0.5);
