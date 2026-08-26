@@ -10,7 +10,7 @@ import {
   tryCastCurrentActiveAbility,
   type ActiveAbilityId
 } from '../systems/activeAbilities';
-import type { BoardState, BoardUnit } from '../systems/board';
+import { isBoardDeadlocked, type BoardState, type BoardUnit } from '../systems/board';
 import {
   getActiveCrewSynergies,
   getCurrentCrewSynergyState,
@@ -136,15 +136,22 @@ export class BoardView {
     if (!this.synergyText) return;
     const state = syncCrewSynergyState(board);
     const active = getActiveCrewSynergies(state);
-    const label = active.length > 0
-      ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
-      : 'NO ACTIVE SYNERGY';
-    const signature = active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
-    this.synergyText.setText(label).setColor(active.length > 0 ? '#c8f6ff' : '#7587a8');
+    const fusionReady = isBoardDeadlocked(board);
+    const label = fusionReady
+      ? 'CHAOS FUSION READY  •  MERGE ANY TWO OF THE SAME LEVEL'
+      : active.length > 0
+        ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
+        : 'NO ACTIVE SYNERGY';
+    const signature = fusionReady
+      ? 'deadlock:fusion-ready'
+      : active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
+    this.synergyText
+      .setText(label)
+      .setColor(fusionReady ? '#ffe58a' : active.length > 0 ? '#c8f6ff' : '#7587a8');
     this.abilityBar?.update(getCurrentActiveAbilityRuntime(), state.tiers, isActiveAbilityCombatActive());
     if (signature !== this.lastSynergySignature && this.lastSynergySignature !== '') {
       this.scene.tweens.killTweensOf(this.synergyText);
-      this.synergyText.setScale(1.08).setAlpha(0.55);
+      this.synergyText.setScale(fusionReady ? 1.12 : 1.08).setAlpha(fusionReady ? 0.45 : 0.55);
       this.scene.tweens.add({ targets: this.synergyText, scaleX: 1, scaleY: 1, alpha: 1, duration: 260, ease: 'Back.Out' });
     }
     this.lastSynergySignature = signature;
