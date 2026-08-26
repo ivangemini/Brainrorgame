@@ -1,4 +1,5 @@
 import { MUTATION_IDS, type MutationId } from '../content/mutations';
+import { getCurrentAscensionEffects } from './ascensionRuntime';
 import type { BoardState } from './board';
 import {
   COLLECTION_KEYS,
@@ -72,6 +73,18 @@ export function mutationAlbumCountForCreature(progress: MutationAlbumProgress, c
 export function mutationAlbumCompletion(progress: MutationAlbumProgress): { current: number; total: number; percent: number } {
   const current = Math.min(MUTATION_ALBUM_TOTAL, progress.discovered.length);
   return { current, total: MUTATION_ALBUM_TOTAL, percent: Math.round((current / MUTATION_ALBUM_TOTAL) * 100) };
+}
+
+export function getAscensionSignalMapLead(progress: MutationAlbumProgress): MutationAlbumKey | null {
+  if (!getCurrentAscensionEffects().revealUndiscoveredAlbumTarget) return null;
+  const discovered = new Set(progress.discovered);
+  for (const creature of COLLECTION_KEYS) {
+    for (const mutation of MUTATION_IDS) {
+      const key = mutationAlbumKey(creature, mutation);
+      if (!discovered.has(key)) return key;
+    }
+  }
+  return null;
 }
 
 export function nextMutationAlbumMilestone(progress: MutationAlbumProgress): MutationAlbumMilestone | null {
