@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { GameAnalytics } from '../analytics/GameAnalytics';
 import { GameAudio } from '../audio/GameAudio';
-import { getCreature, getRecruitableFamilies, type CreatureFamily } from '../content/creatures';
+import { getCreature, getRecruitableFamilies } from '../content/creatures';
 import { getMutationDefinition, mutatedAttackMs, mutatedDamage } from '../content/mutations';
 import { GameFx } from '../presentation/GameFx';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
@@ -85,6 +85,7 @@ import {
   type OnboardingState
 } from '../systems/onboarding';
 import { calculateOfflineReward, type OfflineReward } from '../systems/offlineProgression';
+import { planRecruit } from '../systems/recruitPlanner';
 import {
   advanceWeeklyChaosRun,
   claimWeeklyChaosMilestone,
@@ -402,9 +403,15 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const recruitPlan = planRecruit(this.board, getRecruitableFamilies(), Phaser.Math.RND.frac());
+    if (!recruitPlan) {
+      this.fx.showHint('NO SAFE RECRUIT — MERGE OR ASCEND', 1732, '#ffdda0');
+      return;
+    }
+
     this.audio.button();
     this.coins -= recruitCost;
-    const family = Phaser.Math.RND.pick<CreatureFamily>([...getRecruitableFamilies()]);
+    const { family, level } = recruitPlan;
     const anomalyBefore = this.anomalyHunt;
     const anomalyResult = rollAnomalyHunt(anomalyBefore, Phaser.Math.RND.frac());
     this.anomalyHunt = anomalyResult.state;
@@ -412,9 +419,9 @@ export class GameScene extends Phaser.Scene {
     const mutation = getMutationDefinition(mutationId);
     this.recruitSerial += 1;
     this.board = addUnit(this.board, {
-      id: `recruit-${this.recruitSerial}-${family}`,
+      id: `recruit-${this.recruitSerial}-${family}-${level}`,
       family,
-      level: 1,
+      level,
       mutation: mutationId
     });
     this.analytics.recruit(
@@ -427,7 +434,7 @@ export class GameScene extends Phaser.Scene {
       anomalyResult.secret
     );
     this.collection = recordLifetimeEvent(this.collection, 'recruit');
-    const collectionKey = `${family}-1` as CollectionKey;
+    const collectionKey = `${family}-${level}` as CollectionKey;
     this.collection = discoverCreature(this.collection, collectionKey);
     this.mutationAlbum = discoverMutationAlbumEntry(this.mutationAlbum, collectionKey, mutationId);
     this.collectionPanel.update(this.collection, this.mutationAlbum);
@@ -437,7 +444,7 @@ export class GameScene extends Phaser.Scene {
     this.hud.pulseAnomaly(anomalyResult.guaranteed || anomalyResult.secret);
     this.boardView.render(this.board, empty);
     const position = this.boardView.slotPosition(empty);
-    const recruitColor = mutation.rank > 0 ? mutation.accentColor : getCreature(family, 1).accentColor;
+    const recruitColor = mutation.rank > 0 ? mutation.accentColor : getCreature(family, level).accentColor;
     this.fx.burst(position.x, position.y, recruitColor, mutation.rank > 0 ? 18 : 11, mutation.rank > 0 ? 190 : 150);
     if (anomalyResult.secret) {
       this.audio.reward();
@@ -451,6 +458,8 @@ export class GameScene extends Phaser.Scene {
         ? `ANOMALY GUARANTEE • ${mutation.rarity.toUpperCase()} ${mutation.name.toUpperCase()}`
         : `${mutation.rarity.toUpperCase()} RECRUIT • ${mutation.name.toUpperCase()}`;
       this.fx.showHint(label, 1015, `#${mutation.accentColor.toString(16).padStart(6, '0')}`);
+    } else if (recruitPlan.protectedPair) {
+      this.fx.showHint('PAIR FOUND • BOARD PATH PROTECTED', 1015, '#bffaff');
     }
     this.persistSoon();
   }
