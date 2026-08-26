@@ -32,6 +32,11 @@ function oneEmptyWithoutMerge(): BoardState {
   ];
 }
 
+const ALL_FAMILIES: readonly BoardUnit['family'][] = [
+  'pinguino', 'toastodilo', 'lampalotl', 'dishnail', 'mochimoth', 'routeraptor',
+  'vendinguana', 'umbrellama', 'mopossum', 'fanthom', 'socktopus', 'microwhale'
+];
+
 describe('recruit planner', () => {
   it('uses normal tier-one recruits while the board has breathing room', () => {
     const board: Array<BoardUnit | null> = Array.from({ length: BOARD_SIZE }, () => null);
@@ -52,6 +57,18 @@ describe('recruit planner', () => {
     expect(hasMergeablePair(next)).toBe(true);
   });
 
+  it('protects the final slot for every deterministic recruit roll', () => {
+    const board = oneEmptyWithoutMerge();
+    for (let index = 0; index < 100; index += 1) {
+      const roll = index / 100;
+      const plan = planRecruit(board, ALL_FAMILIES, roll);
+      expect(plan, `roll ${roll}`).not.toBeNull();
+      expect(plan?.protectedPair, `roll ${roll}`).toBe(true);
+      const next = addUnit(board, unit(`safe-${index}`, plan!.family, plan!.level));
+      expect(hasMergeablePair(next), `roll ${roll}`).toBe(true);
+    }
+  });
+
   it('can protect the final slot with a tier-two twin when no tier-one rescue is available', () => {
     const board: BoardState = [
       unit('p2', 'pinguino', 2), unit('t2', 'toastodilo', 2), unit('l2', 'lampalotl', 2),
@@ -60,20 +77,19 @@ describe('recruit planner', () => {
       unit('f2', 'fanthom', 2), unit('s2', 'socktopus', 2), unit('w2', 'microwhale', 2),
       unit('p3', 'pinguino', 3), unit('t3', 'toastodilo', 3), null
     ];
-    const plan = planRecruit(board, ['pinguino', 'toastodilo', 'lampalotl', 'dishnail'], 0.4);
+    const plan = planRecruit(board, ALL_FAMILIES, 0.4);
     expect(plan).toMatchObject({ level: 2, protectedPair: true });
   });
 
-  it('returns null rather than inventing an illegal fusion when only capped tier-three units can be copied', () => {
-    const families: BoardUnit['family'][] = [
-      'pinguino', 'toastodilo', 'lampalotl', 'dishnail', 'mochimoth', 'routeraptor',
-      'vendinguana', 'umbrellama', 'mopossum', 'fanthom', 'socktopus', 'microwhale'
-    ];
+  it('recognizes that a crowded max-tier board already has a legal same-family consolidation', () => {
     const board: BoardState = [
-      ...families.map((family, index) => ({ id: `t3-${index}`, family, level: 3 as const, mutation: 'crowned' as const })),
-      unit('p3b', 'pinguino', 3), unit('t3b', 'toastodilo', 3), null
+      ...ALL_FAMILIES.map((family, index) => ({ id: `t3-${index}`, family, level: 3 as const, mutation: 'crowned' as const })),
+      { id: 'p3b', family: 'pinguino', level: 3, mutation: 'prismatic' },
+      { id: 't3b', family: 'toastodilo', level: 3, mutation: 'charged' },
+      null
     ];
-    expect(planRecruit(board, families, 0.5)).toBeNull();
+    expect(hasMergeablePair(board)).toBe(true);
+    expect(planRecruit(board, ALL_FAMILIES, 0.5)).toMatchObject({ level: 1, protectedPair: false });
   });
 
   it('does not plan a recruit when the board is already full', () => {
