@@ -1,7 +1,9 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { BossId } from '../content/bosses';
 import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
 import { getAscensionNode, type AscensionNodeId } from '../systems/ascension';
+import type { BossTrophyTier } from '../systems/bossHunt';
 import type { ChaosPerkId } from '../systems/chaosDraft';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
@@ -167,6 +169,44 @@ export class GameAnalytics {
       tier: definition.tier,
       starsRemaining
     });
+  }
+
+  public bossHuntAttempt(
+    huntId: number,
+    boss: BossId,
+    tier: BossTrophyTier,
+    attempt: number,
+    damage: number,
+    totalDamage: number,
+    completionPercent: number
+  ): void {
+    this.send({
+      name: 'boss_hunt_attempt', elapsedMs: this.elapsed(), huntId, boss, tier,
+      attempt, damage, totalDamage, completionPercent
+    });
+  }
+
+  public bossHuntMilestone(
+    huntId: number,
+    boss: BossId,
+    tier: BossTrophyTier,
+    percent: 25 | 50 | 75 | 100
+  ): void {
+    this.send({ name: 'boss_hunt_milestone', elapsedMs: this.elapsed(), huntId, boss, tier, percent });
+  }
+
+  public bossHuntClaim(
+    huntId: number,
+    boss: BossId,
+    percent: 25 | 50 | 75 | 100,
+    coins: number,
+    coreShards: number
+  ): void {
+    this.send({ name: 'boss_hunt_claim', elapsedMs: this.elapsed(), huntId, boss, percent, coins, coreShards });
+  }
+
+  public bossHuntTrophy(huntId: number, boss: BossId, trophy: BossTrophyTier): void {
+    this.send({ name: 'boss_hunt_trophy', elapsedMs: this.elapsed(), huntId, boss, trophy });
   }
 
   public rewardedAdResult(placement: RewardedPlacement, rewarded: boolean): void {
