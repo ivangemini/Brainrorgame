@@ -259,14 +259,20 @@ export function isValidAscensionProgress(value: unknown): value is AscensionProg
   if (!isNonNegativeInteger(value.chaosStars) || !isNonNegativeInteger(value.lifetimeChaosStars)) return false;
   if (value.chaosStars > value.lifetimeChaosStars) return false;
   if (!isNonNegativeInteger(value.ascensions) || !isNonNegativeInteger(value.highestResetChapter)) return false;
-  if (value.lastAscendedAt !== null && (!isNonNegativeInteger(value.lastAscendedAt))) return false;
-  if (!Array.isArray(value.purchasedNodes) || !value.purchasedNodes.every(isAscensionNodeId)) return false;
-  if (new Set(value.purchasedNodes).size !== value.purchasedNodes.length) return false;
-  const spent = value.purchasedNodes.reduce((sum, id) => sum + getAscensionNode(id).cost, 0);
+  if (value.lastAscendedAt !== null && !isNonNegativeInteger(value.lastAscendedAt)) return false;
+
+  const purchasedNodes = value.purchasedNodes;
+  if (!Array.isArray(purchasedNodes) || !purchasedNodes.every(isAscensionNodeId)) return false;
+  if (new Set(purchasedNodes).size !== purchasedNodes.length) return false;
+
+  const earnedMilestone = milestoneFromLifetimeStars(value.lifetimeChaosStars);
+  if (getLifetimeStarsForMilestone(earnedMilestone) !== value.lifetimeChaosStars) return false;
+
+  const spent = purchasedNodes.reduce((sum, id) => sum + getAscensionNode(id).cost, 0);
   if (spent + value.chaosStars > value.lifetimeChaosStars) return false;
-  return value.purchasedNodes.every((id) => {
+  return purchasedNodes.every((id) => {
     const prerequisite = getAscensionNode(id).prerequisite;
-    return prerequisite === null || value.purchasedNodes.includes(prerequisite);
+    return prerequisite === null || purchasedNodes.includes(prerequisite);
   });
 }
 
