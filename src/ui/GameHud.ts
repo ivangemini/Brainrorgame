@@ -21,9 +21,13 @@ export class GameHud {
   private chapterText!: Phaser.GameObjects.Text;
   private anomalyText!: Phaser.GameObjects.Text;
   private recruitButton!: Phaser.GameObjects.Container;
+  private recruitLabel!: Phaser.GameObjects.Text;
   private upgradeButton!: Phaser.GameObjects.Container;
   private dailyButton!: Phaser.GameObjects.Container;
   private dailyDot!: Phaser.GameObjects.Arc;
+  private weeklyButton!: Phaser.GameObjects.Container;
+  private weeklyDot!: Phaser.GameObjects.Arc;
+  private weeklyDepthText!: Phaser.GameObjects.Text;
   private collectionButton!: Phaser.GameObjects.Container;
   private collectionDot!: Phaser.GameObjects.Arc;
   private lastWorldId: WorldId | null = null;
@@ -33,6 +37,7 @@ export class GameHud {
     private readonly onRecruit: () => void,
     private readonly onUpgrades: () => void,
     private readonly onDaily: () => void,
+    private readonly onWeekly: () => void,
     private readonly onCollection: () => void
   ) {}
 
@@ -63,6 +68,7 @@ export class GameHud {
     this.coreText = this.scene.add.text(716, 172, '0', {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '28px', color: '#bffaff', stroke: '#25375a', strokeThickness: 5
     });
+    this.createWeeklyButton();
     this.createCollectionButton();
     this.createDailyButton();
     this.createUpgradeButton();
@@ -77,12 +83,17 @@ export class GameHud {
     step: EncounterStep,
     dailyReady: boolean,
     collectionReady: boolean,
+    weeklyReady: boolean,
+    weeklyActive: boolean,
+    weeklyDepth: number,
+    recruitCost: number,
     anomalyHunt: AnomalyHuntState
   ): void {
     this.coinsText.setText(`${coins}`);
     this.coreText.setText(`${coreShards}`);
     this.baseText.setText(translate('hud.fortress', { hp: baseHp }));
     this.baseText.setColor(baseHp > 35 ? '#9ff4ff' : '#ff9bab');
+    this.recruitLabel.setText(translate('hud.recruit', { cost: recruitCost }));
 
     const world = getWorldForChapter(chapter);
     const stage = getWorldStage(chapter);
@@ -107,6 +118,11 @@ export class GameHud {
     }
     this.dailyDot.setVisible(dailyReady);
     this.collectionDot.setVisible(collectionReady);
+    this.weeklyDot.setVisible(weeklyReady);
+    this.weeklyDepthText
+      .setVisible(weeklyActive)
+      .setText(`${weeklyDepth}/12`);
+    this.weeklyButton.setScale(weeklyActive ? 1.04 : 1);
 
     const charge = anomalyChargePercent(anomalyHunt);
     this.anomalyText
@@ -163,6 +179,35 @@ export class GameHud {
     this.scene.cameras.main.flash(170, 220, 248, 255, false);
   }
 
+  private createWeeklyButton(): void {
+    const halo = this.scene.add.circle(0, 0, 38, 0x233b5d, 0.96).setStrokeStyle(3, 0x78e9ff, 0.46);
+    const rune = this.scene.add.graphics();
+    rune.fillStyle(0xffd568, 1);
+    rune.beginPath();
+    rune.moveTo(-6, -24);
+    rune.lineTo(17, -5);
+    rune.lineTo(3, -1);
+    rune.lineTo(15, 23);
+    rune.lineTo(-17, 4);
+    rune.lineTo(-2, -2);
+    rune.closePath();
+    rune.fillPath();
+    this.weeklyDepthText = this.scene.add.text(0, 28, '0/12', {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '10px',
+      color: '#e6fbff',
+      stroke: '#17203a',
+      strokeThickness: 3
+    }).setOrigin(0.5).setVisible(false);
+    this.weeklyDot = this.scene.add.circle(25, -25, 10, 0xffc84d).setStrokeStyle(3, 0xffffff, 0.9);
+    this.weeklyButton = this.scene.add.container(786, 112, [halo, rune, this.weeklyDepthText, this.weeklyDot]);
+    this.weeklyButton.setSize(82, 82).setInteractive({ useHandCursor: true });
+    this.weeklyButton.on('pointerdown', () => {
+      this.scene.tweens.add({ targets: this.weeklyButton, scaleX: 0.92, scaleY: 0.92, duration: 75, yoyo: true, ease: 'Quad.Out' });
+      this.onWeekly();
+    });
+  }
+
   private createCollectionButton(): void {
     const halo = this.scene.add.circle(0, 0, 38, 0x253b61, 0.96).setStrokeStyle(3, 0x9defff, 0.42);
     const icon = this.scene.add.image(0, 0, 'ui-chaos-codex').setDisplaySize(62, 62);
@@ -207,13 +252,13 @@ export class GameHud {
     background.fillStyle(0xffc94d, 1); background.fillRoundedRect(-238, -62, 476, 124, 54);
     background.lineStyle(7, 0xffef9c, 0.86); background.strokeRoundedRect(-238, -62, 476, 124, 54);
     background.fillStyle(0xf0833e, 0.34); background.fillRoundedRect(-215, 20, 430, 25, 12);
-    const label = this.scene.add.text(0, -8, translate('hud.recruit', { cost: RECRUIT_COST }), {
+    this.recruitLabel = this.scene.add.text(0, -8, translate('hud.recruit', { cost: RECRUIT_COST }), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '37px', color: '#47271e', align: 'center'
     }).setOrigin(0.5);
     this.anomalyText = this.scene.add.text(0, 37, `${translate('hud.anomaly', { current: 0, max: ANOMALY_PITY_MAX })}  •  ${translate('hud.crownSignal', { current: 0, max: ANOMALY_SECRET_PITY_MAX })}`, {
       fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '16px', color: '#76431f'
     }).setOrigin(0.5);
-    this.recruitButton = this.scene.add.container(540, 1841, [background, label, this.anomalyText]);
+    this.recruitButton = this.scene.add.container(540, 1841, [background, this.recruitLabel, this.anomalyText]);
     this.recruitButton.setSize(476, 124).setInteractive({ useHandCursor: true });
     this.recruitButton.on('pointerdown', () => {
       this.scene.tweens.add({ targets: this.recruitButton, scaleX: 0.96, scaleY: 0.94, duration: 80, yoyo: true, ease: 'Quad.Out' });
