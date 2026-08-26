@@ -1,5 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createDefaultAscensionProgress } from './ascension';
+import {
+  beginAscensionRunRuntime,
+  getAscensionRecruitCredits,
+  resetCurrentAscensionProgress,
+  syncAscensionRuntimeChapter,
+  syncCurrentAscensionProgress
+} from './ascensionRuntime';
 import { addUnit, createStarterBoard, firstEmptySlot, moveOrMerge } from './board';
+
+afterEach(() => resetCurrentAscensionProgress());
 
 describe('board rules', () => {
   it('starts with two immediately mergeable common pairs', () => {
@@ -36,6 +46,44 @@ describe('board rules', () => {
     const result = moveOrMerge(board, 0, 1);
     expect(result.upgraded?.mutation).toBe('prismatic');
     expect(result.mutationPromoted).toBe(false);
+  });
+
+  it('activates the first tier-three Mutation Catalyst once per chapter', () => {
+    syncCurrentAscensionProgress({
+      ...createDefaultAscensionProgress(),
+      purchasedNodes: ['merge-seed-cache', 'merge-echo', 'merge-catalyst']
+    });
+    beginAscensionRunRuntime();
+    syncAscensionRuntimeChapter(4);
+    const board = Array.from({ length: 4 }, () => null) as Array<null | { id: string; family: 'pinguino'; level: 2; mutation: 'none' }>;
+    board[0] = { id: 'a', family: 'pinguino', level: 2, mutation: 'none' };
+    board[1] = { id: 'b', family: 'pinguino', level: 2, mutation: 'none' };
+    const first = moveOrMerge(board, 0, 1);
+    expect(first.upgraded?.mutation).toBe('charged');
+    expect(first.ascensionCatalystApplied).toBe(true);
+
+    const secondBoard = Array.from({ length: 4 }, () => null) as typeof board;
+    secondBoard[0] = { id: 'c', family: 'pinguino', level: 2, mutation: 'none' };
+    secondBoard[1] = { id: 'd', family: 'pinguino', level: 2, mutation: 'none' };
+    const second = moveOrMerge(secondBoard, 0, 1);
+    expect(second.upgraded?.mutation).toBe('none');
+    expect(second.ascensionCatalystApplied).toBe(false);
+  });
+
+  it('earns a Recruit credit on every eighth merge with Merge Echo', () => {
+    syncCurrentAscensionProgress({
+      ...createDefaultAscensionProgress(),
+      purchasedNodes: ['merge-seed-cache', 'merge-echo']
+    });
+    beginAscensionRunRuntime();
+    expect(getAscensionRecruitCredits()).toBe(2);
+    for (let index = 0; index < 8; index += 1) {
+      const board = Array.from({ length: 4 }, () => null) as Array<null | { id: string; family: 'pinguino'; level: 1; mutation: 'none' }>;
+      board[0] = { id: `a-${index}`, family: 'pinguino', level: 1, mutation: 'none' };
+      board[1] = { id: `b-${index}`, family: 'pinguino', level: 1, mutation: 'none' };
+      moveOrMerge(board, 0, 1);
+    }
+    expect(getAscensionRecruitCredits()).toBe(3);
   });
 
   it('ascends matching common T3 twins into a rare T3 instead of dead-ending', () => {
