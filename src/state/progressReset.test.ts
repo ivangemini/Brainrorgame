@@ -21,7 +21,8 @@ describe('progress reset persistence guard', () => {
   it('does not arm the guard when the initial fresh-save write fails', async () => {
     const originalError = new Error('storage unavailable');
     let attempts = 0;
-    const originalSave = async <T>(_value: T): Promise<void> => {
+    const originalSave = async <T>(value: T): Promise<void> => {
+      void value;
       attempts += 1;
       throw originalError;
     };
