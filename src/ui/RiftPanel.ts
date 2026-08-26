@@ -1,5 +1,6 @@
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { translate } from '../i18n';
+import { riftCopy, riftNodeCopy } from '../i18n/riftCopy';
 import {
   ASCENSION_BRANCHES,
   addChaosStars,
@@ -11,7 +12,6 @@ import {
   getCurrentAscensionState,
   purchaseAscensionNode,
   syncCurrentAscensionState,
-  type AscensionBranch,
   type AscensionNodeDefinition
 } from '../systems/ascension';
 import {
@@ -21,13 +21,6 @@ import {
   nextMutationAlbumMilestone,
   syncCurrentMutationAlbumProgress
 } from '../systems/mutationAlbum';
-
-const BRANCH_LABELS: Readonly<Record<AscensionBranch, string>> = {
-  merge: 'MERGE',
-  combat: 'COMBAT',
-  chaos: 'CHAOS',
-  collection: 'COLLECTION'
-};
 
 export class RiftPanel {
   private overlay!: Phaser.GameObjects.Rectangle;
@@ -53,10 +46,10 @@ export class RiftPanel {
     panel.fillStyle(0x281e4b, 0.94); panel.fillRoundedRect(-430, -680, 860, 112, 36);
 
     const blocker = this.scene.add.rectangle(0, 0, 940, 1440, 0xffffff, 0.001).setInteractive();
-    const title = this.scene.add.text(-390, -655, 'RIFT ASCENSION', {
+    const title = this.scene.add.text(-390, -655, riftCopy('title'), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '39px', color: '#f5efff', stroke: '#16112b', strokeThickness: 8
     });
-    const subtitle = this.scene.add.text(-388, -606, 'PERMANENT CHAOS META', {
+    const subtitle = this.scene.add.text(-388, -606, riftCopy('subtitle'), {
       fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '18px', color: '#d9bfff'
     });
     const closeBg = this.scene.add.circle(394, -622, 34, 0x4c3a72, 0.95).setStrokeStyle(3, 0xffffff, 0.25);
@@ -100,10 +93,10 @@ export class RiftPanel {
     const reward = ascensionReward(state, this.chapter);
     const requiredChapter = ascensionRequiredChapter(state);
 
-    this.content.add(this.scene.add.text(-405, -535, `★ ${state.chaosStars} CHAOS STARS`, {
+    this.content.add(this.scene.add.text(-405, -535, `★ ${state.chaosStars} ${riftCopy('stars')}`, {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '30px', color: '#ffe88a', stroke: '#3a285b', strokeThickness: 6
     }));
-    this.content.add(this.scene.add.text(405, -529, `ASCENSIONS ${state.totalAscensions}`, {
+    this.content.add(this.scene.add.text(405, -529, `${riftCopy('ascensions')} ${state.totalAscensions}`, {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '18px', color: '#c9dcff'
     }).setOrigin(1, 0));
 
@@ -114,14 +107,14 @@ export class RiftPanel {
     resetBox.strokeRoundedRect(-405, -470, 810, 112, 30);
     this.content.add(resetBox);
     this.content.add(this.scene.add.text(-375, -445, canAscend(state, this.chapter)
-      ? `RIFT RESET READY • +${reward} ★`
-      : `REACH CHAPTER ${requiredChapter} TO ASCEND`, {
+      ? `${riftCopy('ready')} • +${reward} ★`
+      : riftCopy('reach', { chapter: requiredChapter }), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: canAscend(state, this.chapter) ? '#fff0a6' : '#aebbd6'
     }));
-    this.content.add(this.scene.add.text(-375, -411, 'Resets chapter, coins and crew board. Codex, Album, Core Lab and permanent unlocks stay.', {
+    this.content.add(this.scene.add.text(-375, -411, riftCopy('resetNote'), {
       fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '14px', color: '#b8c3df', wordWrap: { width: 565 }
     }));
-    const ascendButton = this.createButton(300, -414, 160, 62, canAscend(state, this.chapter) ? 'ASCEND' : `CH ${requiredChapter}`, 0xffc95c, () => {
+    const ascendButton = this.createButton(300, -414, 160, 62, canAscend(state, this.chapter) ? riftCopy('ascend') : `CH ${requiredChapter}`, 0xffc95c, () => {
       if (!canAscend(getCurrentAscensionState(), this.chapter)) return;
       this.hide();
       this.onAscend();
@@ -129,13 +122,13 @@ export class RiftPanel {
     ascendButton.setAlpha(canAscend(state, this.chapter) ? 1 : 0.42);
     this.content.add(ascendButton);
 
-    this.content.add(this.scene.add.text(-405, -320, 'ASCENSION TREE', {
+    this.content.add(this.scene.add.text(-405, -320, riftCopy('tree'), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#dcbfff'
     }));
 
     ASCENSION_BRANCHES.forEach((branch, branchIndex) => {
       const x = -300 + branchIndex * 200;
-      this.content.add(this.scene.add.text(x, -278, BRANCH_LABELS[branch], {
+      this.content.add(this.scene.add.text(x, -278, riftCopy(branch), {
         fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: '#bfefff'
       }).setOrigin(0.5));
       const nodes = getAscensionNodes().filter((node) => node.branch === branch);
@@ -147,10 +140,10 @@ export class RiftPanel {
     albumBox.fillStyle(0x17203d, 0.98); albumBox.fillRoundedRect(-405, albumY, 810, 252, 32);
     albumBox.lineStyle(3, 0x72efd0, 0.35); albumBox.strokeRoundedRect(-405, albumY, 810, 252, 32);
     this.content.add(albumBox);
-    this.content.add(this.scene.add.text(-375, albumY + 22, `MUTATION ALBUM • ${completion.current}/${completion.total} • ${completion.percent}%`, {
+    this.content.add(this.scene.add.text(-375, albumY + 22, `${riftCopy('album')} • ${completion.current}/${completion.total} • ${completion.percent}%`, {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: '#bfffe8'
     }));
-    this.content.add(this.scene.add.text(-375, albumY + 58, 'Every form has Normal / Charged / Prismatic / Crowned collection states.', {
+    this.content.add(this.scene.add.text(-375, albumY + 58, riftCopy('albumBody'), {
       fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '15px', color: '#b9c7df'
     }));
     const bar = this.scene.add.graphics();
@@ -161,7 +154,12 @@ export class RiftPanel {
     const milestone = nextMutationAlbumMilestone(album);
     if (milestone) {
       const ready = completion.current >= milestone.target;
-      this.content.add(this.scene.add.text(-375, albumY + 148, `NEXT ${milestone.target}/${completion.total} • +${milestone.chaosStars} CHAOS STAR${milestone.chaosStars === 1 ? '' : 'S'}`, {
+      this.content.add(this.scene.add.text(-375, albumY + 148, riftCopy('next', {
+        target: milestone.target,
+        total: completion.total,
+        stars: milestone.chaosStars,
+        suffix: milestone.chaosStars === 1 ? '' : 'S'
+      }), {
         fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: ready ? '#fff0a6' : '#98a7c7'
       }));
       const claim = this.createButton(280, albumY + 177, 190, 54, ready ? translate('common.claim') : `${completion.current}/${milestone.target}`, 0x72efd0, () => {
@@ -177,7 +175,7 @@ export class RiftPanel {
       claim.setAlpha(ready ? 1 : 0.42);
       this.content.add(claim);
     } else {
-      this.content.add(this.scene.add.text(0, albumY + 170, 'ALBUM COMPLETE • ALL MILESTONES CLAIMED', {
+      this.content.add(this.scene.add.text(0, albumY + 170, riftCopy('complete'), {
         fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '18px', color: '#ffe88a'
       }).setOrigin(0.5));
     }
@@ -192,13 +190,13 @@ export class RiftPanel {
     const bg = this.scene.add.graphics();
     bg.fillStyle(unlocked ? 0x263b43 : 0x1b203c, 0.98); bg.fillRoundedRect(-88, -64, 176, 128, 23);
     bg.lineStyle(3, node.accentColor, unlocked ? 0.88 : available ? 0.58 : 0.22); bg.strokeRoundedRect(-88, -64, 176, 128, 23);
-    const title = this.scene.add.text(0, -39, node.name.toUpperCase(), {
+    const title = this.scene.add.text(0, -39, riftNodeCopy(node.id, 'name').toUpperCase(), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '12px', color: unlocked ? '#e8fff4' : '#eef4ff', align: 'center'
     }).setOrigin(0.5).setWordWrapWidth(152);
-    const desc = this.scene.add.text(0, -4, node.description, {
+    const desc = this.scene.add.text(0, -4, riftNodeCopy(node.id, 'description'), {
       fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '10px', color: '#aebbd3', align: 'center', wordWrap: { width: 152 }
     }).setOrigin(0.5);
-    const status = this.scene.add.text(0, 43, unlocked ? 'UNLOCKED' : prerequisiteMet ? `${node.cost} ★` : 'LOCKED', {
+    const status = this.scene.add.text(0, 43, unlocked ? riftCopy('unlocked') : prerequisiteMet ? `${node.cost} ★` : riftCopy('locked'), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '12px', color: unlocked ? '#8ff2bd' : available ? '#ffe88a' : '#6f7b99'
     }).setOrigin(0.5);
     const container = this.scene.add.container(x, y, [bg, title, desc, status]);
