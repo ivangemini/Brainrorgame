@@ -1,4 +1,4 @@
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { resolveLocale } from '../i18n';
 import { setActiveAbilityCombatActive } from '../systems/activeAbilities';
 import { resolveEncounterPreparation, shouldAdvanceCombat } from '../systems/preparationState';
