@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createDefaultWeeklyChaosProgress, startWeeklyChaosRun } from '../systems/weeklyChaos';
 import type { AnalyticsSink, GameAnalyticsEvent } from './events';
 import { GameAnalytics } from './GameAnalytics';
 
@@ -80,6 +81,33 @@ describe('GameAnalytics', () => {
       expect(complete.encounterDurationMs).toBe(3500);
       expect(complete.elapsedMs).toBe(5000);
     }
+  });
+
+  it('records bounded weekly run start, milestone, build and outcome signals', () => {
+    const at = Date.parse('2026-08-25T12:00:00.000Z');
+    const sink = new CaptureSink();
+    const analytics = new GameAnalytics(sink, () => at);
+    const started = startWeeklyChaosRun(createDefaultWeeklyChaosProgress(at), at).progress;
+    analytics.weeklyRunStart(started, 8);
+    analytics.weeklyRunMilestone(started.weekId, 3);
+    analytics.weeklyRunBuildChoice(started.weekId, 3, 8, 'impact-jelly');
+    analytics.weeklyRunEnd(started.weekId, 'failed', 4, 4);
+    analytics.weeklyRunClaim(started.weekId, 3, 160, 0);
+
+    expect(sink.events[0]).toMatchObject({
+      name: 'weekly_run_start',
+      weekId: 202635,
+      attempt: 1,
+      chapter: 8
+    });
+    const start = sink.events[0];
+    if (start?.name === 'weekly_run_start') {
+      expect(new Set([start.rule1, start.rule2, start.rule3]).size).toBe(3);
+    }
+    expect(sink.events[1]).toEqual({ name: 'weekly_run_milestone', elapsedMs: 0, weekId: 202635, depth: 3 });
+    expect(sink.events[2]).toEqual({ name: 'weekly_run_build_choice', elapsedMs: 0, weekId: 202635, depth: 3, chapter: 8, perk: 'impact-jelly' });
+    expect(sink.events[3]).toEqual({ name: 'weekly_run_end', elapsedMs: 0, weekId: 202635, outcome: 'failed', depth: 4, bestDepth: 4 });
+    expect(sink.events[4]).toEqual({ name: 'weekly_run_claim', elapsedMs: 0, weekId: 202635, target: 3, coins: 160, coreShards: 0 });
   });
 
   it('records monetization placement and rewarded outcome', () => {

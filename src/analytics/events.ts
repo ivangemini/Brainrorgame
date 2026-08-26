@@ -1,10 +1,12 @@
 import type { CreatureFamily } from '../content/creatures';
 import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
+import type { ChaosPerkId } from '../systems/chaosDraft';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
 import type { MetaUpgradeId } from '../systems/metaProgression';
 import type { OnboardingStep } from '../systems/onboarding';
+import type { WeeklyChaosRuleId } from '../systems/weeklyChaos';
 
 export type EncounterKind = 'wave' | 'boss';
 
@@ -104,6 +106,46 @@ export type GameAnalyticsEvent =
       readonly name: 'achievement_claim';
       readonly elapsedMs: number;
       readonly achievement: AchievementId;
+      readonly coins: number;
+      readonly coreShards: number;
+    }
+  | {
+      readonly name: 'weekly_run_start';
+      readonly elapsedMs: number;
+      readonly weekId: number;
+      readonly attempt: number;
+      readonly chapter: number;
+      readonly rule1: WeeklyChaosRuleId;
+      readonly rule2: WeeklyChaosRuleId;
+      readonly rule3: WeeklyChaosRuleId;
+    }
+  | {
+      readonly name: 'weekly_run_milestone';
+      readonly elapsedMs: number;
+      readonly weekId: number;
+      readonly depth: number;
+    }
+  | {
+      readonly name: 'weekly_run_build_choice';
+      readonly elapsedMs: number;
+      readonly weekId: number;
+      readonly depth: number;
+      readonly chapter: number;
+      readonly perk: ChaosPerkId;
+    }
+  | {
+      readonly name: 'weekly_run_end';
+      readonly elapsedMs: number;
+      readonly weekId: number;
+      readonly outcome: 'completed' | 'failed';
+      readonly depth: number;
+      readonly bestDepth: number;
+    }
+  | {
+      readonly name: 'weekly_run_claim';
+      readonly elapsedMs: number;
+      readonly weekId: number;
+      readonly target: number;
       readonly coins: number;
       readonly coreShards: number;
     }

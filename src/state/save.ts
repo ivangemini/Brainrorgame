@@ -8,10 +8,7 @@ import {
   type AnomalyHuntState
 } from '../systems/anomalyHunt';
 import type { BoardState, BoardUnit } from '../systems/board';
-import {
-  isChaosPerkId,
-  type ChaosPerkId
-} from '../systems/chaosDraft';
+import { isChaosPerkId, type ChaosPerkId } from '../systems/chaosDraft';
 import {
   backfillCollectionProgress,
   isAchievementId,
@@ -39,8 +36,14 @@ import {
   isValidOnboardingState,
   type OnboardingState
 } from '../systems/onboarding';
+import {
+  WEEKLY_CHAOS_MAX_DEPTH,
+  WEEKLY_CHAOS_MILESTONES,
+  createDefaultWeeklyChaosProgress,
+  type WeeklyChaosProgress
+} from '../systems/weeklyChaos';
 
-export const SAVE_VERSION = 11 as const;
+export const SAVE_VERSION = 12 as const;
 
 type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
@@ -118,11 +121,16 @@ export interface GameSaveV10 extends Omit<GameSaveV9, 'version'> {
 }
 
 export interface GameSaveV11 extends Omit<GameSaveV10, 'version'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 11;
   readonly mutationAlbum: MutationAlbumProgress;
 }
 
-export type GameSave = GameSaveV11;
+export interface GameSaveV12 extends Omit<GameSaveV11, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly weeklyChaos: WeeklyChaosProgress;
+}
+
+export type GameSave = GameSaveV12;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -133,6 +141,7 @@ export interface GameSaveSnapshot {
   readonly onboarding: OnboardingState;
   readonly anomalyHunt: AnomalyHuntState;
   readonly mutationAlbum: MutationAlbumProgress;
+  readonly weeklyChaos: WeeklyChaosProgress;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -168,7 +177,7 @@ interface V5ProgressFields extends V4ProgressFields {
 type BoardParser = (value: unknown) => BoardState | null;
 type StepParser = (value: unknown) => EncounterStep | null;
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV11 {
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV12 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -180,6 +189,7 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     onboarding: cloneOnboarding(snapshot.onboarding),
     anomalyHunt: cloneAnomalyHunt(snapshot.anomalyHunt),
     mutationAlbum: cloneMutationAlbum(snapshot.mutationAlbum),
+    weeklyChaos: cloneWeeklyChaos(snapshot.weeklyChaos),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -201,95 +211,62 @@ export async function loadGameSave(platform: PlatformAdapter): Promise<GameSave 
 }
 
 export function parseGameSave(value: unknown): GameSave | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value) || !isFiniteNumber(value.version) || !Number.isInteger(value.version)) return null;
+  let current: unknown = value;
 
-  if (value.version === 1) {
-    const v2 = migrateV1ToV2(value);
-    const v3 = v2 ? migrateV2ToV3(v2) : null;
-    const v4 = v3 ? migrateV3ToV4(v3) : null;
-    const v5 = v4 ? migrateV4ToV5(v4) : null;
-    const v6 = v5 ? migrateV5ToV6(v5) : null;
-    const v7 = v6 ? migrateV6ToV7(v6) : null;
-    const v8 = v7 ? migrateV7ToV8(v7) : null;
-    const v9 = v8 ? migrateV8ToV9(v8) : null;
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
+  while (isRecord(current) && isFiniteNumber(current.version) && current.version < SAVE_VERSION) {
+    switch (current.version) {
+      case 1: current = migrateV1ToV2(current); break;
+      case 2: current = migrateV2ToV3(current); break;
+      case 3: current = migrateV3ToV4(current); break;
+      case 4: current = migrateV4ToV5(current); break;
+      case 5: current = migrateV5ToV6(current); break;
+      case 6: current = migrateV6ToV7(current); break;
+      case 7: current = migrateV7ToV8(current); break;
+      case 8: current = migrateV8ToV9(current); break;
+      case 9: current = migrateV9ToV10(current); break;
+      case 10: current = migrateV10ToV11(current); break;
+      case 11: current = migrateV11ToV12(current); break;
+      default: return null;
+    }
+    if (current === null) return null;
   }
-  if (value.version === 2) {
-    const v3 = migrateV2ToV3(value);
-    const v4 = v3 ? migrateV3ToV4(v3) : null;
-    const v5 = v4 ? migrateV4ToV5(v4) : null;
-    const v6 = v5 ? migrateV5ToV6(v5) : null;
-    const v7 = v6 ? migrateV6ToV7(v6) : null;
-    const v8 = v7 ? migrateV7ToV8(v7) : null;
-    const v9 = v8 ? migrateV8ToV9(v8) : null;
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 3) {
-    const v4 = migrateV3ToV4(value);
-    const v5 = v4 ? migrateV4ToV5(v4) : null;
-    const v6 = v5 ? migrateV5ToV6(v5) : null;
-    const v7 = v6 ? migrateV6ToV7(v6) : null;
-    const v8 = v7 ? migrateV7ToV8(v7) : null;
-    const v9 = v8 ? migrateV8ToV9(v8) : null;
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 4) {
-    const v5 = migrateV4ToV5(value);
-    const v6 = v5 ? migrateV5ToV6(v5) : null;
-    const v7 = v6 ? migrateV6ToV7(v6) : null;
-    const v8 = v7 ? migrateV7ToV8(v7) : null;
-    const v9 = v8 ? migrateV8ToV9(v8) : null;
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 5) {
-    const v6 = migrateV5ToV6(value);
-    const v7 = v6 ? migrateV6ToV7(v6) : null;
-    const v8 = v7 ? migrateV7ToV8(v7) : null;
-    const v9 = v8 ? migrateV8ToV9(v8) : null;
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 6) {
-    const v7 = migrateV6ToV7(value);
-    const v8 = v7 ? migrateV7ToV8(v7) : null;
-    const v9 = v8 ? migrateV8ToV9(v8) : null;
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 7) {
-    const v8 = migrateV7ToV8(value);
-    const v9 = v8 ? migrateV8ToV9(v8) : null;
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 8) {
-    const v9 = migrateV8ToV9(value);
-    const v10 = v9 ? migrateV9ToV10(v9) : null;
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 9) {
-    const v10 = migrateV9ToV10(value);
-    return v10 ? migrateV10ToV11(v10) : null;
-  }
-  if (value.version === 10) return migrateV10ToV11(value);
-  if (value.version !== SAVE_VERSION) return null;
 
+  if (!isRecord(current) || current.version !== SAVE_VERSION) return null;
+  return parseV12(current);
+}
+
+function parseV12(value: Record<string, unknown>): GameSaveV12 | null {
+  const v11 = parseV11(value);
+  const weeklyChaos = parseWeeklyChaos(value.weeklyChaos);
+  if (!v11 || !weeklyChaos) return null;
+  return { ...v11, version: SAVE_VERSION, weeklyChaos };
+}
+
+function parseV11(value: Record<string, unknown>): GameSaveV11 | null {
   const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
   const chaosPerks = parseChaosPerks(value.chaosPerks);
   const anomalyHunt = parseAnomalyHunt(value.anomalyHunt);
   const mutationAlbum = parseMutationAlbum(value.mutationAlbum);
   if (!v5 || !chaosPerks || !anomalyHunt || !mutationAlbum || !isValidOnboardingState(value.onboarding)) return null;
   return {
-    version: SAVE_VERSION,
+    version: 11,
     ...v5,
     onboarding: cloneOnboarding(value.onboarding),
     chaosPerks,
     anomalyHunt,
     mutationAlbum
+  };
+}
+
+function migrateV11ToV12(value: unknown): GameSaveV12 | null {
+  if (!isRecord(value)) return null;
+  const v11 = parseV11(value);
+  if (!v11) return null;
+  return {
+    ...v11,
+    version: SAVE_VERSION,
+    weeklyChaos: createDefaultWeeklyChaosProgress(v11.updatedAt)
   };
 }
 
@@ -300,7 +277,7 @@ function migrateV10ToV11(value: unknown): GameSaveV11 | null {
   const anomalyHunt = parseAnomalyHunt(value.anomalyHunt);
   if (!v5 || !chaosPerks || !anomalyHunt || !isValidOnboardingState(value.onboarding)) return null;
   return {
-    version: SAVE_VERSION,
+    version: 11,
     ...v5,
     onboarding: cloneOnboarding(value.onboarding),
     chaosPerks,
@@ -518,6 +495,36 @@ function parseMutationAlbum(value: unknown): MutationAlbumProgress | null {
   return { discovered, claimedMilestones };
 }
 
+function parseWeeklyChaos(value: unknown): WeeklyChaosProgress | null {
+  if (!isRecord(value)) return null;
+  if (!isFiniteNumber(value.weekId) || !Number.isInteger(value.weekId) || value.weekId < 200001 || value.weekId > 999953) return null;
+  if (typeof value.active !== 'boolean') return null;
+  if (!isFiniteNumber(value.depth) || !isFiniteNumber(value.bestDepth) || !isFiniteNumber(value.runsStarted)) return null;
+  if (!Array.isArray(value.claimedMilestones)) return null;
+
+  const depth = clamp(Math.floor(value.depth), 0, WEEKLY_CHAOS_MAX_DEPTH);
+  const bestDepth = clamp(Math.floor(value.bestDepth), 0, WEEKLY_CHAOS_MAX_DEPTH);
+  const runsStarted = clamp(Math.floor(value.runsStarted), 0, 1_000_000);
+  if (depth > bestDepth || (value.active && depth >= WEEKLY_CHAOS_MAX_DEPTH)) return null;
+
+  const validTargets = WEEKLY_CHAOS_MILESTONES.map((milestone) => milestone.target);
+  const claimedMilestones: number[] = [];
+  for (const target of value.claimedMilestones) {
+    if (!isFiniteNumber(target) || !Number.isInteger(target) || !validTargets.includes(target)) return null;
+    if (!claimedMilestones.includes(target)) claimedMilestones.push(target);
+  }
+  if (claimedMilestones.some((target) => target > bestDepth)) return null;
+
+  return {
+    weekId: value.weekId,
+    active: value.active,
+    depth,
+    bestDepth,
+    runsStarted,
+    claimedMilestones
+  };
+}
+
 function parseCollection(value: unknown): CollectionProgress | null {
   if (!isRecord(value) || !Array.isArray(value.discovered) || !isRecord(value.stats) || !Array.isArray(value.claimedAchievements)) return null;
   const discovered: CollectionKey[] = [];
@@ -606,6 +613,13 @@ function cloneMutationAlbum(mutationAlbum: MutationAlbumProgress): MutationAlbum
   return {
     discovered: [...mutationAlbum.discovered],
     claimedMilestones: [...mutationAlbum.claimedMilestones]
+  };
+}
+
+function cloneWeeklyChaos(weeklyChaos: WeeklyChaosProgress): WeeklyChaosProgress {
+  return {
+    ...weeklyChaos,
+    claimedMilestones: [...weeklyChaos.claimedMilestones]
   };
 }
 
