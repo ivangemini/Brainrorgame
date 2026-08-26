@@ -1,128 +1,17 @@
 import type * as Phaser from 'phaser';
-import {
-  getChaosPerkDefinition,
-  type ChaosDraftCheckpoint,
-  type ChaosPerkId
-} from '../systems/chaosDraft';
-
+import { translate as t } from '../i18n';
+import { getChaosPerkDefinition, type ChaosDraftCheckpoint, type ChaosPerkId } from '../systems/chaosDraft';
 export class ChaosDraftPanel {
-  private root!: Phaser.GameObjects.Container;
-  private cards!: readonly [Phaser.GameObjects.Container, Phaser.GameObjects.Container, Phaser.GameObjects.Container];
-  private open = false;
-
-  public constructor(
-    private readonly scene: Phaser.Scene,
-    private readonly onPick: (id: ChaosPerkId) => void
-  ) {}
-
+  private root!: Phaser.GameObjects.Container; private cards!: readonly [Phaser.GameObjects.Container, Phaser.GameObjects.Container, Phaser.GameObjects.Container]; private open = false;
+  public constructor(private readonly scene: Phaser.Scene, private readonly onPick: (id: ChaosPerkId) => void) {}
   public create(): void {
-    const dim = this.scene.add.rectangle(540, 960, 1080, 1920, 0x050916, 0.78).setInteractive();
-    const panel = this.scene.add.graphics();
-    panel.fillStyle(0x0c1733, 0.98);
-    panel.fillRoundedRect(-474, -430, 948, 860, 54);
-    panel.lineStyle(5, 0x9ee9ff, 0.34);
-    panel.strokeRoundedRect(-474, -430, 948, 860, 54);
-
-    const title = this.scene.add.text(0, -350, 'CHAOS DRAFT', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '52px',
-      color: '#f4fbff',
-      stroke: '#17234c',
-      strokeThickness: 9
-    }).setOrigin(0.5);
-    const subtitle = this.scene.add.text(0, -290, 'PICK 1 PERK FOR THIS CHAPTER', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '20px',
-      color: '#a9cce8',
-      stroke: '#11182e',
-      strokeThickness: 4
-    }).setOrigin(0.5);
-
-    this.cards = [this.createCard(-300), this.createCard(0), this.createCard(300)];
-    this.root = this.scene.add.container(540, 960, [dim, panel, title, subtitle, ...this.cards])
-      .setDepth(1800)
-      .setVisible(false);
+    const dim = this.scene.add.rectangle(540, 960, 1080, 1920, 0x050916, 0.78).setInteractive(); const panel = this.scene.add.graphics(); panel.fillStyle(0x0c1733, 0.98); panel.fillRoundedRect(-474, -430, 948, 860, 54); panel.lineStyle(5, 0x9ee9ff, 0.34); panel.strokeRoundedRect(-474, -430, 948, 860, 54);
+    const title = this.scene.add.text(0, -350, t('draft.title'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '52px', color: '#f4fbff', stroke: '#17234c', strokeThickness: 9 }).setOrigin(0.5);
+    const subtitle = this.scene.add.text(0, -290, t('draft.subtitle'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '20px', color: '#a9cce8', stroke: '#11182e', strokeThickness: 4 }).setOrigin(0.5);
+    this.cards = [this.createCard(-300), this.createCard(0), this.createCard(300)]; this.root = this.scene.add.container(540, 960, [dim, panel, title, subtitle, ...this.cards]).setDepth(1800).setVisible(false);
   }
-
-  public show(
-    chapter: number,
-    checkpoint: ChaosDraftCheckpoint,
-    offers: readonly [ChaosPerkId, ChaosPerkId, ChaosPerkId],
-    owned: readonly ChaosPerkId[]
-  ): void {
-    this.open = true;
-    this.root.setVisible(true).setAlpha(0).setScale(0.92);
-    this.scene.tweens.add({ targets: this.root, alpha: 1, scaleX: 1, scaleY: 1, duration: 260, ease: 'Back.Out' });
-
-    const subtitle = this.root.list[3] as Phaser.GameObjects.Text;
-    subtitle.setText(`CHAPTER ${chapter} • DRAFT ${checkpoint}/2 • OWNED ${owned.length}/2`);
-
-    this.updateCard(this.cards[0], offers[0]);
-    this.updateCard(this.cards[1], offers[1]);
-    this.updateCard(this.cards[2], offers[2]);
-  }
-
-  public hide(): void {
-    this.open = false;
-    this.root.setVisible(false);
-  }
-
-  public isOpen(): boolean {
-    return this.open;
-  }
-
-  private createCard(x: number): Phaser.GameObjects.Container {
-    const plate = this.scene.add.graphics();
-    const name = this.scene.add.text(0, -102, '', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '24px',
-      align: 'center',
-      color: '#ffffff',
-      stroke: '#11182d',
-      strokeThickness: 5,
-      wordWrap: { width: 236 }
-    }).setOrigin(0.5);
-    const description = this.scene.add.text(0, 12, '', {
-      fontFamily: 'Arial, system-ui, sans-serif',
-      fontSize: '22px',
-      align: 'center',
-      color: '#d9e8f8',
-      lineSpacing: 7,
-      wordWrap: { width: 220 }
-    }).setOrigin(0.5);
-    const pick = this.scene.add.text(0, 132, 'PICK', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '22px',
-      color: '#fff7bd',
-      stroke: '#3a3159',
-      strokeThickness: 5
-    }).setOrigin(0.5);
-    const card = this.scene.add.container(x, 38, [plate, name, description, pick])
-      .setSize(258, 390)
-      .setInteractive({ useHandCursor: true });
-    card.on('pointerdown', () => {
-      const id = card.getData('perk') as ChaosPerkId | undefined;
-      if (!id) return;
-      this.scene.tweens.add({ targets: card, scaleX: 0.94, scaleY: 0.94, duration: 70, yoyo: true, ease: 'Quad.Out' });
-      this.onPick(id);
-    });
-    return card;
-  }
-
-  private updateCard(card: Phaser.GameObjects.Container, id: ChaosPerkId): void {
-    const definition = getChaosPerkDefinition(id);
-    card.setData('perk', id);
-    const [plate, name, description] = card.list as [Phaser.GameObjects.Graphics, Phaser.GameObjects.Text, Phaser.GameObjects.Text, Phaser.GameObjects.Text];
-    plate.clear();
-    plate.fillStyle(0x172546, 0.98);
-    plate.fillRoundedRect(-129, -195, 258, 390, 34);
-    plate.lineStyle(5, definition.accentColor, 0.82);
-    plate.strokeRoundedRect(-129, -195, 258, 390, 34);
-    plate.fillStyle(definition.accentColor, 0.18);
-    plate.fillCircle(0, -78, 78);
-    plate.lineStyle(4, definition.accentColor, 0.65);
-    plate.strokeCircle(0, -78, 62);
-    name.setText(definition.name.toUpperCase()).setColor(`#${definition.accentColor.toString(16).padStart(6, '0')}`);
-    description.setText(definition.description);
-  }
+  public show(chapter: number, checkpoint: ChaosDraftCheckpoint, offers: readonly [ChaosPerkId, ChaosPerkId, ChaosPerkId], owned: readonly ChaosPerkId[]): void { this.open = true; this.root.setVisible(true).setAlpha(0).setScale(0.92); this.scene.tweens.add({ targets: this.root, alpha: 1, scaleX: 1, scaleY: 1, duration: 260, ease: 'Back.Out' }); const subtitle = this.root.list[3] as Phaser.GameObjects.Text; subtitle.setText(t('draft.status', { chapter, checkpoint, owned: owned.length })); this.updateCard(this.cards[0], offers[0]); this.updateCard(this.cards[1], offers[1]); this.updateCard(this.cards[2], offers[2]); }
+  public hide(): void { this.open = false; this.root.setVisible(false); } public isOpen(): boolean { return this.open; }
+  private createCard(x: number): Phaser.GameObjects.Container { const plate = this.scene.add.graphics(); const name = this.scene.add.text(0, -102, '', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', align: 'center', color: '#ffffff', stroke: '#11182d', strokeThickness: 5, wordWrap: { width: 236 } }).setOrigin(0.5); const description = this.scene.add.text(0, 12, '', { fontFamily: 'Arial, system-ui, sans-serif', fontSize: '22px', align: 'center', color: '#d9e8f8', lineSpacing: 7, wordWrap: { width: 220 } }).setOrigin(0.5); const pick = this.scene.add.text(0, 132, t('draft.pick'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '22px', color: '#fff7bd', stroke: '#3a3159', strokeThickness: 5 }).setOrigin(0.5); const card = this.scene.add.container(x, 38, [plate, name, description, pick]).setSize(258, 390).setInteractive({ useHandCursor: true }); card.on('pointerdown', () => { const id = card.getData('perk') as ChaosPerkId | undefined; if (!id) return; this.scene.tweens.add({ targets: card, scaleX: 0.94, scaleY: 0.94, duration: 70, yoyo: true, ease: 'Quad.Out' }); this.onPick(id); }); return card; }
+  private updateCard(card: Phaser.GameObjects.Container, id: ChaosPerkId): void { const definition = getChaosPerkDefinition(id); card.setData('perk', id); const [plate, name, description] = card.list as [Phaser.GameObjects.Graphics, Phaser.GameObjects.Text, Phaser.GameObjects.Text, Phaser.GameObjects.Text]; plate.clear(); plate.fillStyle(0x172546, 0.98); plate.fillRoundedRect(-129, -195, 258, 390, 34); plate.lineStyle(5, definition.accentColor, 0.82); plate.strokeRoundedRect(-129, -195, 258, 390, 34); plate.fillStyle(definition.accentColor, 0.18); plate.fillCircle(0, -78, 78); plate.lineStyle(4, definition.accentColor, 0.65); plate.strokeCircle(0, -78, 62); name.setText(definition.name.toUpperCase()).setColor(`#${definition.accentColor.toString(16).padStart(6, '0')}`); description.setText(definition.description); }
 }
