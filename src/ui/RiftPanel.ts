@@ -29,6 +29,8 @@ const BRANCH_LABELS: Readonly<Record<AscensionBranch, string>> = {
   collection: 'COLLECTION'
 };
 
+type RiftReward = { readonly coins: number; readonly coreShards: number };
+
 export class RiftPanel {
   private overlay!: Phaser.GameObjects.Rectangle;
   private root!: Phaser.GameObjects.Container;
@@ -39,24 +41,18 @@ export class RiftPanel {
   public constructor(
     private readonly scene: Phaser.Scene,
     private readonly onAscend: () => void,
-    private readonly onStateChanged: () => void
+    private readonly onStateChanged: (reward?: RiftReward) => void
   ) {}
 
   public create(): void {
     this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x050817, 0.76)
-      .setOrigin(0)
-      .setDepth(1889)
-      .setInteractive()
-      .setVisible(false);
+      .setOrigin(0).setDepth(1889).setInteractive().setVisible(false);
     this.overlay.on('pointerdown', () => this.hide());
 
     const panel = this.scene.add.graphics();
-    panel.fillStyle(0x11152d, 0.995);
-    panel.fillRoundedRect(-470, -720, 940, 1440, 54);
-    panel.lineStyle(5, 0xc58cff, 0.44);
-    panel.strokeRoundedRect(-470, -720, 940, 1440, 54);
-    panel.fillStyle(0x281e4b, 0.94);
-    panel.fillRoundedRect(-430, -680, 860, 112, 36);
+    panel.fillStyle(0x11152d, 0.995); panel.fillRoundedRect(-470, -720, 940, 1440, 54);
+    panel.lineStyle(5, 0xc58cff, 0.44); panel.strokeRoundedRect(-470, -720, 940, 1440, 54);
+    panel.fillStyle(0x281e4b, 0.94); panel.fillRoundedRect(-430, -680, 860, 112, 36);
 
     const blocker = this.scene.add.rectangle(0, 0, 940, 1440, 0xffffff, 0.001).setInteractive();
     const title = this.scene.add.text(-390, -655, 'RIFT ASCENSION', {
@@ -72,8 +68,7 @@ export class RiftPanel {
 
     this.content = this.scene.add.container(0, 0);
     this.root = this.scene.add.container(540, 960, [blocker, panel, title, subtitle, closeBg, close, closeHit, this.content])
-      .setDepth(1890)
-      .setVisible(false);
+      .setDepth(1890).setVisible(false);
   }
 
   public show(chapter: number): void {
@@ -151,10 +146,8 @@ export class RiftPanel {
 
     const albumY = 190;
     const albumBox = this.scene.add.graphics();
-    albumBox.fillStyle(0x17203d, 0.98);
-    albumBox.fillRoundedRect(-405, albumY, 810, 252, 32);
-    albumBox.lineStyle(3, 0x72efd0, 0.35);
-    albumBox.strokeRoundedRect(-405, albumY, 810, 252, 32);
+    albumBox.fillStyle(0x17203d, 0.98); albumBox.fillRoundedRect(-405, albumY, 810, 252, 32);
+    albumBox.lineStyle(3, 0x72efd0, 0.35); albumBox.strokeRoundedRect(-405, albumY, 810, 252, 32);
     this.content.add(albumBox);
     this.content.add(this.scene.add.text(-375, albumY + 22, `MUTATION ALBUM • ${completion.current}/${completion.total} • ${completion.percent}%`, {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: '#bfffe8'
@@ -180,7 +173,7 @@ export class RiftPanel {
         if (!result.claimed) return;
         syncCurrentMutationAlbumProgress(result.progress);
         syncCurrentAscensionState(addChaosStars(getCurrentAscensionState(), result.reward.chaosStars));
-        this.onStateChanged();
+        this.onStateChanged({ coins: result.reward.coins, coreShards: result.reward.coreShards });
         this.render();
       });
       claim.setAlpha(ready ? 1 : 0.42);
@@ -199,10 +192,8 @@ export class RiftPanel {
     const affordable = state.chaosStars >= node.cost;
     const available = !unlocked && prerequisiteMet && affordable;
     const bg = this.scene.add.graphics();
-    bg.fillStyle(unlocked ? 0x263b43 : 0x1b203c, 0.98);
-    bg.fillRoundedRect(-88, -64, 176, 128, 23);
-    bg.lineStyle(3, node.accentColor, unlocked ? 0.88 : available ? 0.58 : 0.22);
-    bg.strokeRoundedRect(-88, -64, 176, 128, 23);
+    bg.fillStyle(unlocked ? 0x263b43 : 0x1b203c, 0.98); bg.fillRoundedRect(-88, -64, 176, 128, 23);
+    bg.lineStyle(3, node.accentColor, unlocked ? 0.88 : available ? 0.58 : 0.22); bg.strokeRoundedRect(-88, -64, 176, 128, 23);
     const title = this.scene.add.text(0, -39, node.name.toUpperCase(), {
       fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '12px', color: unlocked ? '#e8fff4' : '#eef4ff', align: 'center'
     }).setOrigin(0.5).setWordWrapWidth(152);
