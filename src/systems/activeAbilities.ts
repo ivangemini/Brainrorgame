@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import { getCurrentAscensionEffects } from './ascensionRuntime';
 import { getCurrentChaosPerkMultipliers } from './chaosDraft';
 import { getCurrentCrewSynergyState, type CrewSynergyTier } from './crewSynergies';
 
@@ -162,8 +163,14 @@ export function castActiveAbility(id: ActiveAbilityId, state: ActiveAbilityRunti
 export function beginActiveAbilityEncounter(key: string, energyGainMultiplier = 1): void {
   currentEnergyGainMultiplier = normalizeEnergyGainMultiplier(energyGainMultiplier);
   if (key === currentEncounterKey) return;
+  const previousChapter = chapterFromEncounterKey(currentEncounterKey);
+  const nextChapter = chapterFromEncounterKey(key);
+  const carryRatio = previousChapter !== null && nextChapter !== null && previousChapter !== nextChapter
+    ? getCurrentAscensionEffects().chaosEnergyCarryRatio
+    : 0;
+  const carriedEnergy = currentState.energy * carryRatio;
   currentEncounterKey = key;
-  currentState = createActiveAbilityRuntimeState();
+  currentState = createActiveAbilityRuntimeState(carriedEnergy);
   combatActive = true;
 }
 
@@ -205,6 +212,13 @@ export function resetActiveAbilityRuntime(): void {
   combatActive = false;
   currentEncounterKey = '';
   currentEnergyGainMultiplier = 1;
+}
+
+function chapterFromEncounterKey(key: string): number | null {
+  const match = /^chapter:(\d+):/.exec(key);
+  if (!match) return null;
+  const chapter = Number(match[1]);
+  return Number.isFinite(chapter) ? Math.max(1, Math.floor(chapter)) : null;
 }
 
 function emptyCooldowns(): Record<ActiveAbilityId, number> {
