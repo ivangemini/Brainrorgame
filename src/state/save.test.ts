@@ -1,10 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { createDefaultAnomalyHuntState } from '../systems/anomalyHunt';
+import {
+  createDefaultAscensionState,
+  resetCurrentAscensionState,
+  syncCurrentAscensionState
+} from '../systems/ascension';
 import { createStarterBoard } from '../systems/board';
 import { createDefaultCollectionProgress, discoverCreature } from '../systems/collectionProgression';
 import { createDefaultDailyState } from '../systems/dailyRetention';
 import { BOSS_STEP } from '../systems/encounters';
 import { createDefaultMetaUpgradeLevels } from '../systems/metaProgression';
+import {
+  createDefaultMutationAlbumProgress,
+  discoverMutationAlbumEntry,
+  resetCurrentMutationAlbumProgress,
+  syncCurrentMutationAlbumProgress
+} from '../systems/mutationAlbum';
 import { createDefaultOnboardingState } from '../systems/onboarding';
 import { createGameSave, parseGameSave } from './save';
 
@@ -34,31 +45,51 @@ function makeLegacyBoard() {
 }
 
 describe('game save', () => {
-  it('round-trips a valid v10 snapshot with anomaly progression and chapter perks', () => {
+  beforeEach(() => {
+    resetCurrentAscensionState();
+    resetCurrentMutationAlbumProgress();
+  });
+
+  it('round-trips a valid v11 snapshot with Ascension, Album, anomaly progression and chapter perks', () => {
+    syncCurrentAscensionState({ ...createDefaultAscensionState(), chaosStars: 4, totalAscensions: 1, highestChapter: 25, unlockedNodes: ['fusion-rebate'] });
+    syncCurrentMutationAlbumProgress(discoverMutationAlbumEntry(createDefaultMutationAlbumProgress(), 'pinguino-1', 'charged'));
     const save = createGameSave(makeSnapshot(), 12345);
-    expect(save.version).toBe(10);
+    expect(save.version).toBe(11);
     expect(save.chaosPerks).toEqual(['impact-jelly', 'repair-moss']);
     expect(save.anomalyHunt).toEqual({ charge: 7, secretPity: 23, totalPulls: 23, secretsFound: 0 });
+    expect(save.ascension).toEqual({ chaosStars: 4, totalAscensions: 1, highestChapter: 25, unlockedNodes: ['fusion-rebate'] });
+    expect(save.mutationAlbum.discovered).toEqual(['pinguino-1:charged']);
     expect(parseGameSave(save)).toEqual(save);
+  });
+
+  it('migrates a valid v10 save with default Ascension and board-backed Mutation Album', () => {
+    const current = createGameSave(makeSnapshot(), 12345);
+    const legacy: Record<string, unknown> = { ...current, version: 10 };
+    delete legacy.ascension;
+    delete legacy.mutationAlbum;
+    const migrated = parseGameSave(legacy);
+    expect(migrated?.version).toBe(11);
+    expect(migrated?.ascension).toEqual({ chaosStars: 0, totalAscensions: 0, highestChapter: 3, unlockedNodes: [] });
+    expect(migrated?.mutationAlbum.discovered.sort()).toEqual(['pinguino-1:none', 'toastodilo-1:none']);
   });
 
   it('migrates a valid v9 save with a fresh anomaly hunt while preserving chapter perks', () => {
     const current = createGameSave(makeSnapshot(), 12346);
     const legacy: Record<string, unknown> = { ...current };
-    delete legacy.anomalyHunt;
+    delete legacy.anomalyHunt; delete legacy.ascension; delete legacy.mutationAlbum;
     const migrated = parseGameSave({ ...legacy, version: 9 });
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.chaosPerks).toEqual(['impact-jelly', 'repair-moss']);
     expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
+    expect(migrated?.ascension.highestChapter).toBe(3);
   });
 
   it('migrates a valid v8 save with an empty chapter build and fresh anomaly hunt', () => {
     const current = createGameSave(makeSnapshot(), 12347);
     const legacy: Record<string, unknown> = { ...current };
-    delete legacy.chaosPerks;
-    delete legacy.anomalyHunt;
+    delete legacy.chaosPerks; delete legacy.anomalyHunt; delete legacy.ascension; delete legacy.mutationAlbum;
     const migrated = parseGameSave({ ...legacy, version: 8 });
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.chaosPerks).toEqual([]);
     expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
   });
@@ -79,7 +110,7 @@ describe('game save', () => {
     const collection = discoverCreature(snapshot.collection, 'lampalotl-2');
     const save = createGameSave({ ...snapshot, board, collection }, 22222);
     const parsed = parseGameSave(save);
-    expect(parsed?.version).toBe(10);
+    expect(parsed?.version).toBe(11);
     expect(parsed?.board[8]).toEqual({ id: 'lamp-save', family: 'lampalotl', level: 2, mutation: 'prismatic' });
     expect(parsed?.collection.discovered).toContain('lampalotl-2');
   });
@@ -87,24 +118,13 @@ describe('game save', () => {
   it('migrates a historical v7 boss step into the new step 5 boss position', () => {
     const snapshot = makeSnapshot();
     const oldSave = {
-      version: 7,
-      updatedAt: 30000,
-      coins: snapshot.coins,
-      coreShards: snapshot.coreShards,
-      upgrades: snapshot.upgrades,
-      daily: snapshot.daily,
-      collection: snapshot.collection,
-      onboarding: { step: 'complete', completedAt: 25000 },
-      baseHp: snapshot.baseHp,
-      chapter: 4,
-      encounterStep: 3,
-      targetHpMax: 930,
-      targetHp: 410,
-      recruitSerial: snapshot.recruitSerial,
-      board: snapshot.board
+      version: 7, updatedAt: 30000, coins: snapshot.coins, coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades, daily: snapshot.daily, collection: snapshot.collection,
+      onboarding: { step: 'complete', completedAt: 25000 }, baseHp: snapshot.baseHp, chapter: 4,
+      encounterStep: 3, targetHpMax: 930, targetHp: 410, recruitSerial: snapshot.recruitSerial, board: snapshot.board
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.encounterStep).toBe(BOSS_STEP);
     expect(migrated?.targetHpMax).toBe(930);
     expect(migrated?.targetHp).toBe(410);
@@ -115,40 +135,23 @@ describe('game save', () => {
   it('keeps historical v7 wave steps before the old boss unchanged', () => {
     const snapshot = makeSnapshot();
     const oldSave = {
-      version: 7,
-      updatedAt: 30000,
-      coins: snapshot.coins,
-      coreShards: snapshot.coreShards,
-      upgrades: snapshot.upgrades,
-      daily: snapshot.daily,
-      collection: snapshot.collection,
-      onboarding: { step: 'complete', completedAt: 25000 },
-      baseHp: snapshot.baseHp,
-      chapter: 4,
-      encounterStep: 2,
-      targetHpMax: 500,
-      targetHp: 250,
-      recruitSerial: snapshot.recruitSerial,
-      board: snapshot.board
+      version: 7, updatedAt: 30000, coins: snapshot.coins, coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades, daily: snapshot.daily, collection: snapshot.collection,
+      onboarding: { step: 'complete', completedAt: 25000 }, baseHp: snapshot.baseHp, chapter: 4,
+      encounterStep: 2, targetHpMax: 500, targetHp: 250, recruitSerial: snapshot.recruitSerial, board: snapshot.board
     };
     expect(parseGameSave(oldSave)?.encounterStep).toBe(2);
   });
 
-  it('migrates v2 saves through v10 and preserves progression', () => {
+  it('migrates v2 saves through v11 and preserves progression', () => {
     const oldSave = {
       version: 2,
       updatedAt: Date.parse('2026-08-24T12:00:00.000Z'),
-      coins: 90,
-      baseHp: 88,
-      chapter: 4,
-      encounterStep: 1,
-      targetHpMax: 500,
-      targetHp: 300,
-      recruitSerial: 2,
-      board: makeLegacyBoard()
+      coins: 90, baseHp: 88, chapter: 4, encounterStep: 1, targetHpMax: 500, targetHp: 300,
+      recruitSerial: 2, board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.coreShards).toBe(3);
     expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
     expect(migrated?.daily.streak).toBe(0);
@@ -158,25 +161,17 @@ describe('game save', () => {
     expect(migrated?.board[0]?.mutation).toBe('none');
     expect(migrated?.chaosPerks).toEqual([]);
     expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
+    expect(migrated?.ascension.highestChapter).toBe(4);
   });
 
   it('migrates v3 boss saves through the extended chapter migration', () => {
     const oldSave = {
-      version: 3,
-      updatedAt: Date.parse('2026-08-25T08:00:00.000Z'),
-      coins: 220,
-      coreShards: 4,
-      upgrades: { power: 1, armor: 2, bounty: 3 },
-      baseHp: 91,
-      chapter: 6,
-      encounterStep: 3,
-      targetHpMax: 950,
-      targetHp: 700,
-      recruitSerial: 8,
-      board: makeLegacyBoard()
+      version: 3, updatedAt: Date.parse('2026-08-25T08:00:00.000Z'), coins: 220, coreShards: 4,
+      upgrades: { power: 1, armor: 2, bounty: 3 }, baseHp: 91, chapter: 6, encounterStep: 3,
+      targetHpMax: 950, targetHp: 700, recruitSerial: 8, board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.encounterStep).toBe(BOSS_STEP);
     expect(migrated?.daily.dayKey).toBe('2026-08-25');
     expect(migrated?.daily.counters).toEqual({ merge: 0, defeat: 0, recruit: 0 });
@@ -188,22 +183,14 @@ describe('game save', () => {
   it('migrates v4 saves without losing daily data', () => {
     const snapshot = makeSnapshot();
     const oldSave = {
-      version: 4,
-      updatedAt: Date.parse('2026-08-25T09:00:00.000Z'),
-      coins: snapshot.coins,
-      coreShards: snapshot.coreShards,
-      upgrades: snapshot.upgrades,
-      daily: snapshot.daily,
-      baseHp: snapshot.baseHp,
-      chapter: snapshot.chapter,
-      encounterStep: snapshot.encounterStep,
-      targetHpMax: snapshot.targetHpMax,
-      targetHp: snapshot.targetHp,
-      recruitSerial: snapshot.recruitSerial,
+      version: 4, updatedAt: Date.parse('2026-08-25T09:00:00.000Z'), coins: snapshot.coins,
+      coreShards: snapshot.coreShards, upgrades: snapshot.upgrades, daily: snapshot.daily,
+      baseHp: snapshot.baseHp, chapter: snapshot.chapter, encounterStep: snapshot.encounterStep,
+      targetHpMax: snapshot.targetHpMax, targetHp: snapshot.targetHp, recruitSerial: snapshot.recruitSerial,
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.daily).toEqual(snapshot.daily);
     expect(migrated?.collection.stats.recruits).toBe(snapshot.recruitSerial);
     expect(migrated?.onboarding.step).toBe('complete');
@@ -212,66 +199,46 @@ describe('game save', () => {
   it('migrates a valid v5 save as already onboarded', () => {
     const snapshot = makeSnapshot();
     const oldSave = {
-      version: 5,
-      updatedAt: 777,
-      coins: snapshot.coins,
-      coreShards: snapshot.coreShards,
-      upgrades: snapshot.upgrades,
-      daily: snapshot.daily,
-      collection: snapshot.collection,
-      baseHp: snapshot.baseHp,
-      chapter: snapshot.chapter,
-      encounterStep: snapshot.encounterStep,
-      targetHpMax: snapshot.targetHpMax,
-      targetHp: snapshot.targetHp,
-      recruitSerial: snapshot.recruitSerial,
+      version: 5, updatedAt: 777, coins: snapshot.coins, coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades, daily: snapshot.daily, collection: snapshot.collection,
+      baseHp: snapshot.baseHp, chapter: snapshot.chapter, encounterStep: snapshot.encounterStep,
+      targetHpMax: snapshot.targetHpMax, targetHp: snapshot.targetHp, recruitSerial: snapshot.recruitSerial,
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.onboarding).toEqual({ step: 'complete', completedAt: 777 });
   });
 
   it('migrates v6 boards to explicit common mutation state', () => {
     const snapshot = makeSnapshot();
     const oldSave = {
-      version: 6,
-      updatedAt: 888,
-      coins: snapshot.coins,
-      coreShards: snapshot.coreShards,
-      upgrades: snapshot.upgrades,
-      daily: snapshot.daily,
-      collection: snapshot.collection,
-      onboarding: { step: 'complete', completedAt: 777 },
-      baseHp: snapshot.baseHp,
-      chapter: snapshot.chapter,
-      encounterStep: snapshot.encounterStep,
-      targetHpMax: snapshot.targetHpMax,
-      targetHp: snapshot.targetHp,
-      recruitSerial: snapshot.recruitSerial,
-      board: makeLegacyBoard()
+      version: 6, updatedAt: 888, coins: snapshot.coins, coreShards: snapshot.coreShards,
+      upgrades: snapshot.upgrades, daily: snapshot.daily, collection: snapshot.collection,
+      onboarding: { step: 'complete', completedAt: 777 }, baseHp: snapshot.baseHp, chapter: snapshot.chapter,
+      encounterStep: snapshot.encounterStep, targetHpMax: snapshot.targetHpMax, targetHp: snapshot.targetHp,
+      recruitSerial: snapshot.recruitSerial, board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(10);
+    expect(migrated?.version).toBe(11);
     expect(migrated?.board.filter(Boolean).every((unit) => unit?.mutation === 'none')).toBe(true);
   });
 
-  it('clamps upgrade levels, collection stats, anomaly counters and target HP to supported maximums', () => {
+  it('clamps upgrade levels, collection stats, anomaly counters, ascension values and target HP', () => {
     const save = createGameSave(makeSnapshot(), 12345);
     const parsed = parseGameSave({
       ...save,
       targetHp: 9999,
       upgrades: { power: 999, armor: 999, bounty: 999 },
       anomalyHunt: { charge: 999, secretPity: 999, totalPulls: 12, secretsFound: 999 },
-      collection: {
-        ...save.collection,
-        stats: { merges: 2_000_000_000, recruits: 0, defeats: 0, bosses: 0, upgrades: 0 }
-      }
+      ascension: { chaosStars: 9_999_999, totalAscensions: 99_999, highestChapter: 9_999_999, unlockedNodes: [] },
+      collection: { ...save.collection, stats: { merges: 2_000_000_000, recruits: 0, defeats: 0, bosses: 0, upgrades: 0 } }
     });
     expect(parsed?.targetHp).toBe(800);
     expect(parsed?.upgrades).toEqual({ power: 10, armor: 8, bounty: 10 });
     expect(parsed?.collection.stats.merges).toBe(1_000_000_000);
     expect(parsed?.anomalyHunt).toEqual({ charge: 17, secretPity: 69, totalPulls: 12, secretsFound: 12 });
+    expect(parsed?.ascension).toMatchObject({ chaosStars: 1_000_000, totalAscensions: 10_000, highestChapter: 1_000_000 });
   });
 
   it('rejects malformed or duplicate chaos perks', () => {
@@ -286,32 +253,33 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, anomalyHunt: { ...save.anomalyHunt, charge: 'full' } })).toBeNull();
   });
 
-  it('rejects malformed onboarding state', () => {
+  it('rejects malformed ascension state and impossible tree prerequisites', () => {
+    const save = createGameSave(makeSnapshot());
+    expect(parseGameSave({ ...save, ascension: { ...save.ascension, chaosStars: 'many' } })).toBeNull();
+    expect(parseGameSave({ ...save, ascension: { ...save.ascension, unlockedNodes: ['recruit-catalyst'] } })).toBeNull();
+    expect(parseGameSave({ ...save, ascension: { ...save.ascension, unlockedNodes: ['fusion-rebate', 'fusion-rebate'] } })).toBeNull();
+  });
+
+  it('rejects malformed Mutation Album state and impossible claimed milestones', () => {
+    const save = createGameSave(makeSnapshot());
+    expect(parseGameSave({ ...save, mutationAlbum: { discovered: ['fake:charged'], claimedMilestones: [] } })).toBeNull();
+    expect(parseGameSave({ ...save, mutationAlbum: { discovered: [], claimedMilestones: [12] } })).toBeNull();
+  });
+
+  it('rejects malformed onboarding, collection, daily and upgrade data', () => {
     const save = createGameSave(makeSnapshot());
     expect(parseGameSave({ ...save, onboarding: { step: 'complete', completedAt: null } })).toBeNull();
-  });
-
-  it('rejects malformed collection data', () => {
-    const save = createGameSave(makeSnapshot());
     expect(parseGameSave({ ...save, collection: { ...save.collection, discovered: ['copied-meme'] } })).toBeNull();
-  });
-
-  it('rejects malformed daily state', () => {
-    const save = createGameSave(makeSnapshot());
     expect(parseGameSave({ ...save, daily: { ...save.daily, dayKey: 'not-a-day' } })).toBeNull();
-  });
-
-  it('rejects malformed upgrade data', () => {
-    const save = createGameSave(makeSnapshot());
     expect(parseGameSave({ ...save, upgrades: { power: 'max', armor: 0, bounty: 0 } })).toBeNull();
   });
 
-  it('rejects unsupported v10 encounter steps', () => {
+  it('rejects unsupported v11 encounter steps', () => {
     const save = createGameSave(makeSnapshot());
     expect(parseGameSave({ ...save, encounterStep: 6 })).toBeNull();
   });
 
-  it('rejects malformed board mutation data in v10', () => {
+  it('rejects malformed board mutation data in v11', () => {
     const save = createGameSave(makeSnapshot());
     const board = [...save.board];
     const first = board[0];
@@ -320,7 +288,7 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, board })).toBeNull();
   });
 
-  it('rejects v10 board units that omit mutation', () => {
+  it('rejects v11 board units that omit mutation', () => {
     const save = createGameSave(makeSnapshot());
     const board = save.board.map((unit) => unit ? { id: unit.id, family: unit.family, level: unit.level } : null);
     expect(parseGameSave({ ...save, board })).toBeNull();
