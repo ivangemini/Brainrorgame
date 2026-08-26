@@ -11,6 +11,7 @@ import {
   addUnit,
   BOARD_SIZE,
   createStarterBoard,
+  findMergeablePair,
   firstEmptySlot,
   hasMergeablePair,
   isBoardDeadlocked,
@@ -48,6 +49,12 @@ describe('board rules', () => {
     expect(board[1]).toMatchObject({ family: 'pinguino', level: 1, mutation: 'none' });
     expect(board[5]).toMatchObject({ family: 'toastodilo', level: 1, mutation: 'none' });
     expect(board[6]).toMatchObject({ family: 'toastodilo', level: 1, mutation: 'none' });
+  });
+
+  it('returns a deterministic legal pair for board guidance', () => {
+    const board = createStarterBoard();
+    expect(findMergeablePair(board)).toEqual([0, 1]);
+    expect(findMergeablePair(createDeadlockedBoard())).toBeNull();
   });
 
   it('merges only matching family and level', () => {
