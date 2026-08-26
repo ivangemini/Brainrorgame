@@ -28,12 +28,19 @@ import {
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
 import {
+  backfillMutationAlbumProgress,
+  isMutationAlbumKey,
+  MUTATION_ALBUM_MILESTONES,
+  type MutationAlbumKey,
+  type MutationAlbumProgress
+} from '../systems/mutationAlbum';
+import {
   createCompletedOnboardingState,
   isValidOnboardingState,
   type OnboardingState
 } from '../systems/onboarding';
 
-export const SAVE_VERSION = 10 as const;
+export const SAVE_VERSION = 11 as const;
 
 type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
@@ -106,11 +113,16 @@ export interface GameSaveV9 extends Omit<GameSaveV8, 'version'> {
 }
 
 export interface GameSaveV10 extends Omit<GameSaveV9, 'version'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 10;
   readonly anomalyHunt: AnomalyHuntState;
 }
 
-export type GameSave = GameSaveV10;
+export interface GameSaveV11 extends Omit<GameSaveV10, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly mutationAlbum: MutationAlbumProgress;
+}
+
+export type GameSave = GameSaveV11;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -120,6 +132,7 @@ export interface GameSaveSnapshot {
   readonly collection: CollectionProgress;
   readonly onboarding: OnboardingState;
   readonly anomalyHunt: AnomalyHuntState;
+  readonly mutationAlbum: MutationAlbumProgress;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -155,7 +168,7 @@ interface V5ProgressFields extends V4ProgressFields {
 type BoardParser = (value: unknown) => BoardState | null;
 type StepParser = (value: unknown) => EncounterStep | null;
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV10 {
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV11 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -166,6 +179,7 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     collection: cloneCollection(snapshot.collection),
     onboarding: cloneOnboarding(snapshot.onboarding),
     anomalyHunt: cloneAnomalyHunt(snapshot.anomalyHunt),
+    mutationAlbum: cloneMutationAlbum(snapshot.mutationAlbum),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -198,7 +212,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
     const v9 = v8 ? migrateV8ToV9(v8) : null;
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
   if (value.version === 2) {
     const v3 = migrateV2ToV3(value);
@@ -208,7 +223,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
     const v9 = v8 ? migrateV8ToV9(v8) : null;
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
   if (value.version === 3) {
     const v4 = migrateV3ToV4(value);
@@ -217,7 +233,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
     const v9 = v8 ? migrateV8ToV9(v8) : null;
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
   if (value.version === 4) {
     const v5 = migrateV4ToV5(value);
@@ -225,33 +242,59 @@ export function parseGameSave(value: unknown): GameSave | null {
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
     const v9 = v8 ? migrateV8ToV9(v8) : null;
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
   if (value.version === 5) {
     const v6 = migrateV5ToV6(value);
     const v7 = v6 ? migrateV6ToV7(v6) : null;
     const v8 = v7 ? migrateV7ToV8(v7) : null;
     const v9 = v8 ? migrateV8ToV9(v8) : null;
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
   if (value.version === 6) {
     const v7 = migrateV6ToV7(value);
     const v8 = v7 ? migrateV7ToV8(v7) : null;
     const v9 = v8 ? migrateV8ToV9(v8) : null;
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
   if (value.version === 7) {
     const v8 = migrateV7ToV8(value);
     const v9 = v8 ? migrateV8ToV9(v8) : null;
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
   if (value.version === 8) {
     const v9 = migrateV8ToV9(value);
-    return v9 ? migrateV9ToV10(v9) : null;
+    const v10 = v9 ? migrateV9ToV10(v9) : null;
+    return v10 ? migrateV10ToV11(v10) : null;
   }
-  if (value.version === 9) return migrateV9ToV10(value);
+  if (value.version === 9) {
+    const v10 = migrateV9ToV10(value);
+    return v10 ? migrateV10ToV11(v10) : null;
+  }
+  if (value.version === 10) return migrateV10ToV11(value);
   if (value.version !== SAVE_VERSION) return null;
 
+  const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
+  const chaosPerks = parseChaosPerks(value.chaosPerks);
+  const anomalyHunt = parseAnomalyHunt(value.anomalyHunt);
+  const mutationAlbum = parseMutationAlbum(value.mutationAlbum);
+  if (!v5 || !chaosPerks || !anomalyHunt || !mutationAlbum || !isValidOnboardingState(value.onboarding)) return null;
+  return {
+    version: SAVE_VERSION,
+    ...v5,
+    onboarding: cloneOnboarding(value.onboarding),
+    chaosPerks,
+    anomalyHunt,
+    mutationAlbum
+  };
+}
+
+function migrateV10ToV11(value: unknown): GameSaveV11 | null {
+  if (!isRecord(value)) return null;
   const v5 = parseV5Fields(value, parseCurrentBoard, parseCurrentEncounterStep);
   const chaosPerks = parseChaosPerks(value.chaosPerks);
   const anomalyHunt = parseAnomalyHunt(value.anomalyHunt);
@@ -261,7 +304,8 @@ export function parseGameSave(value: unknown): GameSave | null {
     ...v5,
     onboarding: cloneOnboarding(value.onboarding),
     chaosPerks,
-    anomalyHunt
+    anomalyHunt,
+    mutationAlbum: backfillMutationAlbumProgress(v5.collection, v5.board)
   };
 }
 
@@ -271,7 +315,7 @@ function migrateV9ToV10(value: unknown): GameSaveV10 | null {
   const chaosPerks = parseChaosPerks(value.chaosPerks);
   if (!v5 || !chaosPerks || !isValidOnboardingState(value.onboarding)) return null;
   return {
-    version: SAVE_VERSION,
+    version: 10,
     ...v5,
     onboarding: cloneOnboarding(value.onboarding),
     chaosPerks,
@@ -454,6 +498,26 @@ function parseAnomalyHunt(value: unknown): AnomalyHuntState | null {
   };
 }
 
+function parseMutationAlbum(value: unknown): MutationAlbumProgress | null {
+  if (!isRecord(value) || !Array.isArray(value.discovered) || !Array.isArray(value.claimedMilestones)) return null;
+
+  const discovered: MutationAlbumKey[] = [];
+  for (const key of value.discovered) {
+    if (!isMutationAlbumKey(key)) return null;
+    if (!discovered.includes(key)) discovered.push(key);
+  }
+
+  const validTargets = MUTATION_ALBUM_MILESTONES.map((milestone) => milestone.target);
+  const claimedMilestones: number[] = [];
+  for (const target of value.claimedMilestones) {
+    if (!isFiniteNumber(target) || !Number.isInteger(target) || !validTargets.includes(target)) return null;
+    if (!claimedMilestones.includes(target)) claimedMilestones.push(target);
+  }
+  if (claimedMilestones.some((target) => target > discovered.length)) return null;
+
+  return { discovered, claimedMilestones };
+}
+
 function parseCollection(value: unknown): CollectionProgress | null {
   if (!isRecord(value) || !Array.isArray(value.discovered) || !isRecord(value.stats) || !Array.isArray(value.claimedAchievements)) return null;
   const discovered: CollectionKey[] = [];
@@ -536,6 +600,13 @@ function cloneOnboarding(onboarding: OnboardingState): OnboardingState {
 
 function cloneAnomalyHunt(anomalyHunt: AnomalyHuntState): AnomalyHuntState {
   return { ...anomalyHunt };
+}
+
+function cloneMutationAlbum(mutationAlbum: MutationAlbumProgress): MutationAlbumProgress {
+  return {
+    discovered: [...mutationAlbum.discovered],
+    claimedMilestones: [...mutationAlbum.claimedMilestones]
+  };
 }
 
 function parseCurrentBoard(value: unknown): BoardState | null {
