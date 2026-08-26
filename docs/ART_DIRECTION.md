@@ -4,15 +4,18 @@
 
 High-quality stylized 2D/2.5D cartoon art with exaggerated silhouettes, soft volume, clean materials, strong rim/shape separation and punchy readable expressions. The result should feel like a polished mobile game key visual brought into gameplay, not flat clip-art and not photoreal AI imagery.
 
+The roster's specific identity is **original absurdist brainrot hybrid comedy**, not generic sci-fi creatures. Read `docs/BRAINROT_IDENTITY.md` before designing or approving any playable character.
+
 ## Visual language
 
 - Chunky, rounded, appealing forms.
 - Clear silhouette first; internal detail second.
 - Exaggerated scale differences between units and bosses.
 - Controlled asymmetry and comedic props.
+- Familiar food/appliance/vehicle/household materials must dominate the character joke before neon effects.
 - Soft painted gradients plus crisp shape edges.
 - Expressive eyes/mouth/posture when a face exists.
-- Material response should be understandable: fur, rubber, metal, glass, slime, pastry, etc.
+- Material response should be understandable: fur, rubber, metal, glass, pastry, gelato, pasta, etc.
 - Backgrounds support gameplay contrast and never compete with units.
 
 ## Character readability
@@ -22,7 +25,8 @@ A character must be recognizable:
 1. as a black silhouette;
 2. at ~96 px tall on a phone;
 3. without reading its name;
-4. from one dominant visual joke/concept.
+4. from one dominant visual joke/concept;
+5. as a deliberate creature + mundane-object/food fusion rather than a generic alien mascot.
 
 Avoid adding micro-details purely to make generated art look "expensive". If details disappear at gameplay scale, they must not carry identity.
 
@@ -35,6 +39,8 @@ Rarity should affect more than a border:
 - Epic: stronger secondary silhouette, emissive accents, richer VFX.
 - Legendary: unique crown/halo/energy language, more elaborate animation and reveal.
 - Secret: intentionally surprising silhouette/effect treatment, but still coherent with the universe.
+
+Rarity overlays may exaggerate a character but must not erase the base hybrid joke.
 
 ## Resolution policy
 
@@ -71,4 +77,5 @@ Reject an asset if it has any of the following:
 - identity too close to a protected meme/brand/celebrity;
 - resolution insufficient for intended presentation;
 - lighting/material style inconsistent with the established set;
-- silhouette that collapses at mobile scale.
+- silhouette that collapses at mobile scale;
+- generic alien/slime/space identity without a dominant everyday-object or food fusion.
