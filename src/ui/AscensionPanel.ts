@@ -3,12 +3,11 @@ import { GameAnalytics } from '../analytics/GameAnalytics';
 import { getAscensionCopy } from '../i18n/ascensionCopy';
 import { resolveLocale } from '../i18n';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
+import { applyAscensionToSave } from '../state/ascensionReset';
 import { createGameSave, parseGameSave, type GameSave } from '../state/save';
 import {
   ASCENSION_NODES,
-  getAscensionEffects,
   getAscensionNode,
-  performAscension,
   previewAscension,
   purchaseAscensionNode,
   type AscensionBranch,
@@ -16,8 +15,6 @@ import {
   type AscensionProgress
 } from '../systems/ascension';
 import { syncCurrentAscensionProgress } from '../systems/ascensionRuntime';
-import { createStarterBoard } from '../systems/board';
-import { getEncounterSpec } from '../systems/encounters';
 
 interface NodeView {
   readonly background: Phaser.GameObjects.Graphics;
@@ -33,8 +30,6 @@ const BRANCH_ACCENTS: Readonly<Record<AscensionBranch, number>> = {
   chaos: 0xc692ff,
   collection: 0xffd76a
 };
-
-const RECRUIT_CREDIT_COIN_VALUE = 20;
 
 export class AscensionPanel {
   private overlay!: Phaser.GameObjects.Rectangle;
@@ -295,41 +290,21 @@ export class AscensionPanel {
       return;
     }
 
-    const result = performAscension(this.progress, this.save.chapter, Date.now(), this.save.weeklyChaos.active);
-    if (!result.performed || !result.resetPlan) return;
+    const applied = applyAscensionToSave(this.save, Date.now());
+    if (!applied.performed) return;
     this.busy = true;
     this.refreshNodes();
     const platform = this.scene.registry.get('platform') as PlatformAdapter;
     try {
-      const encounter = getEncounterSpec(1, 0);
-      const effects = getAscensionEffects(result.progress.purchasedNodes);
-      const pityRatio = result.resetPlan.anomalyPityCarryRatio;
-      const next = createGameSave({
-        ...this.save,
-        coins: result.resetPlan.coins + effects.startingRecruitCredits * RECRUIT_CREDIT_COIN_VALUE,
-        ascension: result.progress,
-        anomalyHunt: {
-          ...this.save.anomalyHunt,
-          charge: Math.floor(this.save.anomalyHunt.charge * pityRatio),
-          secretPity: Math.floor(this.save.anomalyHunt.secretPity * pityRatio)
-        },
-        baseHp: 100,
-        chapter: 1,
-        encounterStep: 0,
-        targetHpMax: encounter.hp,
-        targetHp: encounter.hp,
-        recruitSerial: 0,
-        board: createStarterBoard(),
-        chaosPerks: []
-      }, Date.now());
+      const next = applied.save;
       await platform.save(next);
       syncCurrentAscensionProgress(next.ascension);
       this.scene.registry.set('initialSave', next);
       new GameAnalytics(platform).ascensionComplete(
-        result.preview.chapter,
-        result.preview.starsAwarded,
-        result.progress.lifetimeChaosStars,
-        result.progress.ascensions
+        applied.ascension.preview.chapter,
+        applied.ascension.preview.starsAwarded,
+        applied.ascension.progress.lifetimeChaosStars,
+        applied.ascension.progress.ascensions
       );
       this.scene.scene.restart();
     } catch {
