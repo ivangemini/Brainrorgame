@@ -1,3 +1,5 @@
+import { getAscensionRecruitCredits } from './ascensionRuntime';
+
 export const WEEKLY_CHAOS_MAX_DEPTH = 12;
 export const WEEKLY_CHAOS_RULE_COUNT = 3;
 
@@ -246,6 +248,7 @@ export function claimWeeklyChaosMilestone(progress: WeeklyChaosProgress, target:
 }
 
 export function weeklyRecruitCost(baseCost: number, progress: WeeklyChaosProgress): number {
+  if (getAscensionRecruitCredits() > 0) return 0;
   return Math.max(1, Math.round(baseCost * getWeeklyChaosModifiers(progress).recruitCost));
 }
 
