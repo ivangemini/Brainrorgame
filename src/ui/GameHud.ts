@@ -56,11 +56,16 @@ export class GameHud {
     this.chapterText = this.scene.add.text(102, 137, 'CANDY • 1 / 5', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '21px', color: '#b9c9ff'
     });
-    this.coinsText = this.scene.add.text(720, 91, '120', {
-      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '44px', color: '#fff3a8', stroke: '#5a3415', strokeThickness: 7
-    }).setOrigin(1, 0);
-    this.scene.add.circle(676, 119, 25, 0xffd55e).setStrokeStyle(6, 0xfff0a6, 1);
-    this.scene.add.circle(676, 119, 10, 0xf5a623);
+
+    // Exact coin balance is always rendered to the LEFT of the coin. The old
+    // layout anchored the number over the icon, hiding leading digits once the
+    // balance reached the thousands.
+    this.coinsText = this.scene.add.text(660, 119, '120', {
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '42px', color: '#fff3a8', stroke: '#5a3415', strokeThickness: 7
+    }).setOrigin(1, 0.5);
+    this.scene.add.circle(702, 119, 25, 0xffd55e).setStrokeStyle(6, 0xfff0a6, 1);
+    this.scene.add.circle(702, 119, 10, 0xf5a623);
+
     this.baseText = this.scene.add.text(100, 180, translate('hud.fortress', { hp: 100 }), {
       fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '27px', color: '#9ff4ff'
     });
@@ -89,7 +94,10 @@ export class GameHud {
     recruitCost: number,
     anomalyHunt: AnomalyHuntState
   ): void {
-    this.coinsText.setText(`${coins}`);
+    const safeCoins = Math.max(0, Math.floor(coins));
+    this.coinsText
+      .setText(`${safeCoins}`)
+      .setFontSize(safeCoins >= 1_000_000 ? 27 : safeCoins >= 100_000 ? 31 : safeCoins >= 10_000 ? 35 : 42);
     this.coreText.setText(`${coreShards}`);
     this.baseText.setText(translate('hud.fortress', { hp: baseHp }));
     this.baseText.setColor(baseHp > 35 ? '#9ff4ff' : '#ff9bab');
