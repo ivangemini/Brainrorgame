@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { COLLECTION_KEYS } from './collectionProgression';
+import { createStarterBoard } from './board';
+import { COLLECTION_KEYS, createDefaultCollectionProgress, discoverCreature } from './collectionProgression';
 import {
   MUTATION_ALBUM_TOTAL,
+  backfillMutationAlbumProgress,
   claimMutationAlbumMilestone,
   createDefaultMutationAlbumProgress,
   discoverMutationAlbumEntry,
+  hasMutationAlbumMilestoneClaimAvailable,
   isMutationAlbumKey,
   mutationAlbumCompletion,
   mutationAlbumCountForCreature,
@@ -20,6 +23,7 @@ describe('mutation album', () => {
 
   it('records each creature/mutation combination once', () => {
     const creature = COLLECTION_KEYS[0];
+    if (!creature) throw new Error('Expected at least one collection key');
     let progress = createDefaultMutationAlbumProgress();
     progress = discoverMutationAlbumEntry(progress, creature, 'charged');
     const duplicate = discoverMutationAlbumEntry(progress, creature, 'charged');
@@ -31,6 +35,21 @@ describe('mutation album', () => {
     expect(isMutationAlbumKey('fake-1:crowned')).toBe(false);
   });
 
+  it('backfills only evidence that historical saves can prove', () => {
+    const board = [...createStarterBoard()];
+    board[8] = { id: 'rare-current', family: 'lampalotl', level: 2, mutation: 'prismatic' };
+    let collection = createDefaultCollectionProgress(board);
+    collection = discoverCreature(collection, 'microwhale-3');
+    const progress = backfillMutationAlbumProgress(collection, board);
+
+    expect(progress.discovered).toContain('pinguino-1:none');
+    expect(progress.discovered).toContain('toastodilo-1:none');
+    expect(progress.discovered).toContain('lampalotl-2:none');
+    expect(progress.discovered).toContain('lampalotl-2:prismatic');
+    expect(progress.discovered).toContain('microwhale-3:none');
+    expect(progress.discovered).not.toContain('microwhale-3:prismatic');
+  });
+
   it('exposes completion and finite claimable milestones', () => {
     let progress = createDefaultMutationAlbumProgress();
     for (const creature of COLLECTION_KEYS.slice(0, 3)) {
@@ -40,10 +59,12 @@ describe('mutation album', () => {
     }
     expect(mutationAlbumCompletion(progress)).toEqual({ current: 12, total: 144, percent: 8 });
     expect(nextMutationAlbumMilestone(progress)?.target).toBe(12);
+    expect(hasMutationAlbumMilestoneClaimAvailable(progress)).toBe(true);
     const claimed = claimMutationAlbumMilestone(progress, 12);
     expect(claimed.claimed).toBe(true);
     expect(claimed.reward.coins).toBe(150);
     expect(nextMutationAlbumMilestone(claimed.progress)?.target).toBe(36);
+    expect(hasMutationAlbumMilestoneClaimAvailable(claimed.progress)).toBe(false);
     expect(claimMutationAlbumMilestone(claimed.progress, 12).claimed).toBe(false);
   });
 });

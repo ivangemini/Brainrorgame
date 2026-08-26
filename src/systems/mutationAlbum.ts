@@ -1,5 +1,10 @@
-import { COLLECTION_KEYS, type CollectionKey } from './collectionProgression';
 import { MUTATION_IDS, type MutationId } from '../content/mutations';
+import type { BoardState } from './board';
+import {
+  COLLECTION_KEYS,
+  type CollectionKey,
+  type CollectionProgress
+} from './collectionProgression';
 
 export type MutationAlbumKey = `${CollectionKey}:${MutationId}`;
 
@@ -41,6 +46,25 @@ export function discoverMutationAlbumEntry(
   return { ...progress, discovered: [...progress.discovered, key] };
 }
 
+export function backfillMutationAlbumProgress(
+  collection: Pick<CollectionProgress, 'discovered'>,
+  board: BoardState
+): MutationAlbumProgress {
+  let progress = createDefaultMutationAlbumProgress();
+
+  for (const creature of collection.discovered) {
+    progress = discoverMutationAlbumEntry(progress, creature, 'none');
+  }
+
+  for (const unit of board) {
+    if (!unit) continue;
+    const creature = `${unit.family}-${unit.level}` as CollectionKey;
+    progress = discoverMutationAlbumEntry(progress, creature, unit.mutation);
+  }
+
+  return progress;
+}
+
 export function mutationAlbumCountForCreature(progress: MutationAlbumProgress, creature: CollectionKey): number {
   return MUTATION_IDS.reduce((count, mutation) => count + (progress.discovered.includes(mutationAlbumKey(creature, mutation)) ? 1 : 0), 0);
 }
@@ -52,6 +76,12 @@ export function mutationAlbumCompletion(progress: MutationAlbumProgress): { curr
 
 export function nextMutationAlbumMilestone(progress: MutationAlbumProgress): MutationAlbumMilestone | null {
   return MUTATION_ALBUM_MILESTONES.find((milestone) => !progress.claimedMilestones.includes(milestone.target)) ?? null;
+}
+
+export function hasMutationAlbumMilestoneClaimAvailable(progress: MutationAlbumProgress): boolean {
+  return MUTATION_ALBUM_MILESTONES.some(
+    (milestone) => progress.discovered.length >= milestone.target && !progress.claimedMilestones.includes(milestone.target)
+  );
 }
 
 export function claimMutationAlbumMilestone(progress: MutationAlbumProgress, target: number): {

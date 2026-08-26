@@ -37,8 +37,8 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 ### S-tier systems
 - [ ] Ascension / Prestige: reset chapter progress after a meaningful Rift milestone for permanent Chaos Stars while preserving collection-critical progress.
 - [ ] Ascension tree: Merge, Combat, Chaos and Collection branches with rule-changing unlocks rather than only flat stat inflation.
-- [ ] Mutation Album: track Normal / Charged / Prismatic / Crowned state for every form, exposing up to 144 collection targets from the existing 36-form roster.
-- [ ] Mutation Album milestone rewards and Codex completion surfaces.
+- [x] Mutation Album: track Normal / Charged / Prismatic / Crowned state for every form, exposing up to 144 collection targets from the existing 36-form roster.
+- [x] Mutation Album milestone rewards and Codex completion surfaces.
 - [ ] Weekly Chaos Run: deterministic weekly seed, rotating rules, weekly progression milestones and bounded rewards.
 - [ ] Weekly-run analytics: start, milestone, completion/failure depth and build-choice signals without player PII.
 
@@ -90,8 +90,9 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [x] Persistent Anomaly Hunt with mutation safety net and Crown Signal guarantee.
 - [x] Chaos Draft, active abilities, crew synergies, mutations and Core Lab meta progression.
 - [x] Chaos Codex target follows the live roster instead of a hard-coded 21-form total.
+- [x] Mutation Album persists all 144 form/state targets, records recruit/merge discoveries and exposes claimable Codex milestones.
 - [x] Fifteen long-tail achievements, daily rewards/missions and offline progression.
-- [x] Save migrations through v10.
+- [x] Save migrations through v11, including evidence-safe Mutation Album backfill from v1–v10 saves.
 - [x] Yandex, CrazyGames, Poki, Playgama and GameDistribution adapter foundations.
 - [x] Typed privacy-safe analytics.
 - [x] Typed EN/RU localization framework with `?lang=` QA override.
