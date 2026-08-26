@@ -21,6 +21,7 @@ import { beginActiveAbilityEncounter } from './activeAbilities';
 import { syncAscensionRuntimeChapter } from './ascensionRuntime';
 import {
   currentBossAttackIntervalMultiplier,
+  currentBossOpeningDelayMs,
   currentBossOutgoingDamageMultiplier
 } from './bossPhases';
 
@@ -108,7 +109,9 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
         return Math.max(1, Math.round(scaled.damage * currentBossOutgoingDamageMultiplier()));
       },
       get attackMs(): number {
-        return Math.max(1200, Math.round(scaled.attackMs * currentBossAttackIntervalMultiplier()));
+        return Math.max(1200, Math.round(
+          scaled.attackMs * currentBossAttackIntervalMultiplier() + currentBossOpeningDelayMs()
+        ));
       },
       reward: scaled.reward + worldBonus,
       accentColor: boss.accentColor,
