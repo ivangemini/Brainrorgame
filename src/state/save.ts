@@ -1,4 +1,5 @@
 import { isCreatureFamily, type CreatureFamily } from '../content/creatures';
+import { getAllBosses, type BossId } from '../content/bosses';
 import { isMutationId } from '../content/mutations';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import {
@@ -17,6 +18,21 @@ import {
   syncCurrentAscensionProgress
 } from '../systems/ascensionRuntime';
 import type { BoardState, BoardUnit } from '../systems/board';
+import {
+  BOSS_HUNT_MILESTONES,
+  createBossHuntProgress,
+  createDefaultBossTrophyRoomProgress,
+  getBossHuntBossId,
+  isBossTrophyTier,
+  type BossHuntProgress,
+  type BossTrophyRoomProgress,
+  type BossTrophyTier
+} from '../systems/bossHunt';
+import {
+  getCurrentBossHuntProgress,
+  getCurrentBossTrophyRoomProgress,
+  syncCurrentBossHuntProgress
+} from '../systems/bossHuntRuntime';
 import { isChaosPerkId, type ChaosPerkId } from '../systems/chaosDraft';
 import {
   backfillCollectionProgress,
@@ -52,7 +68,7 @@ import {
   type WeeklyChaosProgress
 } from '../systems/weeklyChaos';
 
-export const SAVE_VERSION = 13 as const;
+export const SAVE_VERSION = 14 as const;
 
 type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
@@ -140,11 +156,17 @@ export interface GameSaveV12 extends Omit<GameSaveV11, 'version'> {
 }
 
 export interface GameSaveV13 extends Omit<GameSaveV12, 'version'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 13;
   readonly ascension: AscensionProgress;
 }
 
-export type GameSave = GameSaveV13;
+export interface GameSaveV14 extends Omit<GameSaveV13, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly bossHunt: BossHuntProgress;
+  readonly bossTrophies: BossTrophyRoomProgress;
+}
+
+export type GameSave = GameSaveV14;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -157,6 +179,8 @@ export interface GameSaveSnapshot {
   readonly mutationAlbum: MutationAlbumProgress;
   readonly weeklyChaos: WeeklyChaosProgress;
   readonly ascension?: AscensionProgress;
+  readonly bossHunt?: BossHuntProgress;
+  readonly bossTrophies?: BossTrophyRoomProgress;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -192,7 +216,7 @@ interface V5ProgressFields extends V4ProgressFields {
 type BoardParser = (value: unknown) => BoardState | null;
 type StepParser = (value: unknown) => EncounterStep | null;
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV13 {
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV14 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -206,6 +230,8 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     mutationAlbum: cloneMutationAlbum(snapshot.mutationAlbum),
     weeklyChaos: cloneWeeklyChaos(snapshot.weeklyChaos),
     ascension: cloneAscension(snapshot.ascension ?? getCurrentAscensionProgress()),
+    bossHunt: cloneBossHunt(snapshot.bossHunt ?? getCurrentBossHuntProgress()),
+    bossTrophies: cloneBossTrophyRoom(snapshot.bossTrophies ?? getCurrentBossTrophyRoomProgress()),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -221,7 +247,10 @@ export async function loadGameSave(platform: PlatformAdapter): Promise<GameSave 
   try {
     const raw = await platform.loadSave<unknown>();
     const parsed = parseGameSave(raw);
-    if (parsed) syncCurrentAscensionProgress(parsed.ascension);
+    if (parsed) {
+      syncCurrentAscensionProgress(parsed.ascension);
+      syncCurrentBossHuntProgress(parsed.bossHunt, parsed.bossTrophies);
+    }
     return parsed;
   } catch {
     return null;
@@ -246,20 +275,29 @@ export function parseGameSave(value: unknown): GameSave | null {
       case 10: current = migrateV10ToV11(current); break;
       case 11: current = migrateV11ToV12(current); break;
       case 12: current = migrateV12ToV13(current); break;
+      case 13: current = migrateV13ToV14(current); break;
       default: return null;
     }
     if (current === null) return null;
   }
 
   if (!isRecord(current) || current.version !== SAVE_VERSION) return null;
-  return parseV13(current);
+  return parseV14(current);
+}
+
+function parseV14(value: Record<string, unknown>): GameSaveV14 | null {
+  const v13 = parseV13(value);
+  const bossTrophies = parseBossTrophyRoom(value.bossTrophies);
+  const bossHunt = parseBossHunt(value.bossHunt);
+  if (!v13 || !bossTrophies || !bossHunt) return null;
+  return { ...v13, version: SAVE_VERSION, bossHunt, bossTrophies };
 }
 
 function parseV13(value: Record<string, unknown>): GameSaveV13 | null {
   const v12 = parseV12(value);
   const ascension = parseAscension(value.ascension);
   if (!v12 || !ascension) return null;
-  return { ...v12, version: SAVE_VERSION, ascension };
+  return { ...v12, version: 13, ascension };
 }
 
 function parseV12(value: Record<string, unknown>): GameSaveV12 | null {
@@ -285,13 +323,26 @@ function parseV11(value: Record<string, unknown>): GameSaveV11 | null {
   };
 }
 
+function migrateV13ToV14(value: unknown): GameSaveV14 | null {
+  if (!isRecord(value)) return null;
+  const v13 = parseV13(value);
+  if (!v13) return null;
+  const bossTrophies = createDefaultBossTrophyRoomProgress();
+  return {
+    ...v13,
+    version: SAVE_VERSION,
+    bossHunt: createBossHuntProgress(bossTrophies, v13.updatedAt),
+    bossTrophies
+  };
+}
+
 function migrateV12ToV13(value: unknown): GameSaveV13 | null {
   if (!isRecord(value)) return null;
   const v12 = parseV12(value);
   if (!v12) return null;
   return {
     ...v12,
-    version: SAVE_VERSION,
+    version: 13,
     ascension: createDefaultAscensionProgress()
   };
 }
@@ -567,6 +618,56 @@ function parseAscension(value: unknown): AscensionProgress | null {
   return cloneAscension(value);
 }
 
+function parseBossTrophyRoom(value: unknown): BossTrophyRoomProgress | null {
+  if (!isRecord(value) || !isRecord(value.trophies)) return null;
+  const knownBosses = new Set(getAllBosses().map((boss) => boss.id));
+  const trophies: Partial<Record<BossId, BossTrophyTier>> = {};
+  for (const [bossId, tier] of Object.entries(value.trophies)) {
+    if (!knownBosses.has(bossId as BossId) || !isBossTrophyTier(tier)) return null;
+    trophies[bossId as BossId] = tier;
+  }
+  return { trophies };
+}
+
+function parseBossHunt(value: unknown): BossHuntProgress | null {
+  if (!isRecord(value)) return null;
+  if (!isFiniteNumber(value.huntId) || !Number.isInteger(value.huntId) || value.huntId < 200001 || value.huntId > 999953) return null;
+  if (typeof value.bossId !== 'string' || getBossHuntBossId(value.huntId) !== value.bossId) return null;
+  if (!isBossTrophyTier(value.tier)) return null;
+  if (!isFiniteNumber(value.maxHp) || !isFiniteNumber(value.hpRemaining) || !isFiniteNumber(value.attempts)) return null;
+  if (!isFiniteNumber(value.totalDamage) || !isFiniteNumber(value.bestAttemptDamage)) return null;
+  if (!Array.isArray(value.claimedMilestones) || typeof value.defeated !== 'boolean') return null;
+
+  const maxHp = Math.max(1, Math.floor(value.maxHp));
+  const hpRemaining = clamp(Math.floor(value.hpRemaining), 0, maxHp);
+  const totalDamage = clamp(Math.floor(value.totalDamage), 0, maxHp);
+  const attempts = clamp(Math.floor(value.attempts), 0, 1_000_000);
+  const bestAttemptDamage = clamp(Math.floor(value.bestAttemptDamage), 0, maxHp);
+  if (totalDamage !== maxHp - hpRemaining) return null;
+  if (value.defeated !== (hpRemaining === 0)) return null;
+
+  const validPercents = BOSS_HUNT_MILESTONES.map((milestone) => milestone.percent);
+  const claimedMilestones: number[] = [];
+  for (const percent of value.claimedMilestones) {
+    if (!isFiniteNumber(percent) || !Number.isInteger(percent) || !validPercents.includes(percent as 25 | 50 | 75 | 100)) return null;
+    if (!claimedMilestones.includes(percent)) claimedMilestones.push(percent);
+  }
+  if (claimedMilestones.some((percent) => totalDamage < Math.ceil(maxHp * percent / 100))) return null;
+
+  return {
+    huntId: value.huntId,
+    bossId: value.bossId as BossId,
+    tier: value.tier,
+    maxHp,
+    hpRemaining,
+    attempts,
+    totalDamage,
+    bestAttemptDamage,
+    claimedMilestones,
+    defeated: value.defeated
+  };
+}
+
 function parseCollection(value: unknown): CollectionProgress | null {
   if (!isRecord(value) || !Array.isArray(value.discovered) || !isRecord(value.stats) || !Array.isArray(value.claimedAchievements)) return null;
   const discovered: CollectionKey[] = [];
@@ -670,6 +771,17 @@ function cloneAscension(ascension: AscensionProgress): AscensionProgress {
     ...ascension,
     purchasedNodes: [...ascension.purchasedNodes]
   };
+}
+
+function cloneBossHunt(progress: BossHuntProgress): BossHuntProgress {
+  return {
+    ...progress,
+    claimedMilestones: [...progress.claimedMilestones]
+  };
+}
+
+function cloneBossTrophyRoom(progress: BossTrophyRoomProgress): BossTrophyRoomProgress {
+  return { trophies: { ...progress.trophies } };
 }
 
 function parseCurrentBoard(value: unknown): BoardState | null {
