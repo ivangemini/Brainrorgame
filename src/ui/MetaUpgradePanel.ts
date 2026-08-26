@@ -2,6 +2,8 @@ import type * as Phaser from 'phaser';
 import { translate, resolveLocale } from '../i18n';
 import { getAscensionCopy } from '../i18n/ascensionCopy';
 import { localizedMetaEffect, localizedMetaUpgrade } from '../i18n/gameplayContent';
+import type { PlatformAdapter } from '../platform/PlatformAdapter';
+import { createFreshGameSave } from '../state/freshSave';
 import {
   META_UPGRADES,
   getUpgradeCost,
@@ -37,7 +39,7 @@ export class MetaUpgradePanel {
   public constructor(
     private readonly scene: Phaser.Scene,
     private readonly onPurchase: (id: MetaUpgradeId) => void,
-    private readonly onResetProgress: () => Promise<void>
+    private readonly onResetProgress?: () => Promise<void>
   ) {}
 
   public create(): void {
@@ -122,12 +124,26 @@ export class MetaUpgradePanel {
     this.resetLabel.setText('RESETTING…');
     this.resetHit.disableInteractive();
     this.paintResetButton(true);
-    void this.onResetProgress().catch(() => {
+    void this.resetProgress().catch(() => {
       this.resetHit.setInteractive({ useHandCursor: true });
       this.resetLabel.setText('RESET FAILED — TRY AGAIN');
       this.paintResetButton(true);
       this.resetTimer = this.scene.time.delayedCall(2200, () => this.disarmReset());
     });
+  }
+
+  private async resetProgress(): Promise<void> {
+    if (this.onResetProgress) {
+      await this.onResetProgress();
+      return;
+    }
+
+    const platform = this.scene.registry.get('platform') as PlatformAdapter | undefined;
+    if (!platform) throw new Error('Platform adapter unavailable');
+    await platform.save(createFreshGameSave());
+
+    if (typeof window === 'undefined') throw new Error('Reload unavailable');
+    window.location.reload();
   }
 
   private disarmReset(): void {
