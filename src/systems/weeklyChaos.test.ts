@@ -23,10 +23,11 @@ describe('weekly chaos run', () => {
     expect(weeklyChaosWeekId(Date.parse('2026-08-31T00:00:00.000Z'))).toBe(202636);
   });
 
-  it('selects the same unique rule set for every player in the same week', () => {
+  it('selects and caches the same unique rule set for every player in the same week', () => {
     const first = getWeeklyChaosRules(202635);
     const second = getWeeklyChaosRules(202635);
     expect(first.map((rule) => rule.id)).toEqual(second.map((rule) => rule.id));
+    expect(second).toBe(first);
     expect(new Set(first.map((rule) => rule.id)).size).toBe(WEEKLY_CHAOS_RULE_COUNT);
     expect(first).toHaveLength(WEEKLY_CHAOS_RULE_COUNT);
     expect(weeklyChaosSeed(202635)).toBe(weeklyChaosSeed(202635));
@@ -120,7 +121,7 @@ describe('weekly chaos run', () => {
     expect(hasWeeklyChaosClaimAvailable(second.progress)).toBe(false);
   });
 
-  it('only applies rule modifiers while a run is active', () => {
+  it('only applies and caches rule modifiers while a run is active', () => {
     const now = Date.parse('2026-08-25T12:00:00.000Z');
     const idle = createDefaultWeeklyChaosProgress(now);
     expect(getWeeklyChaosModifiers(idle)).toEqual({
@@ -134,6 +135,7 @@ describe('weekly chaos run', () => {
     const active = startWeeklyChaosRun(idle, now).progress;
     const modifiers = getWeeklyChaosModifiers(active);
     expect(Object.values(modifiers).some((value) => value !== 1)).toBe(true);
+    expect(getWeeklyChaosModifiers(active)).toBe(modifiers);
     expect(weeklyRecruitCost(20, active)).toBeGreaterThan(0);
   });
 });
