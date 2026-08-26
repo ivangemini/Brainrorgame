@@ -31,6 +31,7 @@ Use aggregate gameplay state only: chapter, encounter step, elapsed duration, re
 - mutation mix on `recruit` and `merge`
 - Anomaly Hunt context on `recruit`: `anomalyChargeBefore` (0–17), `crownSignalBefore` (0–69), `guaranteed` and `secret`
 - Weekly Chaos start, best-depth milestones, chapter build choices, attempt outcomes and claims
+- Ascension completions and authored tree-node purchases
 
 The Anomaly Hunt recruit fields answer whether visible pity is actually reducing bad-luck tails, how often hard guarantees fire, and whether secret Crowned outcomes cluster at the intended late-signal range. They are bounded gameplay state only and contain no player identifier.
 
@@ -65,6 +66,23 @@ These events answer five product questions: how many players opt into the weekly
 
 A repeated attempt does not emit `weekly_run_milestone` for a depth the player already surpassed earlier in the same week; the event represents a new weekly best milestone rather than a repeated checkpoint crossing.
 
+## Ascension / Prestige
+
+Ascension deliberately uses only two low-frequency events:
+
+- `ascension_complete`
+  - chapter reached before the destructive reset;
+  - Chaos Stars awarded by that new milestone;
+  - cumulative lifetime Chaos Stars;
+  - bounded Ascension count.
+- `ascension_node_purchase`
+  - stable authored node ID;
+  - authored branch (`merge`, `combat`, `chaos`, `collection`);
+  - authored tier (`1`, `2`, `3`);
+  - Chaos Stars remaining after purchase.
+
+These events answer whether players choose to reset once eligible, how deep they push before each Prestige, how quickly the permanent currency source advances, and which rule-changing branches players prioritize. Panel opens, hover states, individual combat actions, raw save state and free-form data are intentionally excluded.
+
 ## Failure / balance signals
 
 - `fortress_failed`
@@ -74,6 +92,7 @@ A repeated attempt does not emit `weekly_run_milestone` for a depth the player a
 - creature family + mutation distribution on progression events
 - recruit mutation outcomes segmented by pre-roll Anomaly Charge / Crown Signal and guarantee state
 - Weekly Chaos failed depth and best depth, segmented by deterministic weekly rule IDs from the corresponding start event
+- Ascension chapter/stars and tree branch priority from low-frequency completion/purchase events
 
 ## Event quality rules
 
@@ -83,6 +102,7 @@ A repeated attempt does not emit `weekly_run_milestone` for a depth the player a
 - Telemetry is best-effort and may never block or crash gameplay.
 - Analytics vendor calls stay behind platform/adapters; scenes only know the typed game event contract.
 - Weekly event payloads use only bounded authored IDs and aggregate progression values.
+- Ascension events use only authored tree IDs/branches/tiers and aggregate progression values.
 
 ## Web development sink
 

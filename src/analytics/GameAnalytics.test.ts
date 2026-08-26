@@ -110,6 +110,32 @@ describe('GameAnalytics', () => {
     expect(sink.events[4]).toEqual({ name: 'weekly_run_claim', elapsedMs: 0, weekId: 202635, target: 3, coins: 160, coreShards: 0 });
   });
 
+  it('records low-frequency Ascension outcomes and authored tree choices', () => {
+    const sink = new CaptureSink();
+    const analytics = new GameAnalytics(sink, () => 1000);
+    analytics.ascensionComplete(31, 3, 6, 2);
+    analytics.ascensionNodePurchase('chaos-bank', 2);
+
+    expect(sink.events).toEqual([
+      {
+        name: 'ascension_complete',
+        elapsedMs: 0,
+        chapter: 31,
+        starsAwarded: 3,
+        lifetimeStars: 6,
+        ascensions: 2
+      },
+      {
+        name: 'ascension_node_purchase',
+        elapsedMs: 0,
+        node: 'chaos-bank',
+        branch: 'chaos',
+        tier: 2,
+        starsRemaining: 2
+      }
+    ]);
+  });
+
   it('records monetization placement and rewarded outcome', () => {
     const sink = new CaptureSink();
     const analytics = new GameAnalytics(sink, () => 1000);

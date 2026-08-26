@@ -1,6 +1,7 @@
 import type { CreatureFamily } from '../content/creatures';
 import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
+import { getAscensionNode, type AscensionNodeId } from '../systems/ascension';
 import type { ChaosPerkId } from '../systems/chaosDraft';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
@@ -143,6 +144,29 @@ export class GameAnalytics {
 
   public weeklyRunClaim(weekId: number, target: number, coins: number, coreShards: number): void {
     this.send({ name: 'weekly_run_claim', elapsedMs: this.elapsed(), weekId, target, coins, coreShards });
+  }
+
+  public ascensionComplete(chapter: number, starsAwarded: number, lifetimeStars: number, ascensions: number): void {
+    this.send({
+      name: 'ascension_complete',
+      elapsedMs: this.elapsed(),
+      chapter,
+      starsAwarded,
+      lifetimeStars,
+      ascensions
+    });
+  }
+
+  public ascensionNodePurchase(node: AscensionNodeId, starsRemaining: number): void {
+    const definition = getAscensionNode(node);
+    this.send({
+      name: 'ascension_node_purchase',
+      elapsedMs: this.elapsed(),
+      node,
+      branch: definition.branch,
+      tier: definition.tier,
+      starsRemaining
+    });
   }
 
   public rewardedAdResult(placement: RewardedPlacement, rewarded: boolean): void {

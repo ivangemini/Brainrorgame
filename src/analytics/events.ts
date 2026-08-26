@@ -1,6 +1,7 @@
 import type { CreatureFamily } from '../content/creatures';
 import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
+import type { AscensionBranch, AscensionNodeId } from '../systems/ascension';
 import type { ChaosPerkId } from '../systems/chaosDraft';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
@@ -148,6 +149,22 @@ export type GameAnalyticsEvent =
       readonly target: number;
       readonly coins: number;
       readonly coreShards: number;
+    }
+  | {
+      readonly name: 'ascension_complete';
+      readonly elapsedMs: number;
+      readonly chapter: number;
+      readonly starsAwarded: number;
+      readonly lifetimeStars: number;
+      readonly ascensions: number;
+    }
+  | {
+      readonly name: 'ascension_node_purchase';
+      readonly elapsedMs: number;
+      readonly node: AscensionNodeId;
+      readonly branch: AscensionBranch;
+      readonly tier: 1 | 2 | 3;
+      readonly starsRemaining: number;
     }
   | {
       readonly name: 'rewarded_ad_result';
