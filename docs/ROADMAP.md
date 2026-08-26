@@ -25,7 +25,7 @@
 - [x] 8–12 bosses: 8 authored bosses.
 - [x] Multiple worlds/biomes.
 - [x] Collection, achievements, balancing foundations and onboarding.
-- [x] EN/RU localization across the primary HUD, onboarding, retention panels, Chaos Draft, active abilities and Core Lab gameplay content.
+- [x] EN/RU localization across the primary HUD, onboarding, retention panels, Chaos Draft, active abilities, Core Lab and long-tail achievement copy.
 - [x] Yandex SDK + moderation checklist.
 - [x] Performance and asset-size pass: vendor split plus purpose-sized runtime textures.
 - [ ] First external playtest and balance pass.
@@ -67,6 +67,7 @@
 - [x] Active ability HUD/status labels are localized; localized names/descriptions are available by ability id.
 - [x] Core Lab upgrade names, descriptions and effect values are localized by stable upgrade id.
 - [x] Daily mission names are localized by stable mission id.
+- [x] All 15 achievement names/descriptions are localized through stable achievement ids and roster-aware targets.
 - [x] Yandex moderation/release checklist.
 - [x] Purpose-sized runtime textures: creatures/enemies 384, mutation overlays 192, bosses 640.
 - [x] Project-owned provenance records for Phase 3 creature/boss art.
@@ -75,7 +76,7 @@
 - [x] Two store-cover A/B variants: chaos-roster promise and boss-combat promise.
 - [x] `release:check` is part of the production verification pipeline.
 - [x] Store creative test plan protects against optimizing CTR at the expense of qualified starts/retention.
-- [ ] Localize long-tail achievement descriptions and any remaining low-frequency authored labels discovered during QA.
+- [ ] Final low-frequency localization QA sweep on a running candidate build.
 - [ ] First external playtest on representative desktop and mid-range mobile hardware.
 - [ ] Balance pass from actual first-session, boss and retention telemetry.
 - [ ] Capture final candidate screenshots and portal upload packages.
