@@ -17,7 +17,7 @@ import {
   getCurrentAscensionProgress,
   syncCurrentAscensionProgress
 } from '../systems/ascensionRuntime';
-import type { BoardState, BoardUnit } from '../systems/board';
+import { BOARD_SIZE, type BoardState, type BoardUnit } from '../systems/board';
 import {
   BOSS_HUNT_MILESTONES,
   createBossHuntProgress,
@@ -69,6 +69,7 @@ import {
 } from '../systems/weeklyChaos';
 
 export const SAVE_VERSION = 14 as const;
+const LEGACY_BOARD_SIZE = 12 as const;
 
 type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
@@ -793,7 +794,7 @@ function parseLegacyCompatibleBoard(value: unknown): BoardState | null {
 }
 
 function parseBoard(value: unknown, requireMutation: boolean): BoardState | null {
-  if (!Array.isArray(value) || value.length !== 12) return null;
+  if (!Array.isArray(value) || (value.length !== LEGACY_BOARD_SIZE && value.length !== BOARD_SIZE)) return null;
   const board: Array<BoardUnit | null> = [];
   for (const slot of value) {
     if (slot === null) {
@@ -804,6 +805,7 @@ function parseBoard(value: unknown, requireMutation: boolean): BoardState | null
     if (!parsed) return null;
     board.push(parsed);
   }
+  while (board.length < BOARD_SIZE) board.push(null);
   return board;
 }
 
