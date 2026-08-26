@@ -1,166 +1,20 @@
 import type * as Phaser from 'phaser';
+import { translate as t } from '../i18n';
 import { formatOfflineDuration, type OfflineReward } from '../systems/offlineProgression';
-
 export class OfflineRewardPanel {
-  private overlay!: Phaser.GameObjects.Rectangle;
-  private panel!: Phaser.GameObjects.Container;
-  private rewardLabel!: Phaser.GameObjects.Text;
-  private doubleButton!: Phaser.GameObjects.Container;
-  private doubleLabel!: Phaser.GameObjects.Text;
-  private opened = false;
-  private doubleInFlight = false;
-  private doubleClaimed = false;
-  private currentReward: OfflineReward | null = null;
-
-  public constructor(
-    private readonly scene: Phaser.Scene,
-    private readonly onClose: () => void,
-    private readonly onDouble: (reward: OfflineReward) => Promise<boolean>
-  ) {}
-
+  private overlay!: Phaser.GameObjects.Rectangle; private panel!: Phaser.GameObjects.Container; private rewardLabel!: Phaser.GameObjects.Text; private doubleButton!: Phaser.GameObjects.Container; private doubleLabel!: Phaser.GameObjects.Text; private opened = false; private doubleInFlight = false; private doubleClaimed = false; private currentReward: OfflineReward | null = null;
+  public constructor(private readonly scene: Phaser.Scene, private readonly onClose: () => void, private readonly onDouble: (reward: OfflineReward) => Promise<boolean>) {}
   public create(): void {
-    this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x040714, 0.54)
-      .setOrigin(0)
-      .setDepth(2300)
-      .setInteractive()
-      .setVisible(false);
-
-    const glow = this.scene.add.graphics();
-    glow.fillStyle(0x8befff, 0.12);
-    glow.fillCircle(0, -250, 280);
-
-    const card = this.scene.add.graphics();
-    card.fillStyle(0x0b1330, 0.99);
-    card.fillRoundedRect(-390, -485, 780, 970, 64);
-    card.lineStyle(5, 0xa7efff, 0.28);
-    card.strokeRoundedRect(-390, -485, 780, 970, 64);
-    card.fillStyle(0x725ee8, 0.15);
-    card.fillRoundedRect(-360, -453, 720, 168, 44);
-
-    const title = this.scene.add.text(0, -410, 'WELCOME BACK!', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '52px',
-      color: '#f3fbff',
-      stroke: '#252b66',
-      strokeThickness: 9,
-      align: 'center'
-    }).setOrigin(0.5);
-    const subtitle = this.scene.add.text(0, -347, 'THE CREW KEPT SCAVENGING', {
-      fontFamily: 'system-ui, sans-serif',
-      fontStyle: '900',
-      fontSize: '20px',
-      color: '#a9bce9'
-    }).setOrigin(0.5);
-    const icon = this.scene.add.image(0, -145, 'ui-offline-cache').setDisplaySize(250, 250);
-
-    const durationLabel = this.scene.add.text(0, 12, '', {
-      fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '24px', color: '#9eb5e9'
-    }).setOrigin(0.5).setName('duration');
-    this.rewardLabel = this.scene.add.text(0, 87, '', {
-      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '58px', color: '#fff0a0', stroke: '#61401c', strokeThickness: 8
-    }).setOrigin(0.5);
-    const rewardSub = this.scene.add.text(0, 151, 'OFFLINE COINS • ALREADY YOURS', {
-      fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '18px', color: '#bdcaf0'
-    }).setOrigin(0.5);
-
-    const doubleBg = this.scene.add.graphics();
-    doubleBg.fillStyle(0x6ce0ee, 1);
-    doubleBg.fillRoundedRect(-252, -48, 504, 96, 40);
-    doubleBg.lineStyle(5, 0xc8fbff, 0.72);
-    doubleBg.strokeRoundedRect(-252, -48, 504, 96, 40);
-    this.doubleLabel = this.scene.add.text(0, 0, 'WATCH AD • DOUBLE', {
-      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#163047'
-    }).setOrigin(0.5);
-    this.doubleButton = this.scene.add.container(0, 258, [doubleBg, this.doubleLabel]);
-    this.doubleButton.setSize(504, 100).setInteractive({ useHandCursor: true });
-    this.doubleButton.on('pointerdown', () => void this.tryDouble());
-
-    const buttonBg = this.scene.add.graphics();
-    buttonBg.fillStyle(0xffcf54, 1);
-    buttonBg.fillRoundedRect(-230, -54, 460, 108, 46);
-    buttonBg.lineStyle(6, 0xfff1a3, 0.82);
-    buttonBg.strokeRoundedRect(-230, -54, 460, 108, 46);
-    const buttonText = this.scene.add.text(0, -2, 'COLLECT', {
-      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '34px', color: '#4d2b1b'
-    }).setOrigin(0.5);
-    const button = this.scene.add.container(0, 394, [buttonBg, buttonText]);
-    button.setSize(460, 110).setInteractive({ useHandCursor: true });
-    button.on('pointerdown', () => {
-      if (this.doubleInFlight) return;
-      this.scene.tweens.add({ targets: button, scaleX: 0.96, scaleY: 0.94, duration: 75, yoyo: true, ease: 'Quad.Out' });
-      this.hide();
-    });
-
-    this.panel = this.scene.add.container(540, 960, [
-      glow,
-      card,
-      title,
-      subtitle,
-      icon,
-      durationLabel,
-      this.rewardLabel,
-      rewardSub,
-      this.doubleButton,
-      button
-    ]).setDepth(2301).setVisible(false);
+    this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x040714, 0.54).setOrigin(0).setDepth(2300).setInteractive().setVisible(false);
+    const glow = this.scene.add.graphics(); glow.fillStyle(0x8befff, 0.12); glow.fillCircle(0, -250, 280); const card = this.scene.add.graphics(); card.fillStyle(0x0b1330, 0.99); card.fillRoundedRect(-390, -485, 780, 970, 64); card.lineStyle(5, 0xa7efff, 0.28); card.strokeRoundedRect(-390, -485, 780, 970, 64); card.fillStyle(0x725ee8, 0.15); card.fillRoundedRect(-360, -453, 720, 168, 44);
+    const title = this.scene.add.text(0, -410, t('offline.title'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '52px', color: '#f3fbff', stroke: '#252b66', strokeThickness: 9, align: 'center' }).setOrigin(0.5); const subtitle = this.scene.add.text(0, -347, t('offline.subtitle'), { fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '20px', color: '#a9bce9' }).setOrigin(0.5); const icon = this.scene.add.image(0, -145, 'ui-offline-cache').setDisplaySize(250, 250);
+    const durationLabel = this.scene.add.text(0, 12, '', { fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '24px', color: '#9eb5e9' }).setOrigin(0.5).setName('duration'); this.rewardLabel = this.scene.add.text(0, 87, '', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '58px', color: '#fff0a0', stroke: '#61401c', strokeThickness: 8 }).setOrigin(0.5); const rewardSub = this.scene.add.text(0, 151, t('offline.rewardSub'), { fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '18px', color: '#bdcaf0' }).setOrigin(0.5);
+    const doubleBg = this.scene.add.graphics(); doubleBg.fillStyle(0x6ce0ee, 1); doubleBg.fillRoundedRect(-252, -48, 504, 96, 40); doubleBg.lineStyle(5, 0xc8fbff, 0.72); doubleBg.strokeRoundedRect(-252, -48, 504, 96, 40); this.doubleLabel = this.scene.add.text(0, 0, t('offline.watchDouble'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '24px', color: '#163047' }).setOrigin(0.5); this.doubleButton = this.scene.add.container(0, 258, [doubleBg, this.doubleLabel]); this.doubleButton.setSize(504, 100).setInteractive({ useHandCursor: true }); this.doubleButton.on('pointerdown', () => void this.tryDouble());
+    const buttonBg = this.scene.add.graphics(); buttonBg.fillStyle(0xffcf54, 1); buttonBg.fillRoundedRect(-230, -54, 460, 108, 46); buttonBg.lineStyle(6, 0xfff1a3, 0.82); buttonBg.strokeRoundedRect(-230, -54, 460, 108, 46); const buttonText = this.scene.add.text(0, -2, t('offline.collect'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '34px', color: '#4d2b1b' }).setOrigin(0.5); const button = this.scene.add.container(0, 394, [buttonBg, buttonText]); button.setSize(460, 110).setInteractive({ useHandCursor: true }); button.on('pointerdown', () => { if (this.doubleInFlight) return; this.scene.tweens.add({ targets: button, scaleX: 0.96, scaleY: 0.94, duration: 75, yoyo: true, ease: 'Quad.Out' }); this.hide(); });
+    this.panel = this.scene.add.container(540, 960, [glow, card, title, subtitle, icon, durationLabel, this.rewardLabel, rewardSub, this.doubleButton, button]).setDepth(2301).setVisible(false);
   }
-
-  public show(reward: OfflineReward): void {
-    if (reward.coins <= 0) return;
-    const duration = this.panel.getByName('duration') as Phaser.GameObjects.Text;
-    duration.setText(`AWAY FOR ${formatOfflineDuration(reward.rewardedSeconds).toUpperCase()}`);
-    this.rewardLabel.setText(`+${reward.coins}`);
-    this.doubleLabel.setText(`WATCH AD • +${reward.coins}`);
-    this.doubleButton.setAlpha(1);
-    this.currentReward = reward;
-    this.doubleInFlight = false;
-    this.doubleClaimed = false;
-    this.opened = true;
-    this.overlay.setVisible(true).setAlpha(0);
-    this.panel.setVisible(true).setAlpha(0).setScale(0.68);
-    this.scene.tweens.add({ targets: this.overlay, alpha: 1, duration: 180, ease: 'Quad.Out' });
-    this.scene.tweens.add({ targets: this.panel, alpha: 1, scaleX: 1, scaleY: 1, duration: 360, ease: 'Back.Out' });
-  }
-
-  public hide(): void {
-    if (!this.opened) return;
-    this.opened = false;
-    this.doubleInFlight = false;
-    this.scene.tweens.add({
-      targets: this.panel, alpha: 0, scaleX: 0.86, scaleY: 0.86, duration: 180, ease: 'Quad.In', onComplete: () => {
-        this.panel.setVisible(false);
-        this.overlay.setVisible(false);
-        this.currentReward = null;
-        this.onClose();
-      }
-    });
-    this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 150, ease: 'Quad.In' });
-  }
-
-  public isOpen(): boolean {
-    return this.opened;
-  }
-
-  private async tryDouble(): Promise<void> {
-    const reward = this.currentReward;
-    if (!this.opened || !reward || this.doubleClaimed || this.doubleInFlight) return;
-    this.doubleInFlight = true;
-    this.doubleLabel.setText('CONNECTING…');
-    this.doubleButton.setAlpha(0.72);
-    this.scene.tweens.add({ targets: this.doubleButton, scaleX: 0.96, scaleY: 0.95, duration: 80, yoyo: true, ease: 'Quad.Out' });
-
-    const doubled = await this.onDouble(reward).catch(() => false);
-    if (!this.opened) return;
-
-    this.doubleInFlight = false;
-    if (doubled) {
-      this.doubleClaimed = true;
-      this.rewardLabel.setText(`+${reward.coins * 2}`);
-      this.doubleLabel.setText('DOUBLED');
-      this.doubleButton.setAlpha(0.48);
-      return;
-    }
-    this.doubleLabel.setText('AD UNAVAILABLE');
-    this.doubleButton.setAlpha(0.48);
-  }
+  public show(reward: OfflineReward): void { if (reward.coins <= 0) return; const duration = this.panel.getByName('duration') as Phaser.GameObjects.Text; duration.setText(t('offline.away', { duration: formatOfflineDuration(reward.rewardedSeconds).toUpperCase() })); this.rewardLabel.setText(`+${reward.coins}`); this.doubleLabel.setText(t('offline.watchCoins', { coins: reward.coins })); this.doubleButton.setAlpha(1); this.currentReward = reward; this.doubleInFlight = false; this.doubleClaimed = false; this.opened = true; this.overlay.setVisible(true).setAlpha(0); this.panel.setVisible(true).setAlpha(0).setScale(0.68); this.scene.tweens.add({ targets: this.overlay, alpha: 1, duration: 180, ease: 'Quad.Out' }); this.scene.tweens.add({ targets: this.panel, alpha: 1, scaleX: 1, scaleY: 1, duration: 360, ease: 'Back.Out' }); }
+  public hide(): void { if (!this.opened) return; this.opened = false; this.doubleInFlight = false; this.scene.tweens.add({ targets: this.panel, alpha: 0, scaleX: 0.86, scaleY: 0.86, duration: 180, ease: 'Quad.In', onComplete: () => { this.panel.setVisible(false); this.overlay.setVisible(false); this.currentReward = null; this.onClose(); } }); this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 150, ease: 'Quad.In' }); }
+  public isOpen(): boolean { return this.opened; }
+  private async tryDouble(): Promise<void> { const reward = this.currentReward; if (!this.opened || !reward || this.doubleClaimed || this.doubleInFlight) return; this.doubleInFlight = true; this.doubleLabel.setText(t('offline.connecting')); this.doubleButton.setAlpha(0.72); this.scene.tweens.add({ targets: this.doubleButton, scaleX: 0.96, scaleY: 0.95, duration: 80, yoyo: true, ease: 'Quad.Out' }); const doubled = await this.onDouble(reward).catch(() => false); if (!this.opened) return; this.doubleInFlight = false; if (doubled) { this.doubleClaimed = true; this.rewardLabel.setText(`+${reward.coins * 2}`); this.doubleLabel.setText(t('offline.doubled')); this.doubleButton.setAlpha(0.48); return; } this.doubleLabel.setText(t('offline.unavailable')); this.doubleButton.setAlpha(0.48); }
 }
