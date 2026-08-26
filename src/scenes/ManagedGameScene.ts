@@ -83,7 +83,7 @@ export class ManagedGameScene extends GameScene {
       }
     }
 
-    const blockingPanelOpen = this.isBlockingPanelOpen(state);
+    const blockingPanelOpen = this.hasBlockingPanelOpen(state);
     if (blockingPanelOpen && !this.panelPauseActive) {
       this.panelPauseActive = true;
       this.pausedBeforePanel = this.isCombatPaused();
@@ -208,7 +208,7 @@ export class ManagedGameScene extends GameScene {
     return this.registry.get('combatPaused') === true;
   }
 
-  private isBlockingPanelOpen(state: ManagedSceneRuntimeState): boolean {
+  private hasBlockingPanelOpen(state: ManagedSceneRuntimeState): boolean {
     return state.metaPanel.isOpen()
       || state.offlinePanel.isOpen()
       || state.dailyPanel.isOpen()
