@@ -4,6 +4,7 @@ import { createPlatformAdapter } from './platform/createPlatformAdapter';
 import type { PlatformAdapter } from './platform/PlatformAdapter';
 import { WebAdapter } from './platform/WebAdapter';
 import { installPlaytestRecorder } from './qa/PlaytestRecorder';
+import { repairDeadlockedGameSave } from './state/boardSafetyRepair';
 import { loadGameSave } from './state/save';
 import './style.css';
 
@@ -21,7 +22,12 @@ async function initializePlatform(): Promise<PlatformAdapter> {
 
 const playtest = installPlaytestRecorder();
 const platform = await initializePlatform();
-const initialSave = await loadGameSave(platform);
+const loadedSave = await loadGameSave(platform);
+const safetyRepair = repairDeadlockedGameSave(loadedSave);
+const initialSave = safetyRepair.save;
+if (safetyRepair.repaired && initialSave) {
+  await platform.save(initialSave).catch(() => undefined);
+}
 let game: Phaser.Game | null = null;
 let gameSceneCreated = false;
 let platformPaused = false;
