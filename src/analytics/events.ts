@@ -1,7 +1,9 @@
 import type { CreatureFamily } from '../content/creatures';
+import type { BossId } from '../content/bosses';
 import type { MutationId } from '../content/mutations';
 import type { InterstitialPlacement, RewardedPlacement } from '../systems/adPolicy';
 import type { AscensionBranch, AscensionNodeId } from '../systems/ascension';
+import type { BossTrophyTier } from '../systems/bossHunt';
 import type { ChaosPerkId } from '../systems/chaosDraft';
 import type { AchievementId } from '../systems/collectionProgression';
 import type { DailyMissionId } from '../systems/dailyRetention';
@@ -165,6 +167,41 @@ export type GameAnalyticsEvent =
       readonly branch: AscensionBranch;
       readonly tier: 1 | 2 | 3;
       readonly starsRemaining: number;
+    }
+  | {
+      readonly name: 'boss_hunt_attempt';
+      readonly elapsedMs: number;
+      readonly huntId: number;
+      readonly boss: BossId;
+      readonly tier: BossTrophyTier;
+      readonly attempt: number;
+      readonly damage: number;
+      readonly totalDamage: number;
+      readonly completionPercent: number;
+    }
+  | {
+      readonly name: 'boss_hunt_milestone';
+      readonly elapsedMs: number;
+      readonly huntId: number;
+      readonly boss: BossId;
+      readonly tier: BossTrophyTier;
+      readonly percent: 25 | 50 | 75 | 100;
+    }
+  | {
+      readonly name: 'boss_hunt_claim';
+      readonly elapsedMs: number;
+      readonly huntId: number;
+      readonly boss: BossId;
+      readonly percent: 25 | 50 | 75 | 100;
+      readonly coins: number;
+      readonly coreShards: number;
+    }
+  | {
+      readonly name: 'boss_hunt_trophy';
+      readonly elapsedMs: number;
+      readonly huntId: number;
+      readonly boss: BossId;
+      readonly trophy: BossTrophyTier;
     }
   | {
       readonly name: 'rewarded_ad_result';
