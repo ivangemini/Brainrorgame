@@ -6,7 +6,9 @@ The board follows one rule everywhere: **same creature family + same merge level
 
 - T1 + matching T1 -> T2.
 - T2 + matching T2 -> T3.
-- Compatible T3 twins may ascend their mutation tier while remaining T3.
+- T3 + matching-family T3 always merges into one T3.
+- If a T3 mutation pair can ascend, its mutation tier increases.
+- If the mutation cannot ascend, the T3 pair consolidates and keeps the stronger mutation.
 - Different creature families never merge, including on a full board.
 - A deadlock must never be solved by silently changing this rule.
 
@@ -27,7 +29,7 @@ The recruit planner uses two layers:
 1. While the board has breathing room, recruits remain T1 but the family pool is weighted toward T1 families already on the board. This raises useful-pair frequency without removing roster variety.
 2. If only one empty slot remains and there is currently no legal merge, the recruit is forced to become a twin of an existing non-capped unit: same family and same level. Filling the final slot therefore creates at least one legal merge.
 
-If the board contains only capped T3 units that cannot legally ascend, the planner refuses to invent an illegal recruit/fusion. That state belongs to late-game T3/ascension tuning, not to a hidden exception in the merge rule.
+Max-tier T3 units also remain consolidatable with another T3 of the same family. With 15 board slots and 12 creature families, a board dominated entirely by T3 units necessarily contains a same-family pair. This closes the late-game loophole without ever permitting cross-family fusion.
 
 ## UX contract
 
