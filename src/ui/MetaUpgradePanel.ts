@@ -4,6 +4,7 @@ import { getAscensionCopy } from '../i18n/ascensionCopy';
 import { localizedMetaEffect, localizedMetaUpgrade } from '../i18n/gameplayContent';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { createFreshGameSave } from '../state/freshSave';
+import { persistFreshSaveAndArmReloadGuard } from '../state/progressReset';
 import {
   META_UPGRADES,
   getUpgradeCost,
@@ -142,7 +143,7 @@ export class MetaUpgradePanel {
 
     const platform = this.scene.registry.get('platform') as PlatformAdapter | undefined;
     if (!platform) throw new Error('Platform adapter unavailable');
-    await platform.save(createFreshGameSave());
+    await persistFreshSaveAndArmReloadGuard(platform, createFreshGameSave());
 
     if (typeof window === 'undefined') throw new Error('Reload unavailable');
     window.location.reload();
