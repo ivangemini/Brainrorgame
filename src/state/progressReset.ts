@@ -15,7 +15,8 @@ export async function persistFreshSaveAndArmReloadGuard(
   const write = platform.save.bind(platform) as <T>(value: T) => Promise<void>;
   await write(freshSave);
 
-  platform.save = async <T>(_value: T): Promise<void> => {
+  platform.save = async <T>(value: T): Promise<void> => {
+    void value;
     await write(freshSave);
   };
 }
