@@ -50,7 +50,7 @@ describe('applyAscensionToSave', () => {
     expect(result.performed).toBe(true);
     expect(result.ascension.preview).toMatchObject({ chapter: 36, starsAwarded: 4, lifetimeStarsAfter: 10 });
     expect(result.save).toMatchObject({
-      version: 13,
+      version: 14,
       coins: 200,
       coreShards: 14,
       chapter: 1,
@@ -65,6 +65,8 @@ describe('applyAscensionToSave', () => {
     expect(result.save.mutationAlbum).toEqual(before.mutationAlbum);
     expect(result.save.onboarding).toEqual(before.onboarding);
     expect(result.save.weeklyChaos).toEqual(before.weeklyChaos);
+    expect(result.save.bossHunt).toEqual(before.bossHunt);
+    expect(result.save.bossTrophies).toEqual(before.bossTrophies);
     expect(result.save.anomalyHunt).toEqual({ charge: 8, secretPity: 34, totalPulls: 120, secretsFound: 2 });
     expect(result.save.ascension).toMatchObject({ chaosStars: 8, lifetimeChaosStars: 10, ascensions: 2, highestResetChapter: 36 });
     expect(result.save.board).toEqual(createStarterBoard());
