@@ -7,6 +7,11 @@ import {
   createDefaultAnomalyHuntState,
   type AnomalyHuntState
 } from '../systems/anomalyHunt';
+import {
+  createDefaultAscensionProgress,
+  isValidAscensionProgress,
+  type AscensionProgress
+} from '../systems/ascension';
 import type { BoardState, BoardUnit } from '../systems/board';
 import { isChaosPerkId, type ChaosPerkId } from '../systems/chaosDraft';
 import {
@@ -43,7 +48,7 @@ import {
   type WeeklyChaosProgress
 } from '../systems/weeklyChaos';
 
-export const SAVE_VERSION = 12 as const;
+export const SAVE_VERSION = 13 as const;
 
 type LegacyEncounterStep = 0 | 1 | 2 | 3;
 
@@ -126,11 +131,16 @@ export interface GameSaveV11 extends Omit<GameSaveV10, 'version'> {
 }
 
 export interface GameSaveV12 extends Omit<GameSaveV11, 'version'> {
-  readonly version: typeof SAVE_VERSION;
+  readonly version: 12;
   readonly weeklyChaos: WeeklyChaosProgress;
 }
 
-export type GameSave = GameSaveV12;
+export interface GameSaveV13 extends Omit<GameSaveV12, 'version'> {
+  readonly version: typeof SAVE_VERSION;
+  readonly ascension: AscensionProgress;
+}
+
+export type GameSave = GameSaveV13;
 
 export interface GameSaveSnapshot {
   readonly coins: number;
@@ -142,6 +152,7 @@ export interface GameSaveSnapshot {
   readonly anomalyHunt: AnomalyHuntState;
   readonly mutationAlbum: MutationAlbumProgress;
   readonly weeklyChaos: WeeklyChaosProgress;
+  readonly ascension: AscensionProgress;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -177,7 +188,7 @@ interface V5ProgressFields extends V4ProgressFields {
 type BoardParser = (value: unknown) => BoardState | null;
 type StepParser = (value: unknown) => EncounterStep | null;
 
-export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV12 {
+export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): GameSaveV13 {
   return {
     version: SAVE_VERSION,
     updatedAt: now,
@@ -190,6 +201,7 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     anomalyHunt: cloneAnomalyHunt(snapshot.anomalyHunt),
     mutationAlbum: cloneMutationAlbum(snapshot.mutationAlbum),
     weeklyChaos: cloneWeeklyChaos(snapshot.weeklyChaos),
+    ascension: cloneAscension(snapshot.ascension),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -227,20 +239,28 @@ export function parseGameSave(value: unknown): GameSave | null {
       case 9: current = migrateV9ToV10(current); break;
       case 10: current = migrateV10ToV11(current); break;
       case 11: current = migrateV11ToV12(current); break;
+      case 12: current = migrateV12ToV13(current); break;
       default: return null;
     }
     if (current === null) return null;
   }
 
   if (!isRecord(current) || current.version !== SAVE_VERSION) return null;
-  return parseV12(current);
+  return parseV13(current);
+}
+
+function parseV13(value: Record<string, unknown>): GameSaveV13 | null {
+  const v12 = parseV12(value);
+  const ascension = parseAscension(value.ascension);
+  if (!v12 || !ascension) return null;
+  return { ...v12, version: SAVE_VERSION, ascension };
 }
 
 function parseV12(value: Record<string, unknown>): GameSaveV12 | null {
   const v11 = parseV11(value);
   const weeklyChaos = parseWeeklyChaos(value.weeklyChaos);
   if (!v11 || !weeklyChaos) return null;
-  return { ...v11, version: SAVE_VERSION, weeklyChaos };
+  return { ...v11, version: 12, weeklyChaos };
 }
 
 function parseV11(value: Record<string, unknown>): GameSaveV11 | null {
@@ -259,13 +279,24 @@ function parseV11(value: Record<string, unknown>): GameSaveV11 | null {
   };
 }
 
+function migrateV12ToV13(value: unknown): GameSaveV13 | null {
+  if (!isRecord(value)) return null;
+  const v12 = parseV12(value);
+  if (!v12) return null;
+  return {
+    ...v12,
+    version: SAVE_VERSION,
+    ascension: createDefaultAscensionProgress()
+  };
+}
+
 function migrateV11ToV12(value: unknown): GameSaveV12 | null {
   if (!isRecord(value)) return null;
   const v11 = parseV11(value);
   if (!v11) return null;
   return {
     ...v11,
-    version: SAVE_VERSION,
+    version: 12,
     weeklyChaos: createDefaultWeeklyChaosProgress(v11.updatedAt)
   };
 }
@@ -525,6 +556,11 @@ function parseWeeklyChaos(value: unknown): WeeklyChaosProgress | null {
   };
 }
 
+function parseAscension(value: unknown): AscensionProgress | null {
+  if (!isValidAscensionProgress(value)) return null;
+  return cloneAscension(value);
+}
+
 function parseCollection(value: unknown): CollectionProgress | null {
   if (!isRecord(value) || !Array.isArray(value.discovered) || !isRecord(value.stats) || !Array.isArray(value.claimedAchievements)) return null;
   const discovered: CollectionKey[] = [];
@@ -620,6 +656,13 @@ function cloneWeeklyChaos(weeklyChaos: WeeklyChaosProgress): WeeklyChaosProgress
   return {
     ...weeklyChaos,
     claimedMilestones: [...weeklyChaos.claimedMilestones]
+  };
+}
+
+function cloneAscension(ascension: AscensionProgress): AscensionProgress {
+  return {
+    ...ascension,
+    purchasedNodes: [...ascension.purchasedNodes]
   };
 }
 
