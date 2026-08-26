@@ -10,7 +10,14 @@ import {
   tryCastCurrentActiveAbility,
   type ActiveAbilityId
 } from '../systems/activeAbilities';
-import { BOARD_COLUMNS, BOARD_ROWS, type BoardState, type BoardUnit } from '../systems/board';
+import {
+  BOARD_COLUMNS,
+  BOARD_ROWS,
+  findMergeablePair,
+  firstEmptySlot,
+  type BoardState,
+  type BoardUnit
+} from '../systems/board';
 import {
   getActiveCrewSynergies,
   getCurrentCrewSynergyState,
@@ -32,6 +39,7 @@ export class BoardView {
   private synergyText!: Phaser.GameObjects.Text;
   private abilityBar: ActiveAbilityBar | null = null;
   private lastSynergySignature = '';
+  private lastMergeGuideSignature = '';
 
   public constructor(
     private readonly scene: Phaser.Scene,
@@ -68,13 +76,14 @@ export class BoardView {
   }
 
   public render(board: BoardState, pulseSlot = -1): void {
-    this.renderSynergies(board);
     for (const view of this.unitViews.values()) view.destroy();
     this.unitViews.clear();
     for (let index = 0; index < board.length; index += 1) {
       const unit = board[index]; if (!unit) continue;
       const view = this.createUnitView(index, unit); this.unitViews.set(index, view); if (index === pulseSlot) this.pulse(view);
     }
+    this.renderSynergies(board);
+    this.guideFullBoardMerge(board);
   }
 
   public getView(slot: number): Phaser.GameObjects.Container | undefined { return this.unitViews.get(slot); }
@@ -136,18 +145,60 @@ export class BoardView {
     if (!this.synergyText) return;
     const state = syncCrewSynergyState(board);
     const active = getActiveCrewSynergies(state);
-    const label = active.length > 0
-      ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
-      : 'MATCH SAME CREATURE + SAME LEVEL';
-    const signature = active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
-    this.synergyText.setText(label).setColor(active.length > 0 ? '#c8f6ff' : '#7587a8');
+    const fullBoardPair = firstEmptySlot(board) < 0 ? findMergeablePair(board) : null;
+    const label = fullBoardPair
+      ? 'BOARD FULL • MERGE THE GLOWING PAIR'
+      : active.length > 0
+        ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
+        : 'MATCH SAME CREATURE + SAME LEVEL';
+    const signature = fullBoardPair
+      ? `full:${fullBoardPair[0]}-${fullBoardPair[1]}`
+      : active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
+    this.synergyText
+      .setText(label)
+      .setColor(fullBoardPair ? '#ffe58a' : active.length > 0 ? '#c8f6ff' : '#7587a8');
     this.abilityBar?.update(getCurrentActiveAbilityRuntime(), state.tiers, isActiveAbilityCombatActive());
     if (signature !== this.lastSynergySignature && this.lastSynergySignature !== '') {
       this.scene.tweens.killTweensOf(this.synergyText);
-      this.synergyText.setScale(1.08).setAlpha(0.55);
+      this.synergyText.setScale(fullBoardPair ? 1.12 : 1.08).setAlpha(0.55);
       this.scene.tweens.add({ targets: this.synergyText, scaleX: 1, scaleY: 1, alpha: 1, duration: 260, ease: 'Back.Out' });
     }
     this.lastSynergySignature = signature;
+  }
+
+  private guideFullBoardMerge(board: BoardState): void {
+    if (firstEmptySlot(board) >= 0) {
+      this.lastMergeGuideSignature = '';
+      return;
+    }
+    const pair = findMergeablePair(board);
+    if (!pair) {
+      this.lastMergeGuideSignature = '';
+      return;
+    }
+    const firstUnit = board[pair[0]];
+    const secondUnit = board[pair[1]];
+    if (!firstUnit || !secondUnit) return;
+    const signature = `${firstUnit.id}|${secondUnit.id}`;
+    if (signature === this.lastMergeGuideSignature) return;
+    this.lastMergeGuideSignature = signature;
+
+    for (const slot of pair) {
+      const view = this.unitViews.get(slot);
+      if (!view) continue;
+      const position = this.slotPosition(slot);
+      this.scene.tweens.killTweensOf(view);
+      this.scene.tweens.add({
+        targets: view,
+        scaleX: 1.1,
+        scaleY: 1.1,
+        duration: 190,
+        yoyo: true,
+        repeat: 1,
+        ease: 'Sine.InOut'
+      });
+      this.fx.flashRing(position.x, position.y, 0xffdf6b);
+    }
   }
 
   private createUnitView(slot: number, unit: BoardUnit): Phaser.GameObjects.Container {
