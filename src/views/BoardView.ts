@@ -6,6 +6,7 @@ import {
   getActiveAbilityDefinition,
   getCurrentActiveAbilityRuntime,
   isActiveAbilityCombatActive,
+  setActiveAbilityCombatActive,
   tickCurrentActiveAbilityRuntime,
   tryCastCurrentActiveAbility,
   type ActiveAbilityId
@@ -32,6 +33,16 @@ const GAP = 14;
 const SLOT_SIZE = 170;
 const LEFT = (1080 - (COLUMNS * SLOT_SIZE + (COLUMNS - 1) * GAP)) / 2;
 const TOP = 1130;
+const TIER_COLORS: Readonly<Record<BoardUnit['level'], number>> = {
+  1: 0x8fa6c8,
+  2: 0x6de7ff,
+  3: 0xffd76a
+};
+const TIER_IMAGE_SIZE: Readonly<Record<BoardUnit['level'], number>> = {
+  1: 132,
+  2: 144,
+  3: 154
+};
 
 interface UnitViewMeta { readonly slot: number; readonly unitId: string; }
 
@@ -41,6 +52,9 @@ export class BoardView {
   private board: BoardState = [];
   private synergyText!: Phaser.GameObjects.Text;
   private abilityBar: ActiveAbilityBar | null = null;
+  private preparationBackground!: Phaser.GameObjects.Graphics;
+  private preparationLabel!: Phaser.GameObjects.Text;
+  private lastPreparationMode = false;
   private lastSynergySignature = '';
 
   public constructor(
@@ -62,6 +76,7 @@ export class BoardView {
       stroke: '#101832',
       strokeThickness: 4
     });
+    this.createPreparationButton();
     for (let index = 0; index < COLUMNS * ROWS; index += 1) {
       const position = this.slotPosition(index); const slot = this.scene.add.graphics();
       slot.fillStyle(0x24345d, 0.74); slot.fillRoundedRect(position.x - SLOT_SIZE / 2, position.y - SLOT_SIZE / 2, SLOT_SIZE, SLOT_SIZE, 38);
@@ -96,6 +111,7 @@ export class BoardView {
 
   public snapHome(view: Phaser.GameObjects.Container, slot: number): void {
     const position = this.slotPosition(slot);
+    view.setAlpha(1);
     this.scene.tweens.add({ targets: view, x: position.x, y: position.y, scaleX: 1, scaleY: 1, duration: 230, ease: 'Back.Out', onComplete: () => view.setDepth(1) });
   }
 
@@ -115,12 +131,66 @@ export class BoardView {
     this.scene.tweens.add({ targets: view, y: origin.y - 12, scaleX: 1.04, scaleY: 0.96, duration: 80, yoyo: true, ease: 'Quad.Out' }); return origin;
   }
 
+  private createPreparationButton(): void {
+    this.preparationBackground = this.scene.add.graphics().setDepth(940);
+    this.preparationLabel = this.scene.add.text(918, 1092, 'PAUSE', {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '16px',
+      color: '#dce9ff',
+      stroke: '#101832',
+      strokeThickness: 4
+    }).setOrigin(0.5).setDepth(942);
+    const hit = this.scene.add.rectangle(918, 1092, 150, 54, 0xffffff, 0.001)
+      .setDepth(943)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => this.togglePreparationMode());
+    this.paintPreparationButton(false);
+  }
+
+  private togglePreparationMode(): void {
+    if (this.isLocked()) return;
+    const next = !this.isPreparationMode();
+    this.scene.registry.set('combatPaused', next);
+    setActiveAbilityCombatActive(!next);
+    this.refreshPreparationMode(next, true);
+  }
+
+  private isPreparationMode(): boolean {
+    return this.scene.registry.get('combatPaused') === true;
+  }
+
+  private refreshPreparationMode(paused: boolean, forceHint = false): void {
+    if (!forceHint && paused === this.lastPreparationMode) return;
+    this.lastPreparationMode = paused;
+    this.paintPreparationButton(paused);
+    this.scene.tweens.killTweensOf(this.preparationLabel);
+    this.preparationLabel.setScale(1.12).setAlpha(0.64);
+    this.scene.tweens.add({ targets: this.preparationLabel, scaleX: 1, scaleY: 1, alpha: 1, duration: 190, ease: 'Back.Out' });
+    this.fx.showHint(paused ? 'PREPARATION • COMBAT PAUSED' : 'FIGHT RESUMED', 1015, paused ? '#bffaff' : '#fff0a6');
+  }
+
+  private paintPreparationButton(paused: boolean): void {
+    this.preparationBackground.clear();
+    this.preparationBackground.fillStyle(paused ? 0x63e6c8 : 0x233252, paused ? 0.98 : 0.92);
+    this.preparationBackground.fillRoundedRect(843, 1065, 150, 54, 23);
+    this.preparationBackground.lineStyle(3, paused ? 0xeafff9 : 0x9eb8e8, paused ? 0.8 : 0.3);
+    this.preparationBackground.strokeRoundedRect(843, 1065, 150, 54, 23);
+    this.preparationLabel.setText(paused ? 'FIGHT' : 'PAUSE').setColor(paused ? '#12352f' : '#dce9ff');
+  }
+
   private updateAbilities(_time: number, delta: number): void {
-    const runtime = tickCurrentActiveAbilityRuntime(delta);
-    this.abilityBar?.update(runtime, getCurrentCrewSynergyState().tiers, isActiveAbilityCombatActive());
+    const paused = this.isPreparationMode();
+    const combatActive = isActiveAbilityCombatActive() && !paused;
+    const runtime = combatActive ? tickCurrentActiveAbilityRuntime(delta) : getCurrentActiveAbilityRuntime();
+    this.abilityBar?.update(runtime, getCurrentCrewSynergyState().tiers, combatActive);
+    this.refreshPreparationMode(paused);
   }
 
   private castAbility(id: ActiveAbilityId): void {
+    if (this.isPreparationMode()) {
+      this.fx.showHint('RESUME FIGHT TO USE ABILITIES', 1015, '#a9b8d6');
+      return;
+    }
     const definition = getActiveAbilityDefinition(id);
     const synergy = getCurrentCrewSynergyState();
     const tier = synergy.tiers[definition.family];
@@ -162,7 +232,7 @@ export class BoardView {
     this.synergyText
       .setText(label)
       .setColor(fullBoardPair ? '#ffe58a' : active.length > 0 ? '#c8f6ff' : '#7587a8');
-    this.abilityBar?.update(getCurrentActiveAbilityRuntime(), state.tiers, isActiveAbilityCombatActive());
+    this.abilityBar?.update(getCurrentActiveAbilityRuntime(), state.tiers, isActiveAbilityCombatActive() && !this.isPreparationMode());
     if (signature !== this.lastSynergySignature && this.lastSynergySignature !== '') {
       this.scene.tweens.killTweensOf(this.synergyText);
       this.synergyText.setScale(fullBoardPair ? 1.12 : 1.08).setAlpha(0.55);
@@ -188,7 +258,10 @@ export class BoardView {
     for (let slot = 0; slot < this.board.length; slot += 1) {
       if (slot === sourceSlot) continue;
       const target = this.board[slot];
-      if (!target || !canBoardUnitsMerge(sourceUnit, target)) continue;
+      const compatible = Boolean(target && canBoardUnitsMerge(sourceUnit, target));
+      const targetView = this.unitViews.get(slot);
+      targetView?.setAlpha(compatible ? 1 : 0.38);
+      if (!compatible) continue;
       this.addMergeGuideRing(slot, 0x79f4ff, 0.94);
     }
   }
@@ -223,15 +296,43 @@ export class BoardView {
       ring.destroy();
     }
     this.mergeGuideRings.clear();
+    for (const view of this.unitViews.values()) view.setAlpha(1);
   }
 
   private createUnitView(slot: number, unit: BoardUnit): Phaser.GameObjects.Container {
     const position = this.slotPosition(slot);
     const creature = getCreature(unit.family, unit.level);
     const mutation = getMutationDefinition(unit.mutation);
-    const image = this.scene.add.image(0, 3, creature.texture).setDisplaySize(144, 144);
-    const shadow = this.scene.add.ellipse(0, 60, 106, 25, 0x030919, 0.28).setDepth(-1);
-    const children: Phaser.GameObjects.GameObject[] = [shadow];
+    const tierColor = TIER_COLORS[unit.level];
+    const tierFrame = this.scene.add.graphics();
+    tierFrame.fillStyle(tierColor, unit.level === 1 ? 0.055 : unit.level === 2 ? 0.09 : 0.13);
+    tierFrame.fillRoundedRect(-78, -78, 156, 156, 34);
+    tierFrame.lineStyle(unit.level === 1 ? 3 : unit.level === 2 ? 5 : 7, tierColor, unit.level === 1 ? 0.38 : unit.level === 2 ? 0.76 : 0.96);
+    tierFrame.strokeRoundedRect(-78, -78, 156, 156, 34);
+    if (unit.level >= 2) {
+      tierFrame.lineStyle(2, 0xffffff, unit.level === 2 ? 0.34 : 0.56);
+      tierFrame.strokeRoundedRect(-70, -70, 140, 140, 28);
+    }
+    if (unit.level === 3) {
+      tierFrame.lineStyle(4, 0xff8ecf, 0.46);
+      tierFrame.lineBetween(-50, -72, -10, -72);
+      tierFrame.lineBetween(10, -72, 50, -72);
+    }
+
+    const tierMarkers = this.scene.add.graphics();
+    const markerWidth = 18;
+    const markerGap = 7;
+    const totalWidth = unit.level * markerWidth + (unit.level - 1) * markerGap;
+    const markerStart = -totalWidth / 2;
+    for (let index = 0; index < unit.level; index += 1) {
+      tierMarkers.fillStyle(tierColor, 0.98);
+      tierMarkers.fillRoundedRect(markerStart + index * (markerWidth + markerGap), 64, markerWidth, 7, 3);
+    }
+
+    const imageSize = TIER_IMAGE_SIZE[unit.level];
+    const image = this.scene.add.image(0, unit.level === 3 ? 0 : 3, creature.texture).setDisplaySize(imageSize, imageSize);
+    const shadow = this.scene.add.ellipse(0, 60, 106 + unit.level * 5, 25 + unit.level * 2, 0x030919, 0.28).setDepth(-1);
+    const children: Phaser.GameObjects.GameObject[] = [tierFrame, shadow, tierMarkers];
 
     let mutationAura: Phaser.GameObjects.Graphics | null = null;
     let mutationArt: Phaser.GameObjects.Image | null = null;
@@ -254,11 +355,15 @@ export class BoardView {
 
     children.push(image);
     const badge = this.scene.add.graphics();
-    badge.fillStyle(mutation.rank > 0 ? mutation.accentColor : creature.accentColor, 1);
-    badge.fillCircle(56, -56, 22);
-    badge.lineStyle(3, 0xffffff, 0.7);
-    badge.strokeCircle(56, -56, 22);
-    const level = this.scene.add.text(56, -57, `${unit.level}`, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: '#10213a' }).setOrigin(0.5);
+    badge.fillStyle(mutation.rank > 0 ? mutation.accentColor : tierColor, 1);
+    badge.fillCircle(55, -55, unit.level === 3 ? 27 : unit.level === 2 ? 25 : 23);
+    badge.lineStyle(unit.level === 3 ? 4 : 3, 0xffffff, unit.level === 1 ? 0.62 : 0.86);
+    badge.strokeCircle(55, -55, unit.level === 3 ? 27 : unit.level === 2 ? 25 : 23);
+    const level = this.scene.add.text(55, -56, this.roman(unit.level), {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: unit.level === 3 ? '16px' : '18px',
+      color: '#10213a'
+    }).setOrigin(0.5);
     children.push(badge, level);
 
     if (mutation.rank > 0) {
@@ -278,7 +383,10 @@ export class BoardView {
 
     this.scene.time.delayedCall(Phaser.Math.Between(0, 450), () => {
       if (!view.active) return;
-      this.scene.tweens.add({ targets: image, y: -3, scaleX: image.scaleX * 1.018, scaleY: image.scaleY * 0.982, duration: 1050 + Phaser.Math.Between(-120, 160), yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      this.scene.tweens.add({ targets: image, y: unit.level === 3 ? -5 : -3, scaleX: image.scaleX * 1.018, scaleY: image.scaleY * 0.982, duration: 1050 + Phaser.Math.Between(-120, 160), yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      if (unit.level === 3) {
+        this.scene.tweens.add({ targets: tierFrame, alpha: 0.68, duration: 820, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      }
       if (mutationAura) {
         this.scene.tweens.add({ targets: mutationAura, alpha: 0.58, duration: 720 + mutation.rank * 120, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
       }
