@@ -12,6 +12,10 @@ import {
   isValidAscensionProgress,
   type AscensionProgress
 } from '../systems/ascension';
+import {
+  getCurrentAscensionProgress,
+  syncCurrentAscensionProgress
+} from '../systems/ascensionRuntime';
 import type { BoardState, BoardUnit } from '../systems/board';
 import { isChaosPerkId, type ChaosPerkId } from '../systems/chaosDraft';
 import {
@@ -152,7 +156,7 @@ export interface GameSaveSnapshot {
   readonly anomalyHunt: AnomalyHuntState;
   readonly mutationAlbum: MutationAlbumProgress;
   readonly weeklyChaos: WeeklyChaosProgress;
-  readonly ascension: AscensionProgress;
+  readonly ascension?: AscensionProgress;
   readonly baseHp: number;
   readonly chapter: number;
   readonly encounterStep: EncounterStep;
@@ -201,7 +205,7 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
     anomalyHunt: cloneAnomalyHunt(snapshot.anomalyHunt),
     mutationAlbum: cloneMutationAlbum(snapshot.mutationAlbum),
     weeklyChaos: cloneWeeklyChaos(snapshot.weeklyChaos),
-    ascension: cloneAscension(snapshot.ascension),
+    ascension: cloneAscension(snapshot.ascension ?? getCurrentAscensionProgress()),
     baseHp: snapshot.baseHp,
     chapter: snapshot.chapter,
     encounterStep: snapshot.encounterStep,
@@ -216,7 +220,9 @@ export function createGameSave(snapshot: GameSaveSnapshot, now = Date.now()): Ga
 export async function loadGameSave(platform: PlatformAdapter): Promise<GameSave | null> {
   try {
     const raw = await platform.loadSave<unknown>();
-    return parseGameSave(raw);
+    const parsed = parseGameSave(raw);
+    if (parsed) syncCurrentAscensionProgress(parsed.ascension);
+    return parsed;
   } catch {
     return null;
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultAnomalyHuntState } from '../systems/anomalyHunt';
+import { createDefaultAscensionProgress } from '../systems/ascension';
 import { createStarterBoard } from '../systems/board';
 import { createDefaultCollectionProgress, discoverCreature } from '../systems/collectionProgression';
 import { createDefaultDailyState } from '../systems/dailyRetention';
@@ -29,6 +30,7 @@ function makeSnapshot() {
     anomalyHunt: { charge: 7, secretPity: 23, totalPulls: 23, secretsFound: 0 },
     mutationAlbum: backfillMutationAlbumProgress(collection, board),
     weeklyChaos: createDefaultWeeklyChaosProgress(SNAPSHOT_NOW),
+    ascension: createDefaultAscensionProgress(),
     baseHp: 77,
     chapter: 3,
     encounterStep: 2 as const,
@@ -45,37 +47,42 @@ function makeLegacyBoard() {
 }
 
 describe('game save', () => {
-  it('round-trips a valid v12 snapshot with weekly, album, anomaly and chapter progression', () => {
+  it('round-trips a valid v13 snapshot with ascension, weekly, album, anomaly and chapter progression', () => {
     const weeklyChaos = advanceWeeklyChaosRun(startWeeklyChaosRun(makeSnapshot().weeklyChaos, SNAPSHOT_NOW).progress).progress;
     const save = createGameSave({ ...makeSnapshot(), weeklyChaos }, SNAPSHOT_NOW);
-    expect(save.version).toBe(12);
+    expect(save.version).toBe(13);
     expect(save.chaosPerks).toEqual(['impact-jelly', 'repair-moss']);
     expect(save.anomalyHunt).toEqual({ charge: 7, secretPity: 23, totalPulls: 23, secretsFound: 0 });
     expect(save.mutationAlbum.discovered).toEqual(['pinguino-1:none', 'toastodilo-1:none']);
     expect(save.weeklyChaos).toMatchObject({ weekId: 202635, active: true, depth: 1, bestDepth: 1, runsStarted: 1 });
+    expect(save.ascension).toEqual(createDefaultAscensionProgress());
     expect(parseGameSave(save)).toEqual(save);
   });
 
-  it('migrates a valid v11 save with fresh weekly progression while preserving album evidence', () => {
+  it('migrates a valid v11 save with fresh weekly and Ascension progression while preserving album evidence', () => {
     const current = createGameSave(makeSnapshot(), SNAPSHOT_NOW);
     const legacy: Record<string, unknown> = { ...current };
     delete legacy.weeklyChaos;
+    delete legacy.ascension;
     const migrated = parseGameSave({ ...legacy, version: 11 });
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.mutationAlbum.discovered).toEqual(['pinguino-1:none', 'toastodilo-1:none']);
     expect(migrated?.weeklyChaos).toEqual(createDefaultWeeklyChaosProgress(SNAPSHOT_NOW));
+    expect(migrated?.ascension).toEqual(createDefaultAscensionProgress());
   });
 
-  it('migrates a valid v10 save and safely backfills mutation evidence plus weekly state', () => {
+  it('migrates a valid v10 save and safely backfills mutation evidence plus weekly and Ascension state', () => {
     const current = createGameSave(makeSnapshot(), SNAPSHOT_NOW);
     const legacy: Record<string, unknown> = { ...current };
     delete legacy.mutationAlbum;
     delete legacy.weeklyChaos;
+    delete legacy.ascension;
     const migrated = parseGameSave({ ...legacy, version: 10 });
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.mutationAlbum.discovered).toEqual(['pinguino-1:none', 'toastodilo-1:none']);
     expect(migrated?.mutationAlbum.claimedMilestones).toEqual([]);
     expect(migrated?.weeklyChaos.weekId).toBe(202635);
+    expect(migrated?.ascension).toEqual(createDefaultAscensionProgress());
   });
 
   it('migrates a valid v9 save with a fresh anomaly hunt while preserving chapter perks', () => {
@@ -84,8 +91,9 @@ describe('game save', () => {
     delete legacy.anomalyHunt;
     delete legacy.mutationAlbum;
     delete legacy.weeklyChaos;
+    delete legacy.ascension;
     const migrated = parseGameSave({ ...legacy, version: 9 });
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.chaosPerks).toEqual(['impact-jelly', 'repair-moss']);
     expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
     expect(migrated?.mutationAlbum.discovered).toEqual(['pinguino-1:none', 'toastodilo-1:none']);
@@ -98,13 +106,14 @@ describe('game save', () => {
     delete legacy.anomalyHunt;
     delete legacy.mutationAlbum;
     delete legacy.weeklyChaos;
+    delete legacy.ascension;
     const migrated = parseGameSave({ ...legacy, version: 8 });
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.chaosPerks).toEqual([]);
     expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
   });
 
-  it('round-trips the new late-wave and boss encounter steps', () => {
+  it('round-trips the late-wave and boss encounter steps', () => {
     const waveFour = createGameSave({ ...makeSnapshot(), encounterStep: 3 }, SNAPSHOT_NOW);
     const gate = createGameSave({ ...makeSnapshot(), encounterStep: 4 }, SNAPSHOT_NOW);
     const boss = createGameSave({ ...makeSnapshot(), encounterStep: BOSS_STEP }, SNAPSHOT_NOW);
@@ -121,7 +130,7 @@ describe('game save', () => {
     const mutationAlbum = backfillMutationAlbumProgress(collection, board);
     const save = createGameSave({ ...snapshot, board, collection, mutationAlbum }, SNAPSHOT_NOW);
     const parsed = parseGameSave(save);
-    expect(parsed?.version).toBe(12);
+    expect(parsed?.version).toBe(13);
     expect(parsed?.board[8]).toEqual({ id: 'lamp-save', family: 'lampalotl', level: 2, mutation: 'prismatic' });
     expect(parsed?.collection.discovered).toContain('lampalotl-2');
     expect(parsed?.mutationAlbum.discovered).toContain('lampalotl-2:prismatic');
@@ -147,12 +156,13 @@ describe('game save', () => {
       board: snapshot.board
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.encounterStep).toBe(BOSS_STEP);
     expect(migrated?.targetHpMax).toBe(930);
     expect(migrated?.targetHp).toBe(410);
     expect(migrated?.chaosPerks).toEqual([]);
     expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
+    expect(migrated?.ascension).toEqual(createDefaultAscensionProgress());
   });
 
   it('keeps historical v7 wave steps before the old boss unchanged', () => {
@@ -177,7 +187,7 @@ describe('game save', () => {
     expect(parseGameSave(oldSave)?.encounterStep).toBe(2);
   });
 
-  it('migrates v2 saves through v12 and preserves progression', () => {
+  it('migrates v2 saves through v13 and preserves progression', () => {
     const oldSave = {
       version: 2,
       updatedAt: Date.parse('2026-08-24T12:00:00.000Z'),
@@ -191,7 +201,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.coreShards).toBe(3);
     expect(migrated?.upgrades).toEqual(createDefaultMetaUpgradeLevels());
     expect(migrated?.daily.streak).toBe(0);
@@ -203,6 +213,7 @@ describe('game save', () => {
     expect(migrated?.anomalyHunt).toEqual(createDefaultAnomalyHuntState());
     expect(migrated?.mutationAlbum.discovered).toEqual(['pinguino-1:none', 'toastodilo-1:none']);
     expect(migrated?.weeklyChaos.weekId).toBe(202635);
+    expect(migrated?.ascension).toEqual(createDefaultAscensionProgress());
   });
 
   it('migrates v3 boss saves through the extended chapter migration', () => {
@@ -221,7 +232,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.encounterStep).toBe(BOSS_STEP);
     expect(migrated?.daily.dayKey).toBe('2026-08-25');
     expect(migrated?.daily.counters).toEqual({ merge: 0, defeat: 0, recruit: 0 });
@@ -248,7 +259,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.daily).toEqual(snapshot.daily);
     expect(migrated?.collection.stats.recruits).toBe(snapshot.recruitSerial);
     expect(migrated?.onboarding.step).toBe('complete');
@@ -274,7 +285,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.onboarding).toEqual({ step: 'complete', completedAt: updatedAt });
   });
 
@@ -298,7 +309,7 @@ describe('game save', () => {
       board: makeLegacyBoard()
     };
     const migrated = parseGameSave(oldSave);
-    expect(migrated?.version).toBe(12);
+    expect(migrated?.version).toBe(13);
     expect(migrated?.board.filter(Boolean).every((unit) => unit?.mutation === 'none')).toBe(true);
   });
 
@@ -365,12 +376,12 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, upgrades: { power: 'max', armor: 0, bounty: 0 } })).toBeNull();
   });
 
-  it('rejects unsupported v12 encounter steps', () => {
+  it('rejects unsupported v13 encounter steps', () => {
     const save = createGameSave(makeSnapshot(), SNAPSHOT_NOW);
     expect(parseGameSave({ ...save, encounterStep: 6 })).toBeNull();
   });
 
-  it('rejects malformed board mutation data in v12', () => {
+  it('rejects malformed board mutation data in v13', () => {
     const save = createGameSave(makeSnapshot(), SNAPSHOT_NOW);
     const board = [...save.board];
     const first = board[0];
@@ -379,7 +390,7 @@ describe('game save', () => {
     expect(parseGameSave({ ...save, board })).toBeNull();
   });
 
-  it('rejects v12 board units that omit mutation', () => {
+  it('rejects v13 board units that omit mutation', () => {
     const save = createGameSave(makeSnapshot(), SNAPSHOT_NOW);
     const board = save.board.map((unit) => unit ? { id: unit.id, family: unit.family, level: unit.level } : null);
     expect(parseGameSave({ ...save, board })).toBeNull();
