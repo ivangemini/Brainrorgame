@@ -29,6 +29,7 @@ import {
   createDefaultCollectionProgress,
   discoverCreature,
   hasAchievementClaimAvailable,
+  isCollectionKey,
   recordLifetimeEvent,
   type AchievementId,
   type CollectionProgress
@@ -68,6 +69,13 @@ import {
   type MetaUpgradeId,
   type MetaUpgradeLevels
 } from '../systems/metaProgression';
+import {
+  backfillMutationAlbumProgress,
+  claimMutationAlbumMilestone,
+  discoverMutationAlbumEntry,
+  hasMutationAlbumClaimAvailable,
+  type MutationAlbumProgress
+} from '../systems/mutationAlbum';
 import {
   advanceOnboarding,
   blocksCombatForOnboarding,
@@ -115,6 +123,7 @@ export class GameScene extends Phaser.Scene {
   private upgrades: MetaUpgradeLevels = createDefaultMetaUpgradeLevels();
   private daily: DailyRetentionState = createDefaultDailyState();
   private collection: CollectionProgress = createDefaultCollectionProgress(this.board);
+  private mutationAlbum: MutationAlbumProgress = backfillMutationAlbumProgress(this.collection, this.board);
   private onboarding: OnboardingState = createDefaultOnboardingState();
   private anomalyHunt: AnomalyHuntState = createDefaultAnomalyHuntState();
   private chaosPerks: readonly ChaosPerkId[] = [];
@@ -190,7 +199,11 @@ export class GameScene extends Phaser.Scene {
       () => this.claimDailyCalendarReward(),
       (id) => this.claimDailyMissionReward(id)
     );
-    this.collectionPanel = new CollectionPanel(this, (id) => this.claimAchievementReward(id));
+    this.collectionPanel = new CollectionPanel(
+      this,
+      (id) => this.claimAchievementReward(id),
+      (target) => this.claimMutationAlbumReward(target)
+    );
     this.revivePanel = new RevivePanel(
       this,
       () => this.tryRewardedRevive(),
@@ -232,7 +245,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.metaPanel.update(this.coreShards, this.upgrades);
     this.dailyPanel.update(this.daily);
-    this.collectionPanel.update(this.collection);
+    this.collectionPanel.update(this.collection, this.mutationAlbum);
     this.lastForegroundAt = Date.now();
     document.addEventListener('visibilitychange', this.visibilityHandler);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -319,8 +332,12 @@ export class GameScene extends Phaser.Scene {
           if (result.upgraded) {
             this.analytics.merge(result.upgraded.family, result.upgraded.level, result.upgraded.mutation, this.chapter);
             this.collection = recordLifetimeEvent(this.collection, 'merge');
-            this.collection = discoverCreature(this.collection, `${result.upgraded.family}-${result.upgraded.level}`);
-            this.collectionPanel.update(this.collection);
+            const collectionKey = `${result.upgraded.family}-${result.upgraded.level}`;
+            this.collection = discoverCreature(this.collection, collectionKey);
+            if (isCollectionKey(collectionKey)) {
+              this.mutationAlbum = discoverMutationAlbumEntry(this.mutationAlbum, collectionKey, result.upgraded.mutation);
+            }
+            this.collectionPanel.update(this.collection, this.mutationAlbum);
             if (result.mutationPromoted) {
               const mutation = getMutationDefinition(result.upgraded.mutation);
               this.fx.showHint(`${mutation.rarity.toUpperCase()} • ${mutation.name.toUpperCase()} MUTATION`, 1015, `#${mutation.accentColor.toString(16).padStart(6, '0')}`);
@@ -379,8 +396,12 @@ export class GameScene extends Phaser.Scene {
       anomalyResult.secret
     );
     this.collection = recordLifetimeEvent(this.collection, 'recruit');
-    this.collection = discoverCreature(this.collection, `${family}-1`);
-    this.collectionPanel.update(this.collection);
+    const collectionKey = `${family}-1`;
+    this.collection = discoverCreature(this.collection, collectionKey);
+    if (isCollectionKey(collectionKey)) {
+      this.mutationAlbum = discoverMutationAlbumEntry(this.mutationAlbum, collectionKey, mutationId);
+    }
+    this.collectionPanel.update(this.collection, this.mutationAlbum);
     this.recordDailyProgress('recruit');
     this.advanceOnboardingAction('recruited');
     this.syncUi();
@@ -454,7 +475,7 @@ export class GameScene extends Phaser.Scene {
     this.coins += coinReward;
     this.collection = recordLifetimeEvent(this.collection, 'defeat');
     if (isBoss) this.collection = recordLifetimeEvent(this.collection, 'boss');
-    this.collectionPanel.update(this.collection);
+    this.collectionPanel.update(this.collection, this.mutationAlbum);
     this.recordDailyProgress('defeat');
     this.advanceOnboardingAction('defeated_target');
     let coreReward = 0;
@@ -661,11 +682,11 @@ export class GameScene extends Phaser.Scene {
   private toggleCollectionPanel(): void {
     if (!isOnboardingComplete(this.onboarding) || this.offlinePanel.isOpen() || this.revivePanel.isOpen() || this.chaosDraftPanel.isOpen()) return;
     this.audio.button();
-    this.collectionPanel.update(this.collection);
+    this.collectionPanel.update(this.collection, this.mutationAlbum);
     if (this.metaPanel.isOpen()) this.metaPanel.hide();
     if (this.dailyPanel.isOpen()) this.dailyPanel.hide();
     if (this.collectionPanel.isOpen()) this.collectionPanel.hide();
-    else this.collectionPanel.show(this.collection);
+    else this.collectionPanel.show(this.collection, this.mutationAlbum);
     this.syncUi();
   }
 
@@ -679,7 +700,7 @@ export class GameScene extends Phaser.Scene {
     this.coreShards = result.shards;
     this.upgrades = result.levels;
     this.collection = recordLifetimeEvent(this.collection, 'upgrade');
-    this.collectionPanel.update(this.collection);
+    this.collectionPanel.update(this.collection, this.mutationAlbum);
     this.analytics.metaUpgradePurchase(id, this.upgrades[id], this.coreShards);
     this.audio.reward();
     this.metaPanel.update(this.coreShards, this.upgrades);
@@ -692,7 +713,7 @@ export class GameScene extends Phaser.Scene {
     this.collection = result.progress;
     if (!result.claimed) {
       this.audio.button();
-      this.collectionPanel.update(this.collection);
+      this.collectionPanel.update(this.collection, this.mutationAlbum);
       this.syncUi();
       return;
     }
@@ -704,7 +725,31 @@ export class GameScene extends Phaser.Scene {
       ? `ACHIEVEMENT +${result.reward.coreShards} CORE SHARD${result.reward.coreShards === 1 ? '' : 'S'}`
       : `ACHIEVEMENT +${result.reward.coins} COINS`;
     this.fx.showHint(rewardLabel, 1010, result.reward.coreShards > 0 ? '#bffaff' : '#ffe59a');
-    this.collectionPanel.update(this.collection);
+    this.collectionPanel.update(this.collection, this.mutationAlbum);
+    this.metaPanel.update(this.coreShards, this.upgrades);
+    this.syncUi();
+    this.persistNow();
+  }
+
+  private claimMutationAlbumReward(target: number): void {
+    const result = claimMutationAlbumMilestone(this.mutationAlbum, target);
+    this.mutationAlbum = result.progress;
+    if (!result.claimed) {
+      this.audio.button();
+      this.collectionPanel.update(this.collection, this.mutationAlbum);
+      this.syncUi();
+      return;
+    }
+
+    this.coins += result.reward.coins;
+    this.coreShards += result.reward.coreShards;
+    this.audio.reward();
+    const rewardLabel = result.reward.coreShards > 0
+      ? `MUTATION ALBUM +${result.reward.coreShards} CORE SHARD${result.reward.coreShards === 1 ? '' : 'S'}`
+      : `MUTATION ALBUM +${result.reward.coins} COINS`;
+    this.fx.flashRing(540, 950, result.reward.coreShards > 0 ? 0x72e5ff : 0xffd768);
+    this.fx.showHint(rewardLabel, 1010, result.reward.coreShards > 0 ? '#bffaff' : '#ffe59a');
+    this.collectionPanel.update(this.collection, this.mutationAlbum);
     this.metaPanel.update(this.coreShards, this.upgrades);
     this.syncUi();
     this.persistNow();
@@ -863,6 +908,7 @@ export class GameScene extends Phaser.Scene {
     this.upgrades = save.upgrades;
     this.daily = rollDailyState(save.daily);
     this.collection = save.collection;
+    this.mutationAlbum = save.mutationAlbum;
     this.onboarding = save.onboarding;
     this.anomalyHunt = save.anomalyHunt;
     this.chaosPerks = save.chaosPerks;
@@ -892,6 +938,7 @@ export class GameScene extends Phaser.Scene {
       upgrades: this.upgrades,
       daily: this.daily,
       collection: this.collection,
+      mutationAlbum: this.mutationAlbum,
       onboarding: this.onboarding,
       anomalyHunt: this.anomalyHunt,
       baseHp: this.baseHp,
@@ -914,7 +961,7 @@ export class GameScene extends Phaser.Scene {
       this.chapter,
       this.encounterStep,
       hasDailyClaimAvailable(this.daily),
-      hasAchievementClaimAvailable(this.collection),
+      hasAchievementClaimAvailable(this.collection) || hasMutationAlbumClaimAvailable(this.mutationAlbum),
       this.anomalyHunt
     );
     this.setTargetHealth();
