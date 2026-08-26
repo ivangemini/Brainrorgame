@@ -106,17 +106,42 @@ describe('board rules', () => {
     expect(result.action).toBe('merge');
     expect(result.upgraded).toMatchObject({ family: 'pinguino', level: 3, mutation: 'charged' });
     expect(result.ascended).toBe(true);
+    expect(result.consolidated).toBe(false);
   });
 
-  it('does not consume incompatible or capped legendary T3 twins', () => {
-    const board: Array<null | { id: string; family: 'pinguino'; level: 3; mutation: 'crowned' | 'prismatic' }> = Array.from({ length: BOARD_SIZE }, () => null);
+  it('consolidates same-family max-tier twins even when mutation cannot ascend', () => {
+    const board = Array.from({ length: BOARD_SIZE }, () => null) as Array<null | { id: string; family: 'pinguino'; level: 3; mutation: 'crowned' | 'prismatic' }>;
     board[0] = { id: 'legend-a', family: 'pinguino', level: 3, mutation: 'crowned' };
     board[1] = { id: 'legend-b', family: 'pinguino', level: 3, mutation: 'crowned' };
-    expect(moveOrMerge(board, 0, 1).action).toBe('swap');
+    const capped = moveOrMerge(board, 0, 1);
+    expect(capped.action).toBe('merge');
+    expect(capped.upgraded).toMatchObject({ family: 'pinguino', level: 3, mutation: 'crowned' });
+    expect(capped.ascended).toBe(false);
+    expect(capped.consolidated).toBe(true);
 
-    board[0] = { id: 'epic', family: 'pinguino', level: 3, mutation: 'prismatic' };
-    board[1] = { id: 'legend', family: 'pinguino', level: 3, mutation: 'crowned' };
-    expect(moveOrMerge(board, 0, 1).action).toBe('swap');
+    const mixed = Array.from({ length: BOARD_SIZE }, () => null) as typeof board;
+    mixed[0] = { id: 'epic', family: 'pinguino', level: 3, mutation: 'prismatic' };
+    mixed[1] = { id: 'legend', family: 'pinguino', level: 3, mutation: 'crowned' };
+    const mixedResult = moveOrMerge(mixed, 0, 1);
+    expect(mixedResult.action).toBe('merge');
+    expect(mixedResult.upgraded?.mutation).toBe('crowned');
+    expect(mixedResult.consolidated).toBe(true);
+  });
+
+  it('guarantees a legal pair on a full board made only of max-tier units', () => {
+    const families = [
+      'pinguino', 'toastodilo', 'lampalotl', 'dishnail', 'mochimoth', 'routeraptor',
+      'vendinguana', 'umbrellama', 'mopossum', 'fanthom', 'socktopus', 'microwhale'
+    ] as const;
+    const board: BoardState = [
+      ...families.map((family, index) => ({ id: `max-${index}`, family, level: 3 as const, mutation: 'crowned' as const })),
+      { id: 'extra-p', family: 'pinguino', level: 3, mutation: 'prismatic' },
+      { id: 'extra-t', family: 'toastodilo', level: 3, mutation: 'charged' },
+      { id: 'extra-l', family: 'lampalotl', level: 3, mutation: 'none' }
+    ];
+    expect(board).toHaveLength(BOARD_SIZE);
+    expect(hasMergeablePair(board)).toBe(true);
+    expect(isBoardDeadlocked(board)).toBe(false);
   });
 
   it('activates the first tier-three Mutation Catalyst once per chapter', () => {
