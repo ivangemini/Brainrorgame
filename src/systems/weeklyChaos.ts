@@ -79,14 +79,16 @@ export const WEEKLY_CHAOS_RULES: readonly WeeklyChaosRule[] = [
   }
 ] as const;
 
-const NEUTRAL_MODIFIERS: WeeklyChaosModifiers = {
+const NEUTRAL_MODIFIERS: WeeklyChaosModifiers = Object.freeze({
   squadDamage: 1,
   attackInterval: 1,
   incomingDamage: 1,
   enemyHp: 1,
   coinRewards: 1,
   recruitCost: 1
-};
+});
+const RULE_CACHE = new Map<number, readonly WeeklyChaosRule[]>();
+const MODIFIER_CACHE = new Map<number, WeeklyChaosModifiers>();
 
 export function weeklyChaosWeekId(now = Date.now()): number {
   const date = new Date(now);
@@ -110,6 +112,9 @@ export function weeklyChaosSeed(weekId: number): number {
 }
 
 export function getWeeklyChaosRules(weekId: number): readonly WeeklyChaosRule[] {
+  const cached = RULE_CACHE.get(weekId);
+  if (cached) return cached;
+
   const pool = [...WEEKLY_CHAOS_RULES];
   let seed = weeklyChaosSeed(weekId);
   const selected: WeeklyChaosRule[] = [];
@@ -119,12 +124,18 @@ export function getWeeklyChaosRules(weekId: number): readonly WeeklyChaosRule[] 
     const [rule] = pool.splice(index, 1);
     if (rule) selected.push(rule);
   }
-  return selected;
+  const stable = Object.freeze([...selected]);
+  RULE_CACHE.set(weekId, stable);
+  return stable;
 }
 
 export function getWeeklyChaosModifiers(progress: WeeklyChaosProgress): WeeklyChaosModifiers {
   if (!progress.active) return NEUTRAL_MODIFIERS;
-  return combineWeeklyChaosRules(getWeeklyChaosRules(progress.weekId));
+  const cached = MODIFIER_CACHE.get(progress.weekId);
+  if (cached) return cached;
+  const combined = Object.freeze(combineWeeklyChaosRules(getWeeklyChaosRules(progress.weekId)));
+  MODIFIER_CACHE.set(progress.weekId, combined);
+  return combined;
 }
 
 export function combineWeeklyChaosRules(rules: readonly WeeklyChaosRule[]): WeeklyChaosModifiers {
