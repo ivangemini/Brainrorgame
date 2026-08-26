@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { createDefaultAscensionProgress } from './ascension';
+import { resetCurrentAscensionProgress, syncCurrentAscensionProgress } from './ascensionRuntime';
 import {
   addChaosPerk,
   chaosDraftCheckpointForStep,
@@ -9,7 +11,10 @@ import {
   syncCurrentChaosPerks
 } from './chaosDraft';
 
-afterEach(() => resetCurrentChaosPerks());
+afterEach(() => {
+  resetCurrentChaosPerks();
+  resetCurrentAscensionProgress();
+});
 
 describe('chaos draft', () => {
   it('offers drafts only before waves 3 and 5', () => {
@@ -31,6 +36,24 @@ describe('chaos draft', () => {
     const second = getChaosPerkOffers(7, 2, [first[0]]);
     expect(second).not.toContain(first[0]);
     expect(new Set(second).size).toBe(3);
+  });
+
+  it('changes deterministic offers when Chaos Reroute uses its alternate seed', () => {
+    const first = getChaosPerkOffers(8, 1, [], 0);
+    const rerolled = getChaosPerkOffers(8, 1, [], 1);
+    expect(rerolled).not.toEqual(first);
+    expect(new Set(rerolled).size).toBe(3);
+  });
+
+  it('opens a Fourth Door every fifth chapter when the full Chaos branch is owned', () => {
+    syncCurrentAscensionProgress({
+      ...createDefaultAscensionProgress(),
+      purchasedNodes: ['chaos-reroute', 'chaos-bank', 'chaos-fourth-door']
+    });
+    expect(getChaosPerkOffers(9, 1, [])).toHaveLength(3);
+    const chapterTen = getChaosPerkOffers(10, 1, []);
+    expect(chapterTen).toHaveLength(4);
+    expect(new Set(chapterTen).size).toBe(4);
   });
 
   it('caps a chapter build at two unique perks', () => {
