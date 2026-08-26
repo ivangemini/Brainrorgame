@@ -115,15 +115,9 @@ export class WeeklyChaosPanel {
       this.onStart();
     });
 
-    const rewardLabel = this.scene.add.text(-420, 250, 'MILESTONE CACHES', {
-      fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: '22px',
-      color: '#ffd984'
-    });
-
     const milestoneObjects: Phaser.GameObjects.GameObject[] = [];
     WEEKLY_CHAOS_MILESTONES.forEach((milestone, index) => {
-      const created = this.createMilestoneRow(milestone.target, 330 + index * 122);
+      const created = this.createMilestoneRow(milestone.target, 292 + index * 122);
       milestoneObjects.push(...created.children);
       this.milestoneViews.set(milestone.target, created.view);
     });
@@ -152,7 +146,6 @@ export class WeeklyChaosPanel {
       progressCard,
       this.progressText,
       this.startButton,
-      rewardLabel,
       ...milestoneObjects,
       note
     ]).setDepth(2291).setVisible(false);
