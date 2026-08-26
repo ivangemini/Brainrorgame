@@ -182,7 +182,10 @@ export function advanceWeeklyChaosRun(progress: WeeklyChaosProgress): {
   }
   const depth = Math.min(WEEKLY_CHAOS_MAX_DEPTH, progress.depth + 1);
   const completed = depth >= WEEKLY_CHAOS_MAX_DEPTH;
-  const reachedMilestone = WEEKLY_CHAOS_MILESTONES.find((milestone) => milestone.target === depth) ?? null;
+  const improvedBest = depth > progress.bestDepth;
+  const reachedMilestone = improvedBest
+    ? WEEKLY_CHAOS_MILESTONES.find((milestone) => milestone.target === depth) ?? null
+    : null;
   return {
     advanced: true,
     completed,
