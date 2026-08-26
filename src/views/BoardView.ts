@@ -10,7 +10,7 @@ import {
   tryCastCurrentActiveAbility,
   type ActiveAbilityId
 } from '../systems/activeAbilities';
-import { isBoardDeadlocked, type BoardState, type BoardUnit } from '../systems/board';
+import { BOARD_COLUMNS, BOARD_ROWS, type BoardState, type BoardUnit } from '../systems/board';
 import {
   getActiveCrewSynergies,
   getCurrentCrewSynergyState,
@@ -18,10 +18,10 @@ import {
 } from '../systems/crewSynergies';
 import { ActiveAbilityBar } from '../ui/ActiveAbilityBar';
 
-const COLUMNS = 4;
-const ROWS = 3;
-const GAP = 22;
-const SLOT_SIZE = 202;
+const COLUMNS = BOARD_COLUMNS;
+const ROWS = BOARD_ROWS;
+const GAP = 14;
+const SLOT_SIZE = 170;
 const LEFT = (1080 - (COLUMNS * SLOT_SIZE + (COLUMNS - 1) * GAP)) / 2;
 const TOP = 1130;
 
@@ -54,9 +54,9 @@ export class BoardView {
     });
     for (let index = 0; index < COLUMNS * ROWS; index += 1) {
       const position = this.slotPosition(index); const slot = this.scene.add.graphics();
-      slot.fillStyle(0x24345d, 0.74); slot.fillRoundedRect(position.x - SLOT_SIZE / 2, position.y - SLOT_SIZE / 2, SLOT_SIZE, SLOT_SIZE, 46);
-      slot.lineStyle(3, 0xa7dbff, 0.14); slot.strokeRoundedRect(position.x - SLOT_SIZE / 2, position.y - SLOT_SIZE / 2, SLOT_SIZE, SLOT_SIZE, 46);
-      slot.fillStyle(0xc7ecff, 0.045); slot.fillCircle(position.x - 42, position.y - 50, 48);
+      slot.fillStyle(0x24345d, 0.74); slot.fillRoundedRect(position.x - SLOT_SIZE / 2, position.y - SLOT_SIZE / 2, SLOT_SIZE, SLOT_SIZE, 38);
+      slot.lineStyle(3, 0xa7dbff, 0.14); slot.strokeRoundedRect(position.x - SLOT_SIZE / 2, position.y - SLOT_SIZE / 2, SLOT_SIZE, SLOT_SIZE, 38);
+      slot.fillStyle(0xc7ecff, 0.045); slot.fillCircle(position.x - 34, position.y - 41, 40);
     }
 
     this.abilityBar = new ActiveAbilityBar(this.scene, (id) => this.castAbility(id));
@@ -98,7 +98,7 @@ export class BoardView {
 
   public attackKick(slot: number): Phaser.Math.Vector2 | null {
     const view = this.unitViews.get(slot); if (!view) return null; const origin = this.slotPosition(slot);
-    this.scene.tweens.add({ targets: view, y: origin.y - 14, scaleX: 1.04, scaleY: 0.96, duration: 80, yoyo: true, ease: 'Quad.Out' }); return origin;
+    this.scene.tweens.add({ targets: view, y: origin.y - 12, scaleX: 1.04, scaleY: 0.96, duration: 80, yoyo: true, ease: 'Quad.Out' }); return origin;
   }
 
   private updateAbilities(_time: number, delta: number): void {
@@ -136,22 +136,15 @@ export class BoardView {
     if (!this.synergyText) return;
     const state = syncCrewSynergyState(board);
     const active = getActiveCrewSynergies(state);
-    const fusionReady = isBoardDeadlocked(board);
-    const label = fusionReady
-      ? 'CHAOS FUSION READY  •  MERGE ANY TWO OF THE SAME LEVEL'
-      : active.length > 0
-        ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
-        : 'NO ACTIVE SYNERGY';
-    const signature = fusionReady
-      ? 'deadlock:fusion-ready'
-      : active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
-    this.synergyText
-      .setText(label)
-      .setColor(fusionReady ? '#ffe58a' : active.length > 0 ? '#c8f6ff' : '#7587a8');
+    const label = active.length > 0
+      ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
+      : 'MATCH SAME CREATURE + SAME LEVEL';
+    const signature = active.map((entry) => `${entry.definition.id}:${entry.tier}`).join('|');
+    this.synergyText.setText(label).setColor(active.length > 0 ? '#c8f6ff' : '#7587a8');
     this.abilityBar?.update(getCurrentActiveAbilityRuntime(), state.tiers, isActiveAbilityCombatActive());
     if (signature !== this.lastSynergySignature && this.lastSynergySignature !== '') {
       this.scene.tweens.killTweensOf(this.synergyText);
-      this.synergyText.setScale(fusionReady ? 1.12 : 1.08).setAlpha(fusionReady ? 0.45 : 0.55);
+      this.synergyText.setScale(1.08).setAlpha(0.55);
       this.scene.tweens.add({ targets: this.synergyText, scaleX: 1, scaleY: 1, alpha: 1, duration: 260, ease: 'Back.Out' });
     }
     this.lastSynergySignature = signature;
@@ -161,24 +154,24 @@ export class BoardView {
     const position = this.slotPosition(slot);
     const creature = getCreature(unit.family, unit.level);
     const mutation = getMutationDefinition(unit.mutation);
-    const image = this.scene.add.image(0, 4, creature.texture).setDisplaySize(172, 172);
-    const shadow = this.scene.add.ellipse(0, 72, 128, 30, 0x030919, 0.28).setDepth(-1);
+    const image = this.scene.add.image(0, 3, creature.texture).setDisplaySize(144, 144);
+    const shadow = this.scene.add.ellipse(0, 60, 106, 25, 0x030919, 0.28).setDepth(-1);
     const children: Phaser.GameObjects.GameObject[] = [shadow];
 
     let mutationAura: Phaser.GameObjects.Graphics | null = null;
     let mutationArt: Phaser.GameObjects.Image | null = null;
     if (mutation.rank > 0) {
       mutationAura = this.scene.add.graphics();
-      mutationAura.lineStyle(5, mutation.accentColor, 0.34 + mutation.rank * 0.08);
-      mutationAura.strokeCircle(0, 4, 88);
+      mutationAura.lineStyle(4, mutation.accentColor, 0.34 + mutation.rank * 0.08);
+      mutationAura.strokeCircle(0, 3, 73);
       if (mutation.rank >= 2) {
         mutationAura.lineStyle(3, mutation.projectileColor, 0.22);
-        mutationAura.strokeCircle(0, 4, 96);
+        mutationAura.strokeCircle(0, 3, 80);
       }
       children.push(mutationAura);
       if (mutation.texture) {
-        mutationArt = this.scene.add.image(0, mutation.id === 'crowned' ? -5 : 2, mutation.texture)
-          .setDisplaySize(mutation.id === 'crowned' ? 202 : 192, mutation.id === 'crowned' ? 202 : 192)
+        mutationArt = this.scene.add.image(0, mutation.id === 'crowned' ? -4 : 2, mutation.texture)
+          .setDisplaySize(mutation.id === 'crowned' ? 166 : 158, mutation.id === 'crowned' ? 166 : 158)
           .setAlpha(0.92);
         children.push(mutationArt);
       }
@@ -187,26 +180,26 @@ export class BoardView {
     children.push(image);
     const badge = this.scene.add.graphics();
     badge.fillStyle(mutation.rank > 0 ? mutation.accentColor : creature.accentColor, 1);
-    badge.fillCircle(67, -67, 27);
-    badge.lineStyle(4, 0xffffff, 0.7);
-    badge.strokeCircle(67, -67, 27);
-    const level = this.scene.add.text(67, -68, `${unit.level}`, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '25px', color: '#10213a' }).setOrigin(0.5);
+    badge.fillCircle(56, -56, 22);
+    badge.lineStyle(3, 0xffffff, 0.7);
+    badge.strokeCircle(56, -56, 22);
+    const level = this.scene.add.text(56, -57, `${unit.level}`, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: '#10213a' }).setOrigin(0.5);
     children.push(badge, level);
 
     if (mutation.rank > 0) {
       const rarityPlate = this.scene.add.graphics();
       rarityPlate.fillStyle(0x10172f, 0.94);
-      rarityPlate.fillRoundedRect(-87, -87, 46, 38, 13);
+      rarityPlate.fillRoundedRect(-72, -72, 40, 32, 11);
       rarityPlate.lineStyle(3, mutation.accentColor, 0.92);
-      rarityPlate.strokeRoundedRect(-87, -87, 46, 38, 13);
-      const rarityText = this.scene.add.text(-64, -68, mutation.shortLabel, {
-        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '19px', color: '#ffffff'
+      rarityPlate.strokeRoundedRect(-72, -72, 40, 32, 11);
+      const rarityText = this.scene.add.text(-52, -56, mutation.shortLabel, {
+        fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '16px', color: '#ffffff'
       }).setOrigin(0.5);
       children.push(rarityPlate, rarityText);
     }
 
     const view = this.scene.add.container(position.x, position.y, children);
-    view.setSize(176, 176).setInteractive({ useHandCursor: true }); view.setData('meta', { slot, unitId: unit.id } satisfies UnitViewMeta); this.scene.input.setDraggable(view);
+    view.setSize(150, 150).setInteractive({ useHandCursor: true }); view.setData('meta', { slot, unitId: unit.id } satisfies UnitViewMeta); this.scene.input.setDraggable(view);
 
     this.scene.time.delayedCall(Phaser.Math.Between(0, 450), () => {
       if (!view.active) return;
