@@ -5,7 +5,7 @@ import {
   mergeMutation,
   type MutationId
 } from '../content/mutations';
-import { recordAscensionMerge } from './ascensionRuntime';
+import { consumeAscensionRecruitCredit, recordAscensionMerge } from './ascensionRuntime';
 
 export interface BoardUnit {
   readonly id: string;
@@ -44,6 +44,7 @@ export function addUnit(board: BoardState, unit: BoardUnit): BoardState {
   if (index < 0) return board;
   const next = [...board];
   next[index] = unit;
+  if (unit.id.startsWith('recruit-')) consumeAscensionRecruitCredit();
   return next;
 }
 
