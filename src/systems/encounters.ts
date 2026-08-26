@@ -24,6 +24,7 @@ import {
   currentBossOpeningDelayMs,
   currentBossOutgoingDamageMultiplier
 } from './bossPhases';
+import { applyCampaignPressure } from './difficultyCurve';
 
 export const WAVES_PER_CHAPTER = 5 as const;
 export const GAUNTLET_STEP = 4 as const;
@@ -95,7 +96,8 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
     beginActiveAbilityEncounter(`chapter:${safeChapter}:boss`, energyGainMultiplier);
     const boss = getBossForChapter(safeChapter);
     const mutated = applyChapterMutator(scaleBoss(boss, safeChapter), mutator);
-    const scaled = applyWorldPressure(mutated, safeChapter, 1200);
+    const worldScaled = applyWorldPressure(mutated, safeChapter, 1200);
+    const scaled = applyCampaignPressure(worldScaled, safeChapter, 'boss', 1200);
     const worldBonus = isWorldFinalChapter(safeChapter)
       ? getWorldForChapter(safeChapter).completionCoins
       : 0;
@@ -140,7 +142,8 @@ export function getEncounterSpec(chapter: number, step: EncounterStep): Encounte
     reward: Math.max(1, Math.round(eliteScaled.reward * pressure.reward))
   };
   const mutated = applyChapterMutator(pressured, mutator);
-  const scaled = applyWorldPressure(mutated, safeChapter, 1450);
+  const worldScaled = applyWorldPressure(mutated, safeChapter, 1450);
+  const scaled = applyCampaignPressure(worldScaled, safeChapter, 'wave', 1450);
   return {
     kind: 'wave',
     id: enemy.id,
