@@ -28,7 +28,8 @@
 - [x] EN/RU localization across the primary HUD, onboarding, retention panels, Chaos Draft, active abilities, Core Lab and long-tail achievement copy.
 - [x] Yandex SDK + moderation checklist.
 - [x] Performance and asset-size pass: vendor split plus purpose-sized runtime textures.
-- [ ] First external playtest and balance pass.
+- [x] External playtest/balance protocol and release acceptance gates authored.
+- [ ] Execute first external human playtest and evidence-backed balance pass.
 
 ## Phase 4 — distribution
 - [x] CrazyGames adapter/build foundation.
@@ -37,7 +38,8 @@
 - [x] GameDistribution adapter/build foundation.
 - [x] Creative/store-page A/B asset variants: two Yandex cover concepts plus localized store copy.
 - [x] Machine-validated Yandex release metadata gate in `npm run verify`.
-- [ ] Portal-specific upload packages and screenshots captured from a final candidate build.
+- [x] Portal-specific packaging matrix, screenshot shot list and candidate-SHA rules authored.
+- [ ] Capture final screenshots and produce upload archives from the accepted candidate SHA.
 
 ## Phase 5 — live ops
 - [ ] Limited bosses/mutations.
@@ -76,7 +78,13 @@
 - [x] Two store-cover A/B variants: chaos-roster promise and boss-combat promise.
 - [x] `release:check` is part of the production verification pipeline.
 - [x] Store creative test plan protects against optimizing CTR at the expense of qualified starts/retention.
+- [x] External playtest matrix, severity model, first-session guardrails and result template documented in `PLAYTEST_BALANCE_PROTOCOL.md`.
+- [x] Portal release matrix, deterministic archive naming, screenshot shot list and exact-candidate provenance documented in `PORTAL_RELEASE_MATRIX.md`.
 - [ ] Final low-frequency localization QA sweep on a running candidate build.
-- [ ] First external playtest on representative desktop and mid-range mobile hardware.
+- [ ] First external human playtest on representative desktop and mid-range mobile hardware.
 - [ ] Balance pass from actual first-session, boss and retention telemetry.
 - [ ] Capture final candidate screenshots and portal upload packages.
+
+## Hard boundary
+
+The remaining unchecked launch items require observations or artifacts from a running accepted candidate: real-device/human playtest results, observed telemetry, and screenshots captured from that exact build. They must not be marked complete from static code review or CI alone.
