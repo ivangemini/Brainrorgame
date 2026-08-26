@@ -48,16 +48,20 @@ export function canBoardUnitsMerge(a: BoardUnit, b: BoardUnit): boolean {
   return a.family === b.family && a.level === b.level;
 }
 
-export function hasMergeablePair(board: BoardState): boolean {
+export function findMergeablePair(board: BoardState): readonly [number, number] | null {
   for (let first = 0; first < board.length; first += 1) {
     const a = board[first];
     if (!a) continue;
     for (let second = first + 1; second < board.length; second += 1) {
       const b = board[second];
-      if (b && canBoardUnitsMerge(a, b)) return true;
+      if (b && canBoardUnitsMerge(a, b)) return [first, second] as const;
     }
   }
-  return false;
+  return null;
+}
+
+export function hasMergeablePair(board: BoardState): boolean {
+  return findMergeablePair(board) !== null;
 }
 
 export function isBoardDeadlocked(board: BoardState): boolean {
