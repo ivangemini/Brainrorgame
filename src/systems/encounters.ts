@@ -18,6 +18,7 @@ import {
   isWorldFinalChapter
 } from '../content/worlds';
 import { beginActiveAbilityEncounter } from './activeAbilities';
+import { syncAscensionRuntimeChapter } from './ascensionRuntime';
 import {
   currentBossAttackIntervalMultiplier,
   currentBossOutgoingDamageMultiplier
@@ -86,6 +87,7 @@ export function isBossStep(step: EncounterStep): boolean {
 export function getEncounterSpec(chapter: number, step: EncounterStep): EncounterSpec {
   const safeChapter = Math.max(1, Math.floor(chapter));
   syncRecruitProgressChapter(safeChapter);
+  syncAscensionRuntimeChapter(safeChapter);
   const mutator = getChapterMutator(safeChapter);
   const energyGainMultiplier = getWorldEnergyGainMultiplier(safeChapter);
   if (step === BOSS_STEP) {
