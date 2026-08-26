@@ -61,7 +61,7 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [ ] Prestige must create new decisions, not merely reset the same numbers.
 - [x] Weekly content remains deterministic/testable and does not require server authority for core play.
 - [ ] Collection expansion should preferentially reuse existing production art through authored mutation presentation before adding dozens of new base families.
-- [ ] New currencies require a named sink, bounded source and save-migration plan before implementation.
+- [x] Weekly Chaos adds no new currency; finite rewards use existing Recruit/Core Lab sinks and save v12 has an explicit migration path.
 
 ## Phase 4 — distribution
 - [x] CrazyGames adapter/build foundation.
