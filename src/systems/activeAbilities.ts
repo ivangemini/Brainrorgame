@@ -1,4 +1,5 @@
 import type { CreatureFamily } from '../content/creatures';
+import { getCurrentAscensionEffects } from './ascension';
 import { getCurrentChaosPerkMultipliers } from './chaosDraft';
 import { getCurrentCrewSynergyState, type CrewSynergyTier } from './crewSynergies';
 
@@ -163,7 +164,7 @@ export function beginActiveAbilityEncounter(key: string, energyGainMultiplier = 
   currentEnergyGainMultiplier = normalizeEnergyGainMultiplier(energyGainMultiplier);
   if (key === currentEncounterKey) return;
   currentEncounterKey = key;
-  currentState = createActiveAbilityRuntimeState();
+  currentState = createActiveAbilityRuntimeState(getCurrentAscensionEffects().startingChaosEnergy);
   combatActive = true;
 }
 
@@ -191,7 +192,10 @@ export function recordFortressHitEnergy(): void {
 
 export function tryCastCurrentActiveAbility(id: ActiveAbilityId, tier: CrewSynergyTier): ActiveAbilityCastResult {
   const result = castActiveAbility(id, currentState, tier, combatActive);
-  if (result.cast) currentState = result.state;
+  if (result.cast) {
+    currentState = gainCombatEnergy(result.state, getCurrentAscensionEffects().abilityEnergyRefund);
+    return { ...result, state: currentState };
+  }
   return result;
 }
 
