@@ -25,6 +25,7 @@ export interface BoardActionResult {
   readonly upgraded?: BoardUnit;
   readonly mutationPromoted?: boolean;
   readonly ascended?: boolean;
+  readonly consolidated?: boolean;
   readonly ascensionRecruitCreditsEarned?: number;
   readonly ascensionCatalystApplied?: boolean;
 }
@@ -44,9 +45,7 @@ export function firstEmptySlot(board: BoardState): number {
 }
 
 export function canBoardUnitsMerge(a: BoardUnit, b: BoardUnit): boolean {
-  if (a.family !== b.family || a.level !== b.level) return false;
-  if (a.level < 3) return true;
-  return ascendMutationPair(a.mutation, b.mutation) !== null;
+  return a.family === b.family && a.level === b.level;
 }
 
 export function hasMergeablePair(board: BoardState): boolean {
@@ -111,38 +110,42 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
       upgraded,
       mutationPromoted: getMutationDefinition(ascension.mutation).rank > previousRank,
       ascended: false,
+      consolidated: false,
       ascensionRecruitCreditsEarned: ascension.recruitCreditsEarned,
       ascensionCatalystApplied: ascension.catalystApplied
     };
   }
 
   if (source.family === target.family && source.level === 3 && target.level === 3) {
-    const mutation = ascendMutationPair(source.mutation, target.mutation);
-    if (mutation) {
-      const ascension = recordAscensionMerge(3, mutation, false);
-      const upgraded: BoardUnit = {
-        id: `ascended-${source.family}-${mutation}-${source.id}-${target.id}`,
-        family: source.family,
-        level: 3,
-        mutation
-      };
-      next[from] = null;
-      next[to] = upgraded;
-      return {
-        board: next,
-        action: 'merge',
-        upgraded,
-        mutationPromoted: true,
-        ascended: true,
-        ascensionRecruitCreditsEarned: ascension.recruitCreditsEarned,
-        ascensionCatalystApplied: false
-      };
-    }
+    const ascendedMutation = ascendMutationPair(source.mutation, target.mutation);
+    const baseMutation = ascendedMutation ?? mergeMutation(source.mutation, target.mutation);
+    const previousRank = Math.max(
+      getMutationDefinition(source.mutation).rank,
+      getMutationDefinition(target.mutation).rank
+    );
+    const ascension = recordAscensionMerge(3, baseMutation, false);
+    const upgraded: BoardUnit = {
+      id: `${ascendedMutation ? 'ascended' : 'consolidated'}-${source.family}-${ascension.mutation}-${source.id}-${target.id}`,
+      family: source.family,
+      level: 3,
+      mutation: ascension.mutation
+    };
+    next[from] = null;
+    next[to] = upgraded;
+    return {
+      board: next,
+      action: 'merge',
+      upgraded,
+      mutationPromoted: getMutationDefinition(ascension.mutation).rank > previousRank,
+      ascended: ascendedMutation !== null,
+      consolidated: ascendedMutation === null,
+      ascensionRecruitCreditsEarned: ascension.recruitCreditsEarned,
+      ascensionCatalystApplied: false
+    };
   }
 
   // Different families never merge. Deadlock prevention belongs in recruit
-  // planning so the game avoids generating an impossible board instead of
-  // breaking the player's learned merge rule after the fact.
+  // planning and same-family max-tier consolidation, not cross-family fusion.
   next[from] = target;
   next[to] = source;
   return { board: next, action: 'swap' };
