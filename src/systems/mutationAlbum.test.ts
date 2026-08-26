@@ -23,6 +23,7 @@ describe('mutation album', () => {
 
   it('records each creature/mutation combination once', () => {
     const creature = COLLECTION_KEYS[0];
+    if (!creature) throw new Error('Expected at least one collection key');
     let progress = createDefaultMutationAlbumProgress();
     progress = discoverMutationAlbumEntry(progress, creature, 'charged');
     const duplicate = discoverMutationAlbumEntry(progress, creature, 'charged');
