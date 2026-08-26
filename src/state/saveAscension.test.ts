@@ -37,7 +37,7 @@ function makeSnapshot() {
   };
 }
 
-describe('Ascension save v13', () => {
+describe('Ascension in save v14', () => {
   it('round-trips a valid Ascension tree and Chaos Star ledger', () => {
     const ascension = {
       chaosStars: 3,
@@ -48,7 +48,7 @@ describe('Ascension save v13', () => {
       lastAscendedAt: NOW - 1000
     };
     const save = createGameSave({ ...makeSnapshot(), ascension }, NOW);
-    expect(save.version).toBe(13);
+    expect(save.version).toBe(14);
     expect(parseGameSave(save)).toEqual(save);
   });
 
@@ -56,8 +56,10 @@ describe('Ascension save v13', () => {
     const current = createGameSave(makeSnapshot(), NOW);
     const legacy: Record<string, unknown> = { ...current, version: 12, chapter: 41 };
     delete legacy.ascension;
+    delete legacy.bossHunt;
+    delete legacy.bossTrophies;
     const migrated = parseGameSave(legacy);
-    expect(migrated?.version).toBe(13);
+    expect(migrated?.version).toBe(14);
     expect(migrated?.chapter).toBe(41);
     expect(migrated?.ascension).toEqual(createDefaultAscensionProgress());
   });
