@@ -24,12 +24,21 @@ export class MetaUpgradePanel {
   private drawer!: Phaser.GameObjects.Container;
   private shardText!: Phaser.GameObjects.Text;
   private ascensionPanel!: AscensionPanel;
+  private resetBackground!: Phaser.GameObjects.Graphics;
+  private resetLabel!: Phaser.GameObjects.Text;
+  private resetHit!: Phaser.GameObjects.Rectangle;
+  private resetTimer: Phaser.Time.TimerEvent | null = null;
+  private resetArmed = false;
   private readonly cards = new Map<MetaUpgradeId, CardView>();
   private opened = false;
   private shards = 0;
   private levels: MetaUpgradeLevels = { power: 0, armor: 0, bounty: 0 };
 
-  public constructor(private readonly scene: Phaser.Scene, private readonly onPurchase: (id: MetaUpgradeId) => void) {}
+  public constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly onPurchase: (id: MetaUpgradeId) => void,
+    private readonly onResetProgress: () => Promise<void>
+  ) {}
 
   public create(): void {
     this.overlay = this.scene.add.rectangle(0, 0, 1080, 1920, 0x050916, 0.34).setOrigin(0).setDepth(2100).setInteractive().setVisible(false);
@@ -61,14 +70,26 @@ export class MetaUpgradePanel {
       void this.ascensionPanel.show();
     });
     children.push(ascensionBg, ascensionLabel, ascensionHit);
-    children.push(this.scene.add.text(-565, 1530, translate('lab.hint'), { fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '18px', color: '#8297c8', wordWrap: { width: 500 } }));
+    children.push(this.scene.add.text(-565, 1520, translate('lab.hint'), { fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '16px', color: '#8297c8', wordWrap: { width: 500 } }));
+
+    this.resetBackground = this.scene.add.graphics();
+    this.resetLabel = this.scene.add.text(-310, 1590, 'RESET PROGRESS', {
+      fontFamily: 'Arial Black, system-ui, sans-serif',
+      fontSize: '15px',
+      color: '#ffb3bd'
+    }).setOrigin(0.5);
+    this.resetHit = this.scene.add.rectangle(-310, 1590, 300, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    this.resetHit.on('pointerdown', () => this.handleResetTap());
+    this.paintResetButton(false);
+    children.push(this.resetBackground, this.resetLabel, this.resetHit);
+
     this.drawer = this.scene.add.container(1700, 0, children).setDepth(2101).setVisible(false);
     this.ascensionPanel = new AscensionPanel(this.scene);
     this.ascensionPanel.create();
   }
 
   public show(shards: number, levels: MetaUpgradeLevels): void { this.shards = shards; this.levels = levels; this.refresh(); if (this.opened) return; this.opened = true; this.overlay.setVisible(true).setAlpha(0); this.drawer.setVisible(true).setX(1700); this.scene.tweens.add({ targets: this.overlay, alpha: 1, duration: 180, ease: 'Quad.Out' }); this.scene.tweens.add({ targets: this.drawer, x: 1080, duration: 330, ease: 'Back.Out' }); }
-  public hide(): void { if (!this.opened || this.ascensionPanel.isOpen()) return; this.opened = false; this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 150, ease: 'Quad.In' }); this.scene.tweens.add({ targets: this.drawer, x: 1700, duration: 220, ease: 'Quad.In', onComplete: () => { if (!this.opened) { this.drawer.setVisible(false); this.overlay.setVisible(false); } } }); }
+  public hide(): void { if (!this.opened || this.ascensionPanel.isOpen()) return; this.disarmReset(); this.opened = false; this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 150, ease: 'Quad.In' }); this.scene.tweens.add({ targets: this.drawer, x: 1700, duration: 220, ease: 'Quad.In', onComplete: () => { if (!this.opened) { this.drawer.setVisible(false); this.overlay.setVisible(false); } } }); }
   public update(shards: number, levels: MetaUpgradeLevels): void { this.shards = shards; this.levels = levels; this.refresh(); }
   public isOpen(): boolean { return this.opened || this.ascensionPanel.isOpen(); }
 
@@ -83,6 +104,49 @@ export class MetaUpgradePanel {
     const buttonBackground = this.scene.add.graphics(); const costText = this.scene.add.text(0, 0, '', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '22px', color: '#12203d' }).setOrigin(0.5); const shard = this.scene.add.image(-54, 0, 'ui-core-shard').setDisplaySize(38, 38);
     const button = this.scene.add.container(-240, centerY + 93, [buttonBackground, shard, costText]); button.setSize(300, 72).setInteractive({ useHandCursor: true }); button.on('pointerdown', () => { this.scene.tweens.add({ targets: button, scaleX: 0.96, scaleY: 0.94, duration: 75, yoyo: true, ease: 'Quad.Out' }); this.onPurchase(id); });
     children.push(background, iconHalo, icon, name, description, levelText, effectText, button); return { children, view: { id, levelText, effectText, costText, buttonBackground, button } };
+  }
+
+  private handleResetTap(): void {
+    if (!this.resetArmed) {
+      this.resetArmed = true;
+      this.resetLabel.setText('TAP AGAIN TO RESET');
+      this.paintResetButton(true);
+      this.resetTimer?.remove(false);
+      this.resetTimer = this.scene.time.delayedCall(4000, () => this.disarmReset());
+      return;
+    }
+
+    this.resetTimer?.remove(false);
+    this.resetTimer = null;
+    this.resetArmed = false;
+    this.resetLabel.setText('RESETTING…');
+    this.resetHit.disableInteractive();
+    this.paintResetButton(true);
+    void this.onResetProgress().catch(() => {
+      this.resetHit.setInteractive({ useHandCursor: true });
+      this.resetLabel.setText('RESET FAILED — TRY AGAIN');
+      this.paintResetButton(true);
+      this.resetTimer = this.scene.time.delayedCall(2200, () => this.disarmReset());
+    });
+  }
+
+  private disarmReset(): void {
+    this.resetTimer?.remove(false);
+    this.resetTimer = null;
+    this.resetArmed = false;
+    if (!this.resetHit || !this.resetLabel) return;
+    this.resetHit.setInteractive({ useHandCursor: true });
+    this.resetLabel.setText('RESET PROGRESS');
+    this.paintResetButton(false);
+  }
+
+  private paintResetButton(armed: boolean): void {
+    if (!this.resetBackground) return;
+    this.resetBackground.clear();
+    this.resetBackground.fillStyle(armed ? 0x71253a : 0x281a2c, armed ? 0.9 : 0.78);
+    this.resetBackground.fillRoundedRect(-460, 1563, 300, 54, 22);
+    this.resetBackground.lineStyle(2, armed ? 0xff7f92 : 0xff95a6, armed ? 0.8 : 0.28);
+    this.resetBackground.strokeRoundedRect(-460, 1563, 300, 54, 22);
   }
 
   private refresh(): void {
