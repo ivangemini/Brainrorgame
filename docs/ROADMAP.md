@@ -37,8 +37,8 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 ### S-tier systems
 - [ ] Ascension / Prestige: reset chapter progress after a meaningful Rift milestone for permanent Chaos Stars while preserving collection-critical progress.
 - [ ] Ascension tree: Merge, Combat, Chaos and Collection branches with rule-changing unlocks rather than only flat stat inflation.
-- [ ] Mutation Album: track Normal / Charged / Prismatic / Crowned state for every form, exposing up to 144 collection targets from the existing 36-form roster.
-- [ ] Mutation Album milestone rewards and Codex completion surfaces.
+- [x] Mutation Album: track Normal / Charged / Prismatic / Crowned state for every form, exposing up to 144 collection targets from the existing 36-form roster.
+- [x] Mutation Album milestone rewards and Codex completion surfaces.
 - [ ] Weekly Chaos Run: deterministic weekly seed, rotating rules, weekly progression milestones and bounded rewards.
 - [ ] Weekly-run analytics: start, milestone, completion/failure depth and build-choice signals without player PII.
 
@@ -60,8 +60,8 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [ ] Rewarded ads remain optional acceleration/recovery; no progression wall requires an ad.
 - [ ] Prestige must create new decisions, not merely reset the same numbers.
 - [ ] Weekly content must remain deterministic/testable and not require server authority for core play.
-- [ ] Collection expansion should preferentially reuse existing production art through authored mutation presentation before adding dozens of new base families.
-- [ ] New currencies require a named sink, bounded source and save-migration plan before implementation.
+- [x] Collection expansion should preferentially reuse existing production art through authored mutation presentation before adding dozens of new base families.
+- [x] New currencies require a named sink, bounded source and save-migration plan before implementation: Mutation Album adds no currency; its bounded rewards feed existing Recruit/Core Lab sinks and save v11 migration is defined.
 
 ## Phase 4 — distribution
 - [x] CrazyGames adapter/build foundation.
@@ -90,8 +90,9 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [x] Persistent Anomaly Hunt with mutation safety net and Crown Signal guarantee.
 - [x] Chaos Draft, active abilities, crew synergies, mutations and Core Lab meta progression.
 - [x] Chaos Codex target follows the live roster instead of a hard-coded 21-form total.
+- [x] Mutation Album expands the 36 live forms into 144 persistent Normal/Charged/Prismatic/Crowned collection targets with finite milestone rewards.
 - [x] Fifteen long-tail achievements, daily rewards/missions and offline progression.
-- [x] Save migrations through v10.
+- [x] Save migrations through v11, including player-favorable Mutation Album backfill from legacy collection/board state.
 - [x] Yandex, CrazyGames, Poki, Playgama and GameDistribution adapter foundations.
 - [x] Typed privacy-safe analytics.
 - [x] Typed EN/RU localization framework with `?lang=` QA override.
@@ -102,6 +103,7 @@ Goal: turn the strong launch loop into a weeks-long meta loop without requiring 
 - [x] Core Lab upgrade names, descriptions and effect values are localized by stable upgrade id.
 - [x] Daily mission names are localized by stable mission id.
 - [x] All 15 achievement names/descriptions are localized through stable achievement ids and roster-aware targets.
+- [x] Mutation Album progress/milestone copy is localized in EN/RU and surfaced inside the existing Codex.
 - [x] Yandex moderation/release checklist.
 - [x] Purpose-sized runtime textures: creatures/enemies 384, mutation overlays 192, bosses 640.
 - [x] Project-owned provenance records for Phase 3 creature/boss art.
