@@ -29,8 +29,6 @@ const BRANCH_LABELS: Readonly<Record<AscensionBranch, string>> = {
   collection: 'COLLECTION'
 };
 
-type RiftReward = { readonly coins: number; readonly coreShards: number };
-
 export class RiftPanel {
   private overlay!: Phaser.GameObjects.Rectangle;
   private root!: Phaser.GameObjects.Container;
@@ -41,7 +39,7 @@ export class RiftPanel {
   public constructor(
     private readonly scene: Phaser.Scene,
     private readonly onAscend: () => void,
-    private readonly onStateChanged: (reward?: RiftReward) => void
+    private readonly onStateChanged: () => void
   ) {}
 
   public create(): void {
@@ -118,7 +116,7 @@ export class RiftPanel {
     this.content.add(this.scene.add.text(-375, -445, canAscend(state, this.chapter)
       ? `RIFT RESET READY • +${reward} ★`
       : `REACH CHAPTER ${requiredChapter} TO ASCEND`, {
-      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: canAscend(state, this.chapter) ? '#fff0a6' : '#aeb9d6'
+      fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: canAscend(state, this.chapter) ? '#fff0a6' : '#aebbd6'
     }));
     this.content.add(this.scene.add.text(-375, -411, 'Resets chapter, coins and crew board. Codex, Album, Core Lab and permanent unlocks stay.', {
       fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '14px', color: '#b8c3df', wordWrap: { width: 565 }
@@ -163,7 +161,7 @@ export class RiftPanel {
     const milestone = nextMutationAlbumMilestone(album);
     if (milestone) {
       const ready = completion.current >= milestone.target;
-      this.content.add(this.scene.add.text(-375, albumY + 148, `NEXT ${milestone.target}/${completion.total} • ${milestone.coins} COINS • ${milestone.coreShards} CORE • ${milestone.chaosStars} ★`, {
+      this.content.add(this.scene.add.text(-375, albumY + 148, `NEXT ${milestone.target}/${completion.total} • +${milestone.chaosStars} CHAOS STAR${milestone.chaosStars === 1 ? '' : 'S'}`, {
         fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '15px', color: ready ? '#fff0a6' : '#98a7c7'
       }));
       const claim = this.createButton(280, albumY + 177, 190, 54, ready ? translate('common.claim') : `${completion.current}/${milestone.target}`, 0x72efd0, () => {
@@ -172,8 +170,8 @@ export class RiftPanel {
         const result = claimMutationAlbumMilestone(currentAlbum, milestone.target, effects.albumMilestoneStarBonus);
         if (!result.claimed) return;
         syncCurrentMutationAlbumProgress(result.progress);
-        syncCurrentAscensionState(addChaosStars(getCurrentAscensionState(), result.reward.chaosStars));
-        this.onStateChanged({ coins: result.reward.coins, coreShards: result.reward.coreShards });
+        syncCurrentAscensionState(addChaosStars(getCurrentAscensionState(), result.chaosStars));
+        this.onStateChanged();
         this.render();
       });
       claim.setAlpha(ready ? 1 : 0.42);
