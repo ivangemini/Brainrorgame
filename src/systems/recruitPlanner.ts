@@ -21,10 +21,6 @@ function emptySlots(board: BoardState): number {
   return board.reduce((count, slot) => count + (slot === null ? 1 : 0), 0);
 }
 
-function familyAllowed(family: CreatureFamily, availableFamilies: readonly CreatureFamily[]): boolean {
-  return availableFamilies.includes(family);
-}
-
 function weightedStarterPool(board: BoardState, availableFamilies: readonly CreatureFamily[]): CreatureFamily[] {
   const weighted: CreatureFamily[] = [];
   for (const family of availableFamilies) {
@@ -38,12 +34,8 @@ function weightedStarterPool(board: BoardState, availableFamilies: readonly Crea
   return weighted;
 }
 
-function rescueCandidates(board: BoardState, availableFamilies: readonly CreatureFamily[]): BoardUnit[] {
-  return board.filter((unit): unit is BoardUnit => Boolean(
-    unit
-    && unit.level < 3
-    && familyAllowed(unit.family, availableFamilies)
-  ));
+function rescueCandidates(board: BoardState): BoardUnit[] {
+  return board.filter((unit): unit is BoardUnit => Boolean(unit && unit.level < 3));
 }
 
 export function planRecruit(
@@ -62,9 +54,10 @@ export function planRecruit(
   // One slot remains and the board currently has no legal merge. A normal
   // random T1 pull could seal the board permanently, so the recruiter instead
   // creates a same-family/same-level twin of an existing non-capped unit.
-  // This preserves the core merge rule while guaranteeing the new full board
-  // contains at least one legal move.
-  const candidates = rescueCandidates(board, availableFamilies);
+  // Existing board families are valid rescue targets even if an unlock cursor
+  // is temporarily stale: the rescue does not introduce a new family, it only
+  // guarantees a legal continuation of a lineage the player already owns.
+  const candidates = rescueCandidates(board);
   if (candidates.length === 0) return null;
   const lowestLevel = Math.min(...candidates.map((unit) => unit.level));
   const preferred = candidates.filter((unit) => unit.level === lowestLevel);
