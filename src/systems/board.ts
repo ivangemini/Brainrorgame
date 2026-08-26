@@ -21,6 +21,7 @@ export interface BoardActionResult {
   readonly upgraded?: BoardUnit;
   readonly mutationPromoted?: boolean;
   readonly ascended?: boolean;
+  readonly emergencyFusion?: boolean;
   readonly ascensionRecruitCreditsEarned?: number;
   readonly ascensionCatalystApplied?: boolean;
 }
@@ -37,6 +38,28 @@ export function createStarterBoard(size = 12): BoardState {
 
 export function firstEmptySlot(board: BoardState): number {
   return board.findIndex((slot) => slot === null);
+}
+
+export function canBoardUnitsMerge(a: BoardUnit, b: BoardUnit): boolean {
+  if (a.family !== b.family || a.level !== b.level) return false;
+  if (a.level < 3) return true;
+  return ascendMutationPair(a.mutation, b.mutation) !== null;
+}
+
+export function hasMergeablePair(board: BoardState): boolean {
+  for (let first = 0; first < board.length; first += 1) {
+    const a = board[first];
+    if (!a) continue;
+    for (let second = first + 1; second < board.length; second += 1) {
+      const b = board[second];
+      if (b && canBoardUnitsMerge(a, b)) return true;
+    }
+  }
+  return false;
+}
+
+export function isBoardDeadlocked(board: BoardState): boolean {
+  return firstEmptySlot(board) < 0 && !hasMergeablePair(board);
 }
 
 export function addUnit(board: BoardState, unit: BoardUnit): BoardState {
@@ -112,6 +135,46 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
         ascensionCatalystApplied: false
       };
     }
+  }
+
+  // A full 12-slot board can otherwise become a permanent soft-lock when every
+  // family/level combination is unique. Only in that exact state, allow an
+  // emergency same-level fusion. The drop target's family survives, so the
+  // player still controls which lineage is kept. Normal merge rules are
+  // untouched whenever the board has an empty slot or any legal merge.
+  if (isBoardDeadlocked(board) && source.level === target.level) {
+    const previousRank = Math.max(
+      getMutationDefinition(source.mutation).rank,
+      getMutationDefinition(target.mutation).rank
+    );
+    const resultingLevel = source.level < 3 ? (source.level + 1) as 2 | 3 : 3;
+    const emergencyMutation = source.level === 3
+      ? ascendMutationPair(source.mutation, target.mutation) ?? mergeMutation(source.mutation, target.mutation)
+      : mergeMutation(source.mutation, target.mutation);
+    const ascension = recordAscensionMerge(
+      resultingLevel,
+      emergencyMutation,
+      source.level < 3 && resultingLevel === 3
+    );
+    const upgraded: BoardUnit = {
+      id: `unjam-${target.family}-${resultingLevel}-${source.id}-${target.id}`,
+      family: target.family,
+      level: resultingLevel,
+      mutation: ascension.mutation
+    };
+    const promoted = getMutationDefinition(ascension.mutation).rank > previousRank;
+    next[from] = null;
+    next[to] = upgraded;
+    return {
+      board: next,
+      action: 'merge',
+      upgraded,
+      mutationPromoted: promoted,
+      ascended: source.level === 3 && promoted,
+      emergencyFusion: true,
+      ascensionRecruitCreditsEarned: ascension.recruitCreditsEarned,
+      ascensionCatalystApplied: ascension.catalystApplied
+    };
   }
 
   next[from] = target;

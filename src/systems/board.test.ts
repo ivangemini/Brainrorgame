@@ -7,9 +7,34 @@ import {
   syncAscensionRuntimeChapter,
   syncCurrentAscensionProgress
 } from './ascensionRuntime';
-import { addUnit, createStarterBoard, firstEmptySlot, moveOrMerge } from './board';
+import {
+  addUnit,
+  createStarterBoard,
+  firstEmptySlot,
+  hasMergeablePair,
+  isBoardDeadlocked,
+  moveOrMerge,
+  type BoardState
+} from './board';
 
 afterEach(() => resetCurrentAscensionProgress());
+
+function createDeadlockedBoard(): BoardState {
+  return [
+    { id: 'p1', family: 'pinguino', level: 1, mutation: 'none' },
+    { id: 't2', family: 'toastodilo', level: 2, mutation: 'none' },
+    { id: 'l3', family: 'lampalotl', level: 3, mutation: 'crowned' },
+    { id: 'd1', family: 'dishnail', level: 1, mutation: 'charged' },
+    { id: 'm2', family: 'mochimoth', level: 2, mutation: 'none' },
+    { id: 'r3', family: 'routeraptor', level: 3, mutation: 'prismatic' },
+    { id: 'v1', family: 'vendinguana', level: 1, mutation: 'none' },
+    { id: 'u2', family: 'umbrellama', level: 2, mutation: 'charged' },
+    { id: 'o3', family: 'mopossum', level: 3, mutation: 'crowned' },
+    { id: 'f1', family: 'fanthom', level: 1, mutation: 'prismatic' },
+    { id: 's2', family: 'socktopus', level: 2, mutation: 'none' },
+    { id: 'w3', family: 'microwhale', level: 3, mutation: 'charged' }
+  ];
+}
 
 describe('board rules', () => {
   it('starts with two immediately mergeable common pairs', () => {
@@ -124,6 +149,46 @@ describe('board rules', () => {
     board[0] = { id: 'epic', family: 'pinguino', level: 3, mutation: 'prismatic' };
     board[1] = { id: 'legend', family: 'pinguino', level: 3, mutation: 'crowned' };
     expect(moveOrMerge(board, 0, 1).action).toBe('swap');
+  });
+
+  it('detects a full board with no normal merge as a deadlock', () => {
+    const board = createDeadlockedBoard();
+    expect(firstEmptySlot(board)).toBe(-1);
+    expect(hasMergeablePair(board)).toBe(false);
+    expect(isBoardDeadlocked(board)).toBe(true);
+  });
+
+  it('uses a same-level emergency fusion to free a slot from a deadlock', () => {
+    const board = createDeadlockedBoard();
+    const result = moveOrMerge(board, 0, 3);
+    expect(result.action).toBe('merge');
+    expect(result.emergencyFusion).toBe(true);
+    expect(result.board[0]).toBeNull();
+    expect(result.upgraded).toMatchObject({ family: 'dishnail', level: 2, mutation: 'charged' });
+    expect(isBoardDeadlocked(result.board)).toBe(false);
+  });
+
+  it('keeps cross-family same-level units separate when the board is not deadlocked', () => {
+    const board = [...createStarterBoard()];
+    board[0] = { id: 'p', family: 'pinguino', level: 1, mutation: 'none' };
+    board[1] = { id: 'd', family: 'dishnail', level: 1, mutation: 'none' };
+    const result = moveOrMerge(board, 0, 1);
+    expect(result.action).toBe('swap');
+    expect(result.emergencyFusion).toBeUndefined();
+  });
+
+  it('can compress capped T3 units when a full board has no other exit', () => {
+    const board = createDeadlockedBoard().map((unit, index) => unit && ({
+      ...unit,
+      level: 3 as const,
+      mutation: index % 2 === 0 ? 'crowned' as const : 'charged' as const
+    }));
+    const result = moveOrMerge(board, 0, 1);
+    expect(isBoardDeadlocked(board)).toBe(true);
+    expect(result.action).toBe('merge');
+    expect(result.emergencyFusion).toBe(true);
+    expect(result.upgraded).toMatchObject({ family: 'toastodilo', level: 3, mutation: 'crowned' });
+    expect(result.board[0]).toBeNull();
   });
 
   it('adds a recruit into the first empty slot', () => {
