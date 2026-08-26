@@ -20,14 +20,17 @@ The main crew board is a 5 x 3 grid: **15 slots**. This gives the player more wo
 
 Historical 12-slot saves are accepted and expanded with three empty slots when loaded, so existing progression is preserved.
 
-## Deadlock prevention
+## Deadlock prevention and smart Recruit
 
 Normal gameplay prevents deadlocks before a recruit is generated rather than repairing the board after it becomes invalid.
 
-The recruit planner uses two layers:
+The recruit planner uses three layers:
 
-1. While the board has breathing room, recruits remain T1 but the family pool is weighted toward T1 families already on the board. This raises useful-pair frequency without removing roster variety.
-2. If only one empty slot remains and there is currently no legal merge, the recruit is forced to become a twin of an existing non-capped unit: same family and same level. Filling the final slot therefore creates at least one legal merge.
+1. With normal breathing room, recruits remain T1 but their family weights favor a lineage where the next pull advances an existing merge chain. A lone T1 is the strongest normal signal because another copy creates an immediate legal merge.
+2. Families represented only by max-tier T3 creatures are **downweighted, not banned**. A second T3 can still be useful for mutation ascension/consolidation, so removing that family permanently would destroy legitimate late-game builds.
+3. If only one empty slot remains and there is currently no legal merge, the recruit is forced to become a twin of an existing non-capped unit: same family and same level. Filling the final slot therefore creates at least one legal merge.
+
+When only a few cells remain, opening a completely new lineage receives the lowest normal weight. This reduces board fragmentation without turning Recruit into a deterministic selector.
 
 Max-tier T3 units also remain consolidatable with another T3 of the same family. With 15 board slots and 12 creature families, a board dominated entirely by T3 units necessarily contains a same-family pair. This closes the late-game loophole without ever permitting cross-family fusion.
 
@@ -47,6 +50,9 @@ No creature is deleted and no cross-family merge is introduced. The repair exist
 
 The board teaches and repeats the same instruction: `MATCH SAME CREATURE + SAME LEVEL`.
 
+- T1/T2/T3 use progressively stronger frame weight, character scale, tier markers and Roman-tier badges so level is readable before the number is consciously read.
 - When the board becomes full, one legal pair stays visibly highlighted until the player acts.
-- While dragging a creature, every legal same-family + same-level target is highlighted.
+- While dragging a creature, every legal same-family + same-level target is highlighted and incompatible creatures are visually de-emphasized.
+- The Merge Crew header exposes `PAUSE` / `FIGHT`. Preparation mode freezes combat and ability timers while board input remains available.
+- Boss encounters enter preparation automatically so the player is never punished for taking time to inspect and merge the board before the fight.
 - There is no `CHAOS FUSION` state and no UI suggesting that unrelated creatures can be combined.
