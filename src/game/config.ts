@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import type { PlatformAdapter } from '../platform/PlatformAdapter';
 import { BootScene } from '../scenes/BootScene';
-import { GameScene } from '../scenes/GameScene';
+import { ManagedGameScene } from '../scenes/ManagedGameScene';
 import type { GameSave } from '../state/save';
 
 const DESIGN_WIDTH = 1080;
@@ -34,6 +34,6 @@ export function createGameConfig(parent: string, bootstrap: GameBootstrapData): 
       }
     },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: DESIGN_WIDTH, height: DESIGN_HEIGHT },
-    scene: [BootScene, GameScene]
+    scene: [BootScene, ManagedGameScene]
   };
 }
