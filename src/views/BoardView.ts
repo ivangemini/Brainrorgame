@@ -13,6 +13,7 @@ import {
 import {
   BOARD_COLUMNS,
   BOARD_ROWS,
+  canBoardUnitsMerge,
   findMergeablePair,
   firstEmptySlot,
   type BoardState,
@@ -36,10 +37,11 @@ interface UnitViewMeta { readonly slot: number; readonly unitId: string; }
 
 export class BoardView {
   private readonly unitViews = new Map<number, Phaser.GameObjects.Container>();
+  private readonly mergeGuideRings = new Map<number, Phaser.GameObjects.Graphics>();
+  private board: BoardState = [];
   private synergyText!: Phaser.GameObjects.Text;
   private abilityBar: ActiveAbilityBar | null = null;
   private lastSynergySignature = '';
-  private lastMergeGuideSignature = '';
 
   public constructor(
     private readonly scene: Phaser.Scene,
@@ -71,11 +73,14 @@ export class BoardView {
     this.abilityBar.create();
     this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.updateAbilities, this);
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.clearMergeGuideRings();
       this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.updateAbilities, this);
     });
   }
 
   public render(board: BoardState, pulseSlot = -1): void {
+    this.clearMergeGuideRings();
+    this.board = board;
     for (const view of this.unitViews.values()) view.destroy();
     this.unitViews.clear();
     for (let index = 0; index < board.length; index += 1) {
@@ -167,38 +172,57 @@ export class BoardView {
   }
 
   private guideFullBoardMerge(board: BoardState): void {
-    if (firstEmptySlot(board) >= 0) {
-      this.lastMergeGuideSignature = '';
-      return;
-    }
+    if (firstEmptySlot(board) >= 0) return;
     const pair = findMergeablePair(board);
-    if (!pair) {
-      this.lastMergeGuideSignature = '';
-      return;
-    }
-    const firstUnit = board[pair[0]];
-    const secondUnit = board[pair[1]];
-    if (!firstUnit || !secondUnit) return;
-    const signature = `${firstUnit.id}|${secondUnit.id}`;
-    if (signature === this.lastMergeGuideSignature) return;
-    this.lastMergeGuideSignature = signature;
+    if (!pair) return;
 
     for (const slot of pair) {
-      const view = this.unitViews.get(slot);
-      if (!view) continue;
+      this.addMergeGuideRing(slot, 0xffdf6b, 0.96);
       const position = this.slotPosition(slot);
-      this.scene.tweens.killTweensOf(view);
-      this.scene.tweens.add({
-        targets: view,
-        scaleX: 1.1,
-        scaleY: 1.1,
-        duration: 190,
-        yoyo: true,
-        repeat: 1,
-        ease: 'Sine.InOut'
-      });
       this.fx.flashRing(position.x, position.y, 0xffdf6b);
     }
+  }
+
+  private showDragMergeTargets(sourceSlot: number, sourceUnit: BoardUnit): void {
+    this.clearMergeGuideRings();
+    for (let slot = 0; slot < this.board.length; slot += 1) {
+      if (slot === sourceSlot) continue;
+      const target = this.board[slot];
+      if (!target || !canBoardUnitsMerge(sourceUnit, target)) continue;
+      this.addMergeGuideRing(slot, 0x79f4ff, 0.94);
+    }
+  }
+
+  private addMergeGuideRing(slot: number, color: number, alpha: number): void {
+    if (this.mergeGuideRings.has(slot)) return;
+    const position = this.slotPosition(slot);
+    const ring = this.scene.add.graphics().setDepth(900);
+    ring.lineStyle(7, color, alpha);
+    ring.strokeRoundedRect(
+      position.x - SLOT_SIZE / 2 + 4,
+      position.y - SLOT_SIZE / 2 + 4,
+      SLOT_SIZE - 8,
+      SLOT_SIZE - 8,
+      36
+    );
+    ring.lineStyle(2, 0xffffff, 0.62);
+    ring.strokeRoundedRect(
+      position.x - SLOT_SIZE / 2 + 11,
+      position.y - SLOT_SIZE / 2 + 11,
+      SLOT_SIZE - 22,
+      SLOT_SIZE - 22,
+      31
+    );
+    this.mergeGuideRings.set(slot, ring);
+    this.scene.tweens.add({ targets: ring, alpha: 0.36, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+  }
+
+  private clearMergeGuideRings(): void {
+    for (const ring of this.mergeGuideRings.values()) {
+      this.scene.tweens.killTweensOf(ring);
+      ring.destroy();
+    }
+    this.mergeGuideRings.clear();
   }
 
   private createUnitView(slot: number, unit: BoardUnit): Phaser.GameObjects.Container {
@@ -269,9 +293,24 @@ export class BoardView {
       }
     });
 
-    view.on('dragstart', () => { if (this.isLocked()) return; view.setDepth(1000); this.scene.tweens.add({ targets: view, scaleX: 1.08, scaleY: 1.08, duration: 110, ease: 'Back.Out' }); });
+    view.on('dragstart', () => {
+      if (this.isLocked()) return;
+      this.showDragMergeTargets(slot, unit);
+      view.setDepth(1000);
+      this.scene.tweens.add({ targets: view, scaleX: 1.08, scaleY: 1.08, duration: 110, ease: 'Back.Out' });
+    });
     view.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => { if (!this.isLocked()) view.setPosition(dragX, dragY); });
-    view.on('dragend', () => { const meta = view.getData('meta') as UnitViewMeta; if (this.isLocked()) { this.snapHome(view, meta.slot); return; } this.onDrop(view, meta.slot, this.closestSlot(view.x, view.y)); });
+    view.on('dragend', () => {
+      const meta = view.getData('meta') as UnitViewMeta;
+      this.clearMergeGuideRings();
+      if (this.isLocked()) {
+        this.snapHome(view, meta.slot);
+        this.scene.time.delayedCall(260, () => this.guideFullBoardMerge(this.board));
+        return;
+      }
+      this.onDrop(view, meta.slot, this.closestSlot(view.x, view.y));
+      this.scene.time.delayedCall(420, () => this.guideFullBoardMerge(this.board));
+    });
     return view;
   }
 
