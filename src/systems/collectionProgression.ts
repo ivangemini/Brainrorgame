@@ -1,4 +1,5 @@
 import { getAllCreatures, type CreatureKey } from '../content/creatures';
+import { getAchievementCopy, type AchievementCopyId } from '../i18n/achievementCopy';
 import type { BoardState } from './board';
 import type { EncounterStep } from './encounters';
 import type { MetaUpgradeLevels } from './metaProgression';
@@ -6,7 +7,7 @@ import type { MetaUpgradeLevels } from './metaProgression';
 export type CollectionKey = CreatureKey;
 export const COLLECTION_KEYS: readonly CollectionKey[] = getAllCreatures().map((creature) => creature.key);
 export type LifetimeEvent = 'merge' | 'recruit' | 'defeat' | 'boss' | 'upgrade';
-export type AchievementId = 'first-fusion'|'merge-maniac'|'fusion-factory'|'fusion-overdrive'|'weird-recruiter'|'anomaly-scout'|'anomaly-obsessed'|'wave-cleaner'|'chaos-cleaner'|'fortress-janitor'|'boss-breaker'|'boss-nightmare'|'core-engineer'|'codex-scout'|'codex-complete';
+export type AchievementId = AchievementCopyId;
 export interface LifetimeStats { readonly merges:number; readonly recruits:number; readonly defeats:number; readonly bosses:number; readonly upgrades:number; }
 export interface CollectionProgress { readonly discovered:readonly CollectionKey[]; readonly stats:LifetimeStats; readonly claimedAchievements:readonly AchievementId[]; }
 export interface AchievementReward { readonly coins:number; readonly coreShards:number; }
@@ -15,23 +16,28 @@ export interface AchievementDefinition { readonly id:AchievementId; readonly nam
 export interface AchievementClaimResult { readonly claimed:boolean; readonly reward:AchievementReward; readonly progress:CollectionProgress; }
 
 const COMPLETE_CODEX_TARGET = COLLECTION_KEYS.length;
-export const ACHIEVEMENTS: readonly AchievementDefinition[] = [
-  { id:'first-fusion',name:'FIRST FUSION',description:'Complete 1 merge',metric:'merges',target:1,reward:{coins:50,coreShards:0}},
-  { id:'merge-maniac',name:'MERGE MANIAC',description:'Complete 10 merges',metric:'merges',target:10,reward:{coins:0,coreShards:1}},
-  { id:'fusion-factory',name:'FUSION FACTORY',description:'Complete 50 merges',metric:'merges',target:50,reward:{coins:250,coreShards:0}},
-  { id:'fusion-overdrive',name:'FUSION OVERDRIVE',description:'Complete 150 merges',metric:'merges',target:150,reward:{coins:0,coreShards:3}},
-  { id:'weird-recruiter',name:'WEIRD RECRUITER',description:'Recruit 10 weirdos',metric:'recruits',target:10,reward:{coins:100,coreShards:0}},
-  { id:'anomaly-scout',name:'ANOMALY SCOUT',description:'Recruit 50 weirdos',metric:'recruits',target:50,reward:{coins:300,coreShards:0}},
-  { id:'anomaly-obsessed',name:'ANOMALY OBSESSED',description:'Recruit 150 weirdos',metric:'recruits',target:150,reward:{coins:0,coreShards:3}},
-  { id:'wave-cleaner',name:'WAVE CLEANER',description:'Defeat 20 targets',metric:'defeats',target:20,reward:{coins:150,coreShards:0}},
-  { id:'chaos-cleaner',name:'CHAOS CLEANER',description:'Defeat 100 targets',metric:'defeats',target:100,reward:{coins:350,coreShards:0}},
-  { id:'fortress-janitor',name:'FORTRESS JANITOR',description:'Defeat 300 targets',metric:'defeats',target:300,reward:{coins:0,coreShards:4}},
-  { id:'boss-breaker',name:'BOSS BREAKER',description:'Defeat 5 bosses',metric:'bosses',target:5,reward:{coins:0,coreShards:2}},
-  { id:'boss-nightmare',name:'BOSS NIGHTMARE',description:'Defeat 20 bosses',metric:'bosses',target:20,reward:{coins:0,coreShards:4}},
-  { id:'core-engineer',name:'CORE ENGINEER',description:'Buy 3 Core Lab upgrades',metric:'upgrades',target:3,reward:{coins:0,coreShards:1}},
-  { id:'codex-scout',name:'CODEX SCOUT',description:'Discover 7 creature forms',metric:'discoveries',target:7,reward:{coins:200,coreShards:0}},
-  { id:'codex-complete',name:'CODEX COMPLETE',description:`Discover all ${COMPLETE_CODEX_TARGET} forms`,metric:'discoveries',target:COMPLETE_CODEX_TARGET,reward:{coins:0,coreShards:7}}
+type AchievementConfig = Omit<AchievementDefinition, 'name' | 'description'>;
+const ACHIEVEMENT_CONFIGS: readonly AchievementConfig[] = [
+  { id:'first-fusion',metric:'merges',target:1,reward:{coins:50,coreShards:0}},
+  { id:'merge-maniac',metric:'merges',target:10,reward:{coins:0,coreShards:1}},
+  { id:'fusion-factory',metric:'merges',target:50,reward:{coins:250,coreShards:0}},
+  { id:'fusion-overdrive',metric:'merges',target:150,reward:{coins:0,coreShards:3}},
+  { id:'weird-recruiter',metric:'recruits',target:10,reward:{coins:100,coreShards:0}},
+  { id:'anomaly-scout',metric:'recruits',target:50,reward:{coins:300,coreShards:0}},
+  { id:'anomaly-obsessed',metric:'recruits',target:150,reward:{coins:0,coreShards:3}},
+  { id:'wave-cleaner',metric:'defeats',target:20,reward:{coins:150,coreShards:0}},
+  { id:'chaos-cleaner',metric:'defeats',target:100,reward:{coins:350,coreShards:0}},
+  { id:'fortress-janitor',metric:'defeats',target:300,reward:{coins:0,coreShards:4}},
+  { id:'boss-breaker',metric:'bosses',target:5,reward:{coins:0,coreShards:2}},
+  { id:'boss-nightmare',metric:'bosses',target:20,reward:{coins:0,coreShards:4}},
+  { id:'core-engineer',metric:'upgrades',target:3,reward:{coins:0,coreShards:1}},
+  { id:'codex-scout',metric:'discoveries',target:7,reward:{coins:200,coreShards:0}},
+  { id:'codex-complete',metric:'discoveries',target:COMPLETE_CODEX_TARGET,reward:{coins:0,coreShards:7}}
 ] as const;
+export const ACHIEVEMENTS: readonly AchievementDefinition[] = ACHIEVEMENT_CONFIGS.map((config) => ({
+  ...config,
+  ...getAchievementCopy(config.id, config.target)
+}));
 
 export function createDefaultCollectionProgress(board?:BoardState):CollectionProgress { const progress:CollectionProgress={discovered:[],stats:{merges:0,recruits:0,defeats:0,bosses:0,upgrades:0},claimedAchievements:[]}; return board?discoverFromBoard(progress,board):progress; }
 export function backfillCollectionProgress(board:BoardState,chapter:number,encounterStep:EncounterStep,recruitSerial:number,upgrades:MetaUpgradeLevels):CollectionProgress { const minimumMergeCount=board.reduce((total,unit)=>{if(!unit)return total; return total+(unit.level===3?3:unit.level===2?1:0);},0); const completedChapters=Math.max(0,Math.floor(chapter)-1); const completedTargets=completedChapters*4+Math.max(0,Math.min(3,encounterStep)); const progress:CollectionProgress={discovered:[],stats:{merges:minimumMergeCount,recruits:Math.max(0,Math.floor(recruitSerial)),defeats:completedTargets,bosses:completedChapters,upgrades:upgrades.power+upgrades.armor+upgrades.bounty},claimedAchievements:[]}; return discoverFromBoard(progress,board); }
