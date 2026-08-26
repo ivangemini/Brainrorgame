@@ -40,7 +40,7 @@ export function beginAscensionRunRuntime(): void {
   const effects = getCurrentAscensionEffects();
   currentChapter = 1;
   totalMergesThisAscension = 0;
-  recruitCredits = effects.startingRecruitCredits;
+  recruitCredits = 0;
   mutationCatalystChapter = 0;
   lastStandCharges = effects.fortressLastStandCharges;
   albumCacheClaimed = false;
