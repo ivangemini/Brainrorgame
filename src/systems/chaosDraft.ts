@@ -1,3 +1,4 @@
+import { getCurrentAscensionEffects } from './ascensionRuntime';
 import type { EncounterStep } from './encounters';
 
 export const CHAOS_PERK_IDS = [
@@ -11,6 +12,7 @@ export const CHAOS_PERK_IDS = [
 
 export type ChaosPerkId = (typeof CHAOS_PERK_IDS)[number];
 export type ChaosDraftCheckpoint = 1 | 2;
+export type ChaosDraftOffers = readonly [ChaosPerkId, ChaosPerkId, ChaosPerkId] | readonly [ChaosPerkId, ChaosPerkId, ChaosPerkId, ChaosPerkId];
 
 export interface ChaosPerkDefinition {
   readonly id: ChaosPerkId;
@@ -56,13 +58,30 @@ export function needsChaosDraft(step: EncounterStep, selectedCount: number): boo
   return Math.max(0, Math.floor(selectedCount)) < checkpoint;
 }
 
-export function getChaosPerkOffers(chapter: number, checkpoint: ChaosDraftCheckpoint, selected: readonly ChaosPerkId[]): readonly [ChaosPerkId, ChaosPerkId, ChaosPerkId] {
+export function getChaosPerkOffers(
+  chapter: number,
+  checkpoint: ChaosDraftCheckpoint,
+  selected: readonly ChaosPerkId[],
+  rerollIndex = 0
+): ChaosDraftOffers {
   const excluded = new Set(selected);
   const candidates = CHAOS_PERK_IDS.filter((id) => !excluded.has(id));
-  const seed = Math.max(1, Math.floor(chapter)) * 97 + checkpoint * 41;
+  const safeChapter = Math.max(1, Math.floor(chapter));
+  const safeReroll = Math.max(0, Math.floor(rerollIndex));
+  const seed = safeChapter * 97 + checkpoint * 41 + safeReroll * 811;
   const ordered = [...candidates].sort((a, b) => score(seed, a) - score(seed, b));
   const fallback = CHAOS_PERK_IDS.filter((id) => !ordered.includes(id));
   const pool = [...ordered, ...fallback];
+  const fourthDoorEvery = getCurrentAscensionEffects().extraDraftChoiceEveryChapters;
+  const fourthDoorActive = fourthDoorEvery !== null && safeChapter % fourthDoorEvery === 0;
+  if (fourthDoorActive) {
+    return [
+      pool[0] ?? 'impact-jelly',
+      pool[1] ?? 'tempo-worm',
+      pool[2] ?? 'fortress-foam',
+      pool[3] ?? 'bounty-magnet'
+    ];
+  }
   return [pool[0] ?? 'impact-jelly', pool[1] ?? 'tempo-worm', pool[2] ?? 'fortress-foam'];
 }
 
