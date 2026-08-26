@@ -1,5 +1,11 @@
-import { COLLECTION_KEYS, type CollectionKey } from './collectionProgression';
 import { MUTATION_IDS, type MutationId } from '../content/mutations';
+import type { BoardState } from './board';
+import {
+  COLLECTION_KEYS,
+  isCollectionKey,
+  type CollectionKey,
+  type CollectionProgress
+} from './collectionProgression';
 
 export type MutationAlbumKey = `${CollectionKey}:${MutationId}`;
 
@@ -41,8 +47,34 @@ export function discoverMutationAlbumEntry(
   return { ...progress, discovered: [...progress.discovered, key] };
 }
 
+export function backfillMutationAlbumProgress(
+  collection: CollectionProgress,
+  board: BoardState
+): MutationAlbumProgress {
+  let progress = createDefaultMutationAlbumProgress();
+
+  // Legacy collection saves did not retain rarity per discovery. Treat those
+  // discoveries as the Normal state so existing players keep collection credit.
+  for (const creature of collection.discovered) {
+    progress = discoverMutationAlbumEntry(progress, creature, 'none');
+  }
+
+  // Preserve any rarer states that are still observable on the live board.
+  for (const unit of board) {
+    if (!unit) continue;
+    const creature = `${unit.family}-${unit.level}`;
+    if (!isCollectionKey(creature)) continue;
+    progress = discoverMutationAlbumEntry(progress, creature, unit.mutation);
+  }
+
+  return progress;
+}
+
 export function mutationAlbumCountForCreature(progress: MutationAlbumProgress, creature: CollectionKey): number {
-  return MUTATION_IDS.reduce((count, mutation) => count + (progress.discovered.includes(mutationAlbumKey(creature, mutation)) ? 1 : 0), 0);
+  return MUTATION_IDS.reduce(
+    (count, mutation) => count + (progress.discovered.includes(mutationAlbumKey(creature, mutation)) ? 1 : 0),
+    0
+  );
 }
 
 export function mutationAlbumCompletion(progress: MutationAlbumProgress): { current: number; total: number; percent: number } {
@@ -52,6 +84,12 @@ export function mutationAlbumCompletion(progress: MutationAlbumProgress): { curr
 
 export function nextMutationAlbumMilestone(progress: MutationAlbumProgress): MutationAlbumMilestone | null {
   return MUTATION_ALBUM_MILESTONES.find((milestone) => !progress.claimedMilestones.includes(milestone.target)) ?? null;
+}
+
+export function hasMutationAlbumClaimAvailable(progress: MutationAlbumProgress): boolean {
+  return MUTATION_ALBUM_MILESTONES.some(
+    (milestone) => !progress.claimedMilestones.includes(milestone.target) && progress.discovered.length >= milestone.target
+  );
 }
 
 export function claimMutationAlbumMilestone(progress: MutationAlbumProgress, target: number): {
