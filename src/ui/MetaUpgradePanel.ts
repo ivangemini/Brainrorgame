@@ -1,8 +1,8 @@
 import type * as Phaser from 'phaser';
 import { translate } from '../i18n';
+import { localizedMetaEffect, localizedMetaUpgrade } from '../i18n/gameplayContent';
 import {
   META_UPGRADES,
-  effectValueText,
   getUpgradeCost,
   type MetaUpgradeId,
   type MetaUpgradeLevels
@@ -56,13 +56,13 @@ export class MetaUpgradePanel {
   public isOpen(): boolean { return this.opened; }
 
   private createCard(id: MetaUpgradeId, centerY: number): { children: Phaser.GameObjects.GameObject[]; view: CardView } {
-    const definition = META_UPGRADES.find((item) => item.id === id)!; const children: Phaser.GameObjects.GameObject[] = []; const background = this.scene.add.graphics();
+    const definition = META_UPGRADES.find((item) => item.id === id)!; const localized = localizedMetaUpgrade(id); const children: Phaser.GameObjects.GameObject[] = []; const background = this.scene.add.graphics();
     background.fillStyle(0x151f42, 0.98); background.fillRoundedRect(-580, centerY - 130, 520, 270, 40); background.lineStyle(3, definition.accentColor, 0.28); background.strokeRoundedRect(-580, centerY - 130, 520, 270, 40);
     const iconHalo = this.scene.add.circle(-492, centerY - 36, 66, definition.accentColor, 0.12); const icon = this.scene.add.image(-492, centerY - 36, definition.texture).setDisplaySize(132, 132);
-    const name = this.scene.add.text(-408, centerY - 112, definition.name, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '26px', color: '#f4f8ff', stroke: '#172144', strokeThickness: 5 });
-    const description = this.scene.add.text(-408, centerY - 70, definition.shortDescription, { fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '18px', color: '#9fb6e8', wordWrap: { width: 310 } });
+    const name = this.scene.add.text(-408, centerY - 112, localized.name, { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '25px', color: '#f4f8ff', stroke: '#172144', strokeThickness: 5 });
+    const description = this.scene.add.text(-408, centerY - 70, localized.description, { fontFamily: 'system-ui, sans-serif', fontStyle: '700', fontSize: '17px', color: '#9fb6e8', wordWrap: { width: 310 } });
     const levelText = this.scene.add.text(-408, centerY - 6, '', { fontFamily: 'system-ui, sans-serif', fontStyle: '900', fontSize: '19px', color: '#d9ecff' });
-    const effectText = this.scene.add.text(-408, centerY + 28, '', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '21px', color: `#${definition.accentColor.toString(16).padStart(6, '0')}` });
+    const effectText = this.scene.add.text(-408, centerY + 28, '', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '19px', color: `#${definition.accentColor.toString(16).padStart(6, '0')}` });
     const buttonBackground = this.scene.add.graphics(); const costText = this.scene.add.text(0, 0, '', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '22px', color: '#12203d' }).setOrigin(0.5); const shard = this.scene.add.image(-54, 0, 'ui-core-shard').setDisplaySize(38, 38);
     const button = this.scene.add.container(-240, centerY + 93, [buttonBackground, shard, costText]); button.setSize(300, 72).setInteractive({ useHandCursor: true }); button.on('pointerdown', () => { this.scene.tweens.add({ targets: button, scaleX: 0.96, scaleY: 0.94, duration: 75, yoyo: true, ease: 'Quad.Out' }); this.onPurchase(id); });
     children.push(background, iconHalo, icon, name, description, levelText, effectText, button); return { children, view: { id, levelText, effectText, costText, buttonBackground, button } };
@@ -70,6 +70,6 @@ export class MetaUpgradePanel {
 
   private refresh(): void {
     this.shardText.setText(`${this.shards}`);
-    for (const [id, card] of this.cards) { const definition = META_UPGRADES.find((item) => item.id === id)!; const level = this.levels[id]; const cost = getUpgradeCost(id, this.levels); card.levelText.setText(translate('common.level', { current: level, max: definition.maxLevel })); card.effectText.setText(effectValueText(id, level)); card.buttonBackground.clear(); if (cost === null) { card.buttonBackground.fillStyle(0x53617c, 0.8); card.buttonBackground.fillRoundedRect(-150, -36, 300, 72, 30); card.costText.setText(translate('common.maxed')).setX(0); card.button.disableInteractive(); } else { const canBuy = this.shards >= cost; card.buttonBackground.fillStyle(canBuy ? definition.accentColor : 0x667089, canBuy ? 1 : 0.62); card.buttonBackground.fillRoundedRect(-150, -36, 300, 72, 30); card.buttonBackground.lineStyle(3, 0xffffff, canBuy ? 0.46 : 0.12); card.buttonBackground.strokeRoundedRect(-150, -36, 300, 72, 30); card.costText.setText(`${cost}`).setX(14); card.button.setInteractive({ useHandCursor: true }); } }
+    for (const [id, card] of this.cards) { const definition = META_UPGRADES.find((item) => item.id === id)!; const level = this.levels[id]; const cost = getUpgradeCost(id, this.levels); card.levelText.setText(translate('common.level', { current: level, max: definition.maxLevel })); card.effectText.setText(localizedMetaEffect(id, level)); card.buttonBackground.clear(); if (cost === null) { card.buttonBackground.fillStyle(0x53617c, 0.8); card.buttonBackground.fillRoundedRect(-150, -36, 300, 72, 30); card.costText.setText(translate('common.maxed')).setX(0); card.button.disableInteractive(); } else { const canBuy = this.shards >= cost; card.buttonBackground.fillStyle(canBuy ? definition.accentColor : 0x667089, canBuy ? 1 : 0.62); card.buttonBackground.fillRoundedRect(-150, -36, 300, 72, 30); card.buttonBackground.lineStyle(3, 0xffffff, canBuy ? 0.46 : 0.12); card.buttonBackground.strokeRoundedRect(-150, -36, 300, 72, 30); card.costText.setText(`${cost}`).setX(14); card.button.setInteractive({ useHandCursor: true }); } }
   }
 }
