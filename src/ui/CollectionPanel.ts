@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { getAllCreatures } from '../content/creatures';
 import { getMutationDefinition, type MutationId } from '../content/mutations';
 import { translate } from '../i18n';
+import { riftCopy } from '../i18n/riftCopy';
 import {
   ACHIEVEMENTS,
   achievementProgress,
@@ -9,6 +10,7 @@ import {
   type AchievementId,
   type CollectionProgress
 } from '../systems/collectionProgression';
+import { getCurrentMutationAlbumProgress, mutationAlbumCompletion } from '../systems/mutationAlbum';
 
 const CREATURES_PER_PAGE = 8;
 const ACHIEVEMENTS_PER_PAGE = 6;
@@ -19,6 +21,7 @@ export class CollectionPanel {
   private cardsRoot!: Phaser.GameObjects.Container;
   private achievementsRoot!: Phaser.GameObjects.Container;
   private titleCount!: Phaser.GameObjects.Text;
+  private albumCount!: Phaser.GameObjects.Text;
   private pageText!: Phaser.GameObjects.Text;
   private prevButton!: Phaser.GameObjects.Container;
   private nextButton!: Phaser.GameObjects.Container;
@@ -43,6 +46,7 @@ export class CollectionPanel {
     const icon = this.scene.add.image(-365, -621, 'ui-chaos-codex').setDisplaySize(86, 86);
     const title = this.scene.add.text(-305, -657, translate('codex.title'), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '39px', color: '#f5fbff', stroke: '#151a39', strokeThickness: 8 });
     this.titleCount = this.scene.add.text(-303, -607, translate('codex.discovered', { current: 0, total: getAllCreatures().length }), { fontFamily: 'system-ui, sans-serif', fontStyle: '800', fontSize: '22px', color: '#bfefff' });
+    this.albumCount = this.scene.add.text(400, -607, riftCopy('codexAlbum', { current: 0, total: 144 }), { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '14px', color: '#8ff4cf' }).setOrigin(1, 0);
     const closeBg = this.scene.add.circle(394, -622, 34, 0x4c3a72, 0.95).setStrokeStyle(3, 0xffffff, 0.25);
     const close = this.scene.add.text(394, -623, '×', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '44px', color: '#ffffff' }).setOrigin(0.5);
     const closeHit = this.scene.add.circle(394, -622, 48, 0xffffff, 0.001).setInteractive({ useHandCursor: true }); closeHit.on('pointerdown', () => this.hide());
@@ -57,10 +61,21 @@ export class CollectionPanel {
     this.achievementPageText = this.scene.add.text(350, 105, '1 / 3', { fontFamily: 'Arial Black, system-ui, sans-serif', fontSize: '14px', color: '#bfefff' }).setOrigin(0.5);
     this.achievementNextButton = this.createAchievementPageButton(408, 105, '›', () => this.changeAchievementPage(1));
     this.cardsRoot = this.scene.add.container(0, 0); this.achievementsRoot = this.scene.add.container(0, 0);
-    this.root = this.scene.add.container(540, 960, [blocker, panel, icon, title, this.titleCount, closeBg, close, closeHit, collectionLabel, rarityLegend, this.prevButton, this.nextButton, this.pageText, ascensionNote, achievementLabel, this.achievementPrevButton, this.achievementPageText, this.achievementNextButton, this.cardsRoot, this.achievementsRoot]).setDepth(1850).setVisible(false);
+    this.root = this.scene.add.container(540, 960, [blocker, panel, icon, title, this.titleCount, this.albumCount, closeBg, close, closeHit, collectionLabel, rarityLegend, this.prevButton, this.nextButton, this.pageText, ascensionNote, achievementLabel, this.achievementPrevButton, this.achievementPageText, this.achievementNextButton, this.cardsRoot, this.achievementsRoot]).setDepth(1850).setVisible(false);
   }
 
-  public update(progress: CollectionProgress): void { if (!this.root) return; this.latestProgress = progress; const creatures = getAllCreatures(); this.page = Math.min(this.page, Math.max(0, Math.ceil(creatures.length / CREATURES_PER_PAGE) - 1)); this.achievementPage = Math.min(this.achievementPage, Math.max(0, Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PER_PAGE) - 1)); this.titleCount.setText(translate('codex.discovered', { current: progress.discovered.length, total: creatures.length })); this.renderCreatureCards(progress); this.renderAchievements(progress); }
+  public update(progress: CollectionProgress): void {
+    if (!this.root) return;
+    this.latestProgress = progress;
+    const creatures = getAllCreatures();
+    this.page = Math.min(this.page, Math.max(0, Math.ceil(creatures.length / CREATURES_PER_PAGE) - 1));
+    this.achievementPage = Math.min(this.achievementPage, Math.max(0, Math.ceil(ACHIEVEMENTS.length / ACHIEVEMENTS_PER_PAGE) - 1));
+    this.titleCount.setText(translate('codex.discovered', { current: progress.discovered.length, total: creatures.length }));
+    const album = mutationAlbumCompletion(getCurrentMutationAlbumProgress());
+    this.albumCount.setText(riftCopy('codexAlbum', { current: album.current, total: album.total }));
+    this.renderCreatureCards(progress);
+    this.renderAchievements(progress);
+  }
   public show(progress: CollectionProgress): void { this.opened = true; this.update(progress); this.overlay.setVisible(true).setAlpha(0); this.root.setVisible(true).setAlpha(0).setScale(0.93); this.scene.tweens.add({ targets: this.overlay, alpha: 1, duration: 150, ease: 'Quad.Out' }); this.scene.tweens.add({ targets: this.root, alpha: 1, scaleX: 1, scaleY: 1, duration: 220, ease: 'Back.Out' }); }
   public hide(): void { if (!this.opened) return; this.opened = false; this.scene.tweens.add({ targets: this.overlay, alpha: 0, duration: 120, ease: 'Quad.In' }); this.scene.tweens.add({ targets: this.root, alpha: 0, scaleX: 0.96, scaleY: 0.96, duration: 135, ease: 'Quad.In', onComplete: () => { this.root.setVisible(false); this.overlay.setVisible(false); } }); }
   public isOpen(): boolean { return this.opened; }
