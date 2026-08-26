@@ -43,26 +43,25 @@ export function planRecruit(
   availableFamilies: readonly CreatureFamily[],
   roll = 0
 ): RecruitPlan | null {
-  if (availableFamilies.length === 0 || emptySlots(board) === 0) return null;
-
   const remainingSlots = emptySlots(board);
-  if (remainingSlots > 1 || hasMergeablePair(board)) {
-    const family = pick(weightedStarterPool(board, availableFamilies), roll);
-    return family ? { family, level: 1, protectedPair: false } : null;
+  if (remainingSlots === 0) return null;
+
+  if (remainingSlots === 1 && !hasMergeablePair(board)) {
+    // A normal random pull could seal the board permanently, so the final slot
+    // becomes a deterministic safety valve: duplicate an existing non-capped
+    // lineage at the same level. This does not unlock a new family and remains
+    // valid even if the normal recruit-unlock cursor is temporarily stale.
+    const candidates = rescueCandidates(board);
+    if (candidates.length === 0) return null;
+    const lowestLevel = Math.min(...candidates.map((unit) => unit.level));
+    const preferred = candidates.filter((unit) => unit.level === lowestLevel);
+    const selected = pick(preferred, roll);
+    return selected
+      ? { family: selected.family, level: selected.level, protectedPair: true }
+      : null;
   }
 
-  // One slot remains and the board currently has no legal merge. A normal
-  // random T1 pull could seal the board permanently, so the recruiter instead
-  // creates a same-family/same-level twin of an existing non-capped unit.
-  // Existing board families are valid rescue targets even if an unlock cursor
-  // is temporarily stale: the rescue does not introduce a new family, it only
-  // guarantees a legal continuation of a lineage the player already owns.
-  const candidates = rescueCandidates(board);
-  if (candidates.length === 0) return null;
-  const lowestLevel = Math.min(...candidates.map((unit) => unit.level));
-  const preferred = candidates.filter((unit) => unit.level === lowestLevel);
-  const selected = pick(preferred, roll);
-  return selected
-    ? { family: selected.family, level: selected.level, protectedPair: true }
-    : null;
+  if (availableFamilies.length === 0) return null;
+  const family = pick(weightedStarterPool(board, availableFamilies), roll);
+  return family ? { family, level: 1, protectedPair: false } : null;
 }
