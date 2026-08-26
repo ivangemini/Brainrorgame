@@ -69,6 +69,14 @@ describe('recruit planner', () => {
     }
   });
 
+  it('keeps the emergency final-slot rescue available even if the normal unlock pool is stale', () => {
+    const board = oneEmptyWithoutMerge();
+    const plan = planRecruit(board, [], 0.5);
+    expect(plan).toMatchObject({ protectedPair: true });
+    const next = addUnit(board, unit('unlock-drift-rescue', plan!.family, plan!.level));
+    expect(hasMergeablePair(next)).toBe(true);
+  });
+
   it('can protect the final slot with a tier-two twin when no tier-one rescue is available', () => {
     const board: BoardState = [
       unit('p2', 'pinguino', 2), unit('t2', 'toastodilo', 2), unit('l2', 'lampalotl', 2),
