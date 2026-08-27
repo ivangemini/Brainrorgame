@@ -3,9 +3,11 @@ import type { BoardState } from '../systems/board';
 import { parseGameSave } from './save';
 import { createFreshGameSave } from './freshSave';
 
+const NOW = Date.UTC(2026, 7, 27, 12, 0, 0);
+
 describe('prestige merge tier persistence', () => {
   it('loads tier-four and tier-five units from the current save schema', () => {
-    const fresh = createFreshGameSave(1000);
+    const fresh = createFreshGameSave(NOW);
     const board: BoardState = [
       { id: 'prestige-4', family: 'pinguino', level: 4, mutation: 'prismatic' },
       { id: 'prestige-5', family: 'toastodilo', level: 5, mutation: 'crowned' },
@@ -19,7 +21,7 @@ describe('prestige merge tier persistence', () => {
   });
 
   it('still rejects unsupported tier values', () => {
-    const fresh = createFreshGameSave(1000);
+    const fresh = createFreshGameSave(NOW);
     const invalidBoard = [...fresh.board];
     invalidBoard[0] = { ...fresh.board[0]!, level: 6 } as never;
     expect(parseGameSave({ ...fresh, board: invalidBoard })).toBeNull();
