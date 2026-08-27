@@ -44,6 +44,7 @@ import {
 } from '../systems/collectionProgression';
 import { createDefaultDailyState, type DailyRetentionState } from '../systems/dailyRetention';
 import { BOSS_STEP, type EncounterStep } from '../systems/encounters';
+import { isMergeTier } from '../systems/mergeTiers';
 import {
   createDefaultMetaUpgradeLevels,
   getMetaUpgradeDefinition,
@@ -812,7 +813,7 @@ function parseBoard(value: unknown, requireMutation: boolean): BoardState | null
 function parseBoardUnit(value: unknown, requireMutation: boolean): BoardUnit | null {
   if (!isRecord(value) || typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 160) return null;
   if (!isCreatureFamily(value.family)) return null;
-  if (value.level !== 1 && value.level !== 2 && value.level !== 3) return null;
+  if (!isMergeTier(value.level)) return null;
   if (requireMutation && !isMutationId(value.mutation)) return null;
   if (value.mutation !== undefined && !isMutationId(value.mutation)) return null;
   return {
