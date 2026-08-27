@@ -6,6 +6,11 @@ import {
   type MutationId
 } from '../content/mutations';
 import { consumeAscensionRecruitCredit, recordAscensionMerge } from './ascensionRuntime';
+import {
+  MAX_MERGE_TIER,
+  nextMergeTier,
+  type MergeTier
+} from './mergeTiers';
 
 export const BOARD_COLUMNS = 5 as const;
 export const BOARD_ROWS = 3 as const;
@@ -14,7 +19,7 @@ export const BOARD_SIZE = BOARD_COLUMNS * BOARD_ROWS;
 export interface BoardUnit {
   readonly id: string;
   readonly family: CreatureFamily;
-  readonly level: 1 | 2 | 3;
+  readonly level: MergeTier;
   readonly mutation: MutationId;
 }
 export type BoardSlot = BoardUnit | null;
@@ -92,16 +97,21 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
     return { board: next, action: 'move' };
   }
 
-  if (source.family === target.family && source.level === target.level && source.level < 3) {
+  if (source.family === target.family && source.level === target.level && source.level < MAX_MERGE_TIER) {
     const baseMutation = mergeMutation(source.mutation, target.mutation);
-    const resultingLevel = (source.level + 1) as 2 | 3;
-    const ascension = recordAscensionMerge(resultingLevel, baseMutation, resultingLevel === 3);
+    const resultingLevel = nextMergeTier(source.level);
+    if (!resultingLevel) return { board, action: 'noop' };
+    const ascension = recordAscensionMerge(
+      resultingLevel,
+      baseMutation,
+      resultingLevel === MAX_MERGE_TIER
+    );
     const previousRank = Math.max(
       getMutationDefinition(source.mutation).rank,
       getMutationDefinition(target.mutation).rank
     );
     const upgraded: BoardUnit = {
-      id: `${source.family}-${source.level + 1}-${source.id}-${target.id}`,
+      id: `${source.family}-${resultingLevel}-${source.id}-${target.id}`,
       family: source.family,
       level: resultingLevel,
       mutation: ascension.mutation
@@ -120,18 +130,18 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
     };
   }
 
-  if (source.family === target.family && source.level === 3 && target.level === 3) {
+  if (source.family === target.family && source.level === MAX_MERGE_TIER && target.level === MAX_MERGE_TIER) {
     const ascendedMutation = ascendMutationPair(source.mutation, target.mutation);
     const baseMutation = ascendedMutation ?? mergeMutation(source.mutation, target.mutation);
     const previousRank = Math.max(
       getMutationDefinition(source.mutation).rank,
       getMutationDefinition(target.mutation).rank
     );
-    const ascension = recordAscensionMerge(3, baseMutation, false);
+    const ascension = recordAscensionMerge(MAX_MERGE_TIER, baseMutation, false);
     const upgraded: BoardUnit = {
       id: `${ascendedMutation ? 'ascended' : 'consolidated'}-${source.family}-${ascension.mutation}-${source.id}-${target.id}`,
       family: source.family,
-      level: 3,
+      level: MAX_MERGE_TIER,
       mutation: ascension.mutation
     };
     next[from] = null;
@@ -148,7 +158,7 @@ export function moveOrMerge(board: BoardState, from: number, to: number): BoardA
     };
   }
 
-  // Different families never merge. Deadlock prevention belongs in recruit
+  // Different families never merge. Deadlock prevention belongs in Recruit
   // planning and same-family max-tier consolidation, not cross-family fusion.
   next[from] = target;
   next[to] = source;
