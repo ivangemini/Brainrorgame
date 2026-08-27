@@ -21,7 +21,7 @@ export function isMergeTier(value: unknown): value is MergeTier {
 }
 
 export function artLevelForMergeTier(tier: MergeTier): CreatureLevel {
-  return tier <= 3 ? tier : 3;
+  return (tier <= 3 ? tier : 3) as CreatureLevel;
 }
 
 export function collectionKeyForMergeTier(family: CreatureFamily, tier: MergeTier): CreatureKey {
