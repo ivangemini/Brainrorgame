@@ -65,6 +65,26 @@ describe('board rules', () => {
     expect(result.board[1]).toMatchObject({ family: 'pinguino', level: 2, mutation: 'none' });
   });
 
+  it('continues the ladder through T3 -> T4 -> T5', () => {
+    const t3Board: BoardState = [
+      { id: 'a3', family: 'pinguino', level: 3, mutation: 'none' },
+      { id: 'b3', family: 'pinguino', level: 3, mutation: 'none' },
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
+    const t4 = moveOrMerge(t3Board, 0, 1);
+    expect(t4.upgraded).toMatchObject({ family: 'pinguino', level: 4 });
+    expect(t4.ascended).toBe(false);
+
+    const t4Board: BoardState = [
+      { id: 'a4', family: 'pinguino', level: 4, mutation: 'none' },
+      { id: 'b4', family: 'pinguino', level: 4, mutation: 'none' },
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
+    const t5 = moveOrMerge(t4Board, 0, 1);
+    expect(t5.upgraded).toMatchObject({ family: 'pinguino', level: 5 });
+    expect(t5.ascended).toBe(false);
+  });
+
   it('never merges different families even when they share a level', () => {
     const board = [...createStarterBoard()];
     board[0] = { id: 'p', family: 'pinguino', level: 1, mutation: 'none' };
@@ -105,34 +125,39 @@ describe('board rules', () => {
     expect(result.mutationPromoted).toBe(false);
   });
 
-  it('ascends matching common T3 twins instead of dead-ending the lineage', () => {
-    const board: Array<null | { id: string; family: 'pinguino'; level: 3; mutation: 'none' }> = Array.from({ length: BOARD_SIZE }, () => null);
-    board[0] = { id: 'a', family: 'pinguino', level: 3, mutation: 'none' };
-    board[1] = { id: 'b', family: 'pinguino', level: 3, mutation: 'none' };
+  it('ascends matching common T5 twins instead of dead-ending the lineage', () => {
+    const board: BoardState = [
+      { id: 'a', family: 'pinguino', level: 5, mutation: 'none' },
+      { id: 'b', family: 'pinguino', level: 5, mutation: 'none' },
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
     const result = moveOrMerge(board, 0, 1);
     expect(result.action).toBe('merge');
-    expect(result.upgraded).toMatchObject({ family: 'pinguino', level: 3, mutation: 'charged' });
+    expect(result.upgraded).toMatchObject({ family: 'pinguino', level: 5, mutation: 'charged' });
     expect(result.ascended).toBe(true);
     expect(result.consolidated).toBe(false);
   });
 
-  it('consolidates same-family max-tier twins even when mutation cannot ascend', () => {
-    const board = Array.from({ length: BOARD_SIZE }, () => null) as Array<null | { id: string; family: 'pinguino'; level: 3; mutation: 'crowned' | 'prismatic' }>;
-    board[0] = { id: 'legend-a', family: 'pinguino', level: 3, mutation: 'crowned' };
-    board[1] = { id: 'legend-b', family: 'pinguino', level: 3, mutation: 'crowned' };
-    const capped = moveOrMerge(board, 0, 1);
+  it('consolidates same-family capped T5 twins when mutation cannot ascend', () => {
+    const cappedBoard: BoardState = [
+      { id: 'legend-a', family: 'pinguino', level: 5, mutation: 'crowned' },
+      { id: 'legend-b', family: 'pinguino', level: 5, mutation: 'crowned' },
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
+    const capped = moveOrMerge(cappedBoard, 0, 1);
     expect(capped.action).toBe('merge');
-    expect(capped.upgraded).toMatchObject({ family: 'pinguino', level: 3, mutation: 'crowned' });
+    expect(capped.upgraded).toMatchObject({ family: 'pinguino', level: 5, mutation: 'crowned' });
     expect(capped.ascended).toBe(false);
     expect(capped.consolidated).toBe(true);
 
-    const mixed = Array.from({ length: BOARD_SIZE }, () => null) as typeof board;
-    mixed[0] = { id: 'epic', family: 'pinguino', level: 3, mutation: 'prismatic' };
-    mixed[1] = { id: 'legend', family: 'pinguino', level: 3, mutation: 'crowned' };
-    const mixedResult = moveOrMerge(mixed, 0, 1);
-    expect(mixedResult.action).toBe('merge');
-    expect(mixedResult.upgraded?.mutation).toBe('crowned');
-    expect(mixedResult.consolidated).toBe(true);
+    const mixedBoard: BoardState = [
+      { id: 'epic', family: 'pinguino', level: 5, mutation: 'prismatic' },
+      { id: 'legend', family: 'pinguino', level: 5, mutation: 'crowned' },
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
+    const mixed = moveOrMerge(mixedBoard, 0, 1);
+    expect(mixed.upgraded?.mutation).toBe('crowned');
+    expect(mixed.consolidated).toBe(true);
   });
 
   it('guarantees a legal pair on a full board made only of max-tier units', () => {
@@ -141,35 +166,39 @@ describe('board rules', () => {
       'vendinguana', 'umbrellama', 'mopossum', 'fanthom', 'socktopus', 'microwhale'
     ] as const;
     const board: BoardState = [
-      ...families.map((family, index) => ({ id: `max-${index}`, family, level: 3 as const, mutation: 'crowned' as const })),
-      { id: 'extra-p', family: 'pinguino', level: 3, mutation: 'prismatic' },
-      { id: 'extra-t', family: 'toastodilo', level: 3, mutation: 'charged' },
-      { id: 'extra-l', family: 'lampalotl', level: 3, mutation: 'none' }
+      ...families.map((family, index) => ({ id: `max-${index}`, family, level: 5 as const, mutation: 'crowned' as const })),
+      { id: 'extra-p', family: 'pinguino', level: 5, mutation: 'prismatic' },
+      { id: 'extra-t', family: 'toastodilo', level: 5, mutation: 'charged' },
+      { id: 'extra-l', family: 'lampalotl', level: 5, mutation: 'none' }
     ];
     expect(board).toHaveLength(BOARD_SIZE);
     expect(hasMergeablePair(board)).toBe(true);
     expect(isBoardDeadlocked(board)).toBe(false);
   });
 
-  it('activates the first tier-three Mutation Catalyst once per chapter', () => {
+  it('activates the Mutation Catalyst on the first tier-five merge each chapter', () => {
     syncCurrentAscensionProgress({
       ...createDefaultAscensionProgress(),
       purchasedNodes: ['merge-seed-cache', 'merge-echo', 'merge-catalyst']
     });
     beginAscensionRunRuntime();
     syncAscensionRuntimeChapter(4);
-    const board = Array.from({ length: BOARD_SIZE }, () => null) as Array<null | { id: string; family: 'pinguino'; level: 2; mutation: 'none' }>;
-    board[0] = { id: 'a', family: 'pinguino', level: 2, mutation: 'none' };
-    board[1] = { id: 'b', family: 'pinguino', level: 2, mutation: 'none' };
+    const board: BoardState = [
+      { id: 'a', family: 'pinguino', level: 4, mutation: 'none' },
+      { id: 'b', family: 'pinguino', level: 4, mutation: 'none' },
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
     const first = moveOrMerge(board, 0, 1);
-    expect(first.upgraded?.mutation).toBe('charged');
+    expect(first.upgraded).toMatchObject({ level: 5, mutation: 'charged' });
     expect(first.ascensionCatalystApplied).toBe(true);
 
-    const secondBoard = Array.from({ length: BOARD_SIZE }, () => null) as typeof board;
-    secondBoard[0] = { id: 'c', family: 'pinguino', level: 2, mutation: 'none' };
-    secondBoard[1] = { id: 'd', family: 'pinguino', level: 2, mutation: 'none' };
+    const secondBoard: BoardState = [
+      { id: 'c', family: 'pinguino', level: 4, mutation: 'none' },
+      { id: 'd', family: 'pinguino', level: 4, mutation: 'none' },
+      ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
     const second = moveOrMerge(secondBoard, 0, 1);
-    expect(second.upgraded?.mutation).toBe('none');
+    expect(second.upgraded).toMatchObject({ level: 5, mutation: 'none' });
     expect(second.ascensionCatalystApplied).toBe(false);
   });
 
@@ -180,9 +209,11 @@ describe('board rules', () => {
     });
     beginAscensionRunRuntime();
     for (let index = 0; index < 8; index += 1) {
-      const board = Array.from({ length: BOARD_SIZE }, () => null) as Array<null | { id: string; family: 'pinguino'; level: 1; mutation: 'none' }>;
-      board[0] = { id: `a-${index}`, family: 'pinguino', level: 1, mutation: 'none' };
-      board[1] = { id: `b-${index}`, family: 'pinguino', level: 1, mutation: 'none' };
+      const board: BoardState = [
+        { id: `a-${index}`, family: 'pinguino', level: 1, mutation: 'none' },
+        { id: `b-${index}`, family: 'pinguino', level: 1, mutation: 'none' },
+        ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+      ];
       moveOrMerge(board, 0, 1);
     }
     expect(getAscensionRecruitCredits()).toBe(1);
