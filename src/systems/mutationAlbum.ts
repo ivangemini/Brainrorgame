@@ -3,6 +3,7 @@ import { getCurrentAscensionEffects } from './ascensionRuntime';
 import type { BoardState } from './board';
 import {
   COLLECTION_KEYS,
+  normalizeCollectionKey,
   type CollectionKey,
   type CollectionProgress
 } from './collectionProgression';
@@ -42,7 +43,9 @@ export function discoverMutationAlbumEntry(
   creature: CollectionKey,
   mutation: MutationId
 ): MutationAlbumProgress {
-  const key = mutationAlbumKey(creature, mutation);
+  const normalized = normalizeCollectionKey(creature);
+  if (!normalized) return progress;
+  const key = mutationAlbumKey(normalized, mutation);
   if (progress.discovered.includes(key)) return progress;
   return { ...progress, discovered: [...progress.discovered, key] };
 }
@@ -59,7 +62,8 @@ export function backfillMutationAlbumProgress(
 
   for (const unit of board) {
     if (!unit) continue;
-    const creature = `${unit.family}-${unit.level}` as CollectionKey;
+    const creature = normalizeCollectionKey(`${unit.family}-${unit.level}`);
+    if (!creature) continue;
     progress = discoverMutationAlbumEntry(progress, creature, unit.mutation);
   }
 
