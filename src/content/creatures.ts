@@ -69,8 +69,26 @@ const CREATURES: readonly CreatureDefinition[] = [
   { key: 'microwhale-3', family: 'microwhale', level: 3, name: 'Superforno Balenotto', texture: 'creature-microwhale-3', assetPath: 'assets/characters/microwhale-3.svg', damage: 86, attackMs: 1600, projectileColor: 0xffe2a8, accentColor: 0xff9f66 }
 ];
 
+const PRESTIGE_SCALING = {
+  4: { damageMultiplier: 2.05, attackIntervalMultiplier: 0.96, nameSuffix: 'Sovraccarico' },
+  5: { damageMultiplier: 4.20, attackIntervalMultiplier: 0.92, nameSuffix: 'Imperiale' }
+} as const;
+
 let currentRecruitChapter = 1;
-export function getCreature(family: CreatureFamily, level: number): CreatureDefinition { const found = CREATURES.find((creature) => creature.family === family && creature.level === level); if (!found) throw new Error(`Unknown creature: ${family} level ${level}`); return found; }
+export function getCreature(family: CreatureFamily, level: number): CreatureDefinition {
+  const safeLevel = Number.isFinite(level) ? Math.floor(level) : -1;
+  const artLevel = safeLevel >= 4 && safeLevel <= 5 ? 3 : safeLevel;
+  const found = CREATURES.find((creature) => creature.family === family && creature.level === artLevel);
+  if (!found) throw new Error(`Unknown creature: ${family} level ${level}`);
+  if (safeLevel <= 3) return found;
+  const scaling = PRESTIGE_SCALING[safeLevel as 4 | 5];
+  return {
+    ...found,
+    name: `${found.name} ${scaling.nameSuffix}`,
+    damage: Math.max(1, Math.round(found.damage * scaling.damageMultiplier)),
+    attackMs: Math.max(180, Math.round(found.attackMs * scaling.attackIntervalMultiplier))
+  };
+}
 export function getAllCreatures(): readonly CreatureDefinition[] { return CREATURES; }
 export function getCreatureFamilyProgression(): readonly CreatureFamilyProgression[] { return FAMILY_PROGRESSION; }
 export function getRecruitableFamilies(chapter = currentRecruitChapter): readonly CreatureFamily[] { const safeChapter = Math.max(1, Math.floor(Number.isFinite(chapter) ? chapter : 1)); return FAMILY_PROGRESSION.filter((entry) => safeChapter >= entry.unlockChapter).map((entry) => entry.family); }
