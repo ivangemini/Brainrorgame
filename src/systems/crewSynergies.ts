@@ -1,5 +1,6 @@
 import type { CreatureFamily } from '../content/creatures';
 import type { BoardState } from './board';
+import type { MergeTier } from './mergeTiers';
 
 export type CrewSynergyTier = 0 | 1 | 2 | 3;
 export type CrewSynergyId =
@@ -77,5 +78,5 @@ export function getCurrentCrewSynergyState(): CrewSynergyState { return currentS
 export function resetCrewSynergyState(): void { currentState = EMPTY_STATE; }
 export function getActiveCrewSynergies(state: CrewSynergyState): readonly ActiveCrewSynergy[] { const active: ActiveCrewSynergy[] = []; for (const family of Object.keys(DEFINITIONS) as CreatureFamily[]) { const tier = state.tiers[family]; if (tier !== 0) active.push({ definition: DEFINITIONS[family], tier, familyPower: state.familyPower[family] }); } return active; }
 export function getCrewSynergyDefinition(family: CreatureFamily): CrewSynergyDefinition { return DEFINITIONS[family]; }
-export function unitPower(level: 1 | 2 | 3): number { return 2 ** (level - 1); }
+export function unitPower(level: MergeTier): number { return 2 ** (level - 1); }
 export function tierForPower(power: number): CrewSynergyTier { if (power >= 8) return 3; if (power >= 4) return 2; if (power >= 2) return 1; return 0; }
