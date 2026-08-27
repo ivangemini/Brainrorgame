@@ -1,9 +1,10 @@
-import type { CreatureFamily, CreatureLevel } from '../content/creatures';
+import type { CreatureFamily } from '../content/creatures';
 import { hasMergeablePair, type BoardState, type BoardUnit } from './board';
+import { MAX_MERGE_TIER, MERGE_TIERS, type MergeTier } from './mergeTiers';
 
 export interface RecruitPlan {
   readonly family: CreatureFamily;
-  readonly level: CreatureLevel;
+  readonly level: MergeTier;
   readonly protectedPair: boolean;
 }
 
@@ -21,48 +22,66 @@ function emptySlots(board: BoardState): number {
   return board.reduce((count, slot) => count + (slot === null ? 1 : 0), 0);
 }
 
-function familyLevelCount(board: BoardState, family: CreatureFamily, level: CreatureLevel): number {
+function familyLevelCount(board: BoardState, family: CreatureFamily, level: MergeTier): number {
   return board.reduce(
     (count, unit) => count + (unit?.family === family && unit.level === level ? 1 : 0),
     0
   );
 }
 
+function projectedCascadeMerges(board: BoardState, family: CreatureFamily): number {
+  const counts = new Map<MergeTier, number>();
+  for (const tier of MERGE_TIERS) counts.set(tier, familyLevelCount(board, family, tier));
+  counts.set(1, (counts.get(1) ?? 0) + 1);
+
+  let merges = 0;
+  for (const tier of MERGE_TIERS) {
+    if (tier === MAX_MERGE_TIER) break;
+    const count = counts.get(tier) ?? 0;
+    const pairs = Math.floor(count / 2);
+    if (pairs <= 0) continue;
+    merges += pairs;
+    const next = (tier + 1) as MergeTier;
+    counts.set(next, (counts.get(next) ?? 0) + pairs);
+  }
+  return merges;
+}
+
 /**
- * Recruit remains random, but the bag strongly favors pulls that advance an
- * existing merge chain and de-emphasizes families that only have max-tier
- * units left. A maxed family is never hard-banned because a second T3 can
- * still feed mutation ascension/consolidation.
+ * Recruit remains random, but its bag favors a lineage where one new T1 can
+ * unlock a merge cascade. This becomes more important with the five-tier
+ * ladder: a useful pull can carry into T2/T3/T4 instead of scattering the last
+ * board cells across unrelated families.
  */
 export function recruitFamilyWeight(board: BoardState, family: CreatureFamily): number {
-  const tierOne = familyLevelCount(board, family, 1);
-  const tierTwo = familyLevelCount(board, family, 2);
-  const tierThree = familyLevelCount(board, family, 3);
   const occupied = board.length - emptySlots(board);
   const crowded = occupied >= Math.max(1, board.length - 4);
+  const tierOne = familyLevelCount(board, family, 1);
+  const lowerTierCount = MERGE_TIERS
+    .filter((tier) => tier < MAX_MERGE_TIER)
+    .reduce((total, tier) => total + familyLevelCount(board, family, tier), 0);
+  const maxTierCount = familyLevelCount(board, family, MAX_MERGE_TIER);
+  const represented = lowerTierCount + maxTierCount > 0;
+  const cascadeMerges = projectedCascadeMerges(board, family);
 
   let weight = crowded ? 2 : 3;
 
-  // The strongest signal: one T1 means the next recruit creates an immediate pair.
-  if (tierOne % 2 === 1) weight += 9;
-  else if (tierOne > 0) weight += 4;
-
-  // Keep promising lineages moving toward a T2/T3 pair instead of scattering
-  // the last few cells across new families.
-  if (tierTwo % 2 === 1) weight += tierOne > 0 ? 4 : 2;
-  else if (tierTwo > 0) weight += 1;
-
-  // Once a family is represented only by T3s, lower its normal recruit odds.
-  // It stays in the pool because duplicate T3s are still strategically useful.
-  if (tierThree > 0 && tierOne === 0 && tierTwo === 0) {
-    weight = Math.max(1, weight - Math.min(2, tierThree));
+  if (cascadeMerges > 0) {
+    // One immediate merge is already valuable; a binary-style carry through
+    // several tiers is intentionally much more attractive.
+    weight += Math.min(13, 6 + cascadeMerges * 3);
+  } else if (tierOne > 0 || lowerTierCount > 0) {
+    weight += 2;
   }
 
-  // On a crowded board avoid opening a brand-new lineage unless RNG reaches
-  // its deliberately small slice of the bag.
-  if (crowded && tierOne === 0 && tierTwo === 0 && tierThree === 0) {
-    weight = 1;
+  // A family represented only by capped T5 units is still legal because a
+  // second T5 can feed mutation ascension/consolidation, but it should not
+  // dominate ordinary Recruit rolls.
+  if (maxTierCount > 0 && lowerTierCount === 0) {
+    weight = Math.max(1, weight - Math.min(2, maxTierCount));
   }
+
+  if (crowded && !represented) weight = 1;
 
   return Math.max(1, Math.min(18, weight));
 }
@@ -77,7 +96,7 @@ function smartRecruitPool(board: BoardState, availableFamilies: readonly Creatur
 }
 
 function rescueCandidates(board: BoardState): BoardUnit[] {
-  return board.filter((unit): unit is BoardUnit => Boolean(unit && unit.level < 3));
+  return board.filter((unit): unit is BoardUnit => Boolean(unit && unit.level < MAX_MERGE_TIER));
 }
 
 export function planRecruit(
