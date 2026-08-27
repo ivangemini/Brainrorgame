@@ -43,6 +43,21 @@ describe('legacy board safety repair', () => {
     expect(result.save?.updatedAt).toBe(2000);
   });
 
+  it('can promote a T4 to T5 while normalizing collection evidence to authored T3 art', () => {
+    const base = createFreshGameSave(1000);
+    const board = [...deadlockedBoard()];
+    board[0] = { id: 'p4', family: 'pinguino', level: 4, mutation: 'none' };
+    board[12] = { id: 'p5', family: 'pinguino', level: 5, mutation: 'prismatic' };
+    expect(isBoardDeadlocked(board)).toBe(true);
+
+    const result = repairDeadlockedGameSave({ ...base, board }, 2000);
+    expect(result.repaired).toBe(true);
+    expect(result.save?.board[0]).toMatchObject({ family: 'pinguino', level: 5 });
+    expect(result.save?.collection.discovered).toContain('pinguino-3');
+    expect(result.save?.mutationAlbum.discovered).toContain('pinguino-3:none');
+    expect(hasMergeablePair(result.save!.board)).toBe(true);
+  });
+
   it('does not modify a save that already has a legal continuation', () => {
     const save = createFreshGameSave(1000);
     const result = repairDeadlockedGameSave(save, 2000);
