@@ -1,5 +1,4 @@
 import * as Phaser from 'phaser';
-import { getCreature } from '../content/creatures';
 import { getMutationDefinition } from '../content/mutations';
 import type { GameFx } from '../presentation/GameFx';
 import {
@@ -25,6 +24,7 @@ import {
   getCurrentCrewSynergyState,
   syncCrewSynergyState
 } from '../systems/crewSynergies';
+import { getMergeTierCreature, type MergeTier } from '../systems/mergeTiers';
 import { ActiveAbilityBar } from '../ui/ActiveAbilityBar';
 
 const COLUMNS = BOARD_COLUMNS;
@@ -33,15 +33,19 @@ const GAP = 14;
 const SLOT_SIZE = 170;
 const LEFT = (1080 - (COLUMNS * SLOT_SIZE + (COLUMNS - 1) * GAP)) / 2;
 const TOP = 1130;
-const TIER_COLORS: Readonly<Record<BoardUnit['level'], number>> = {
+const TIER_COLORS: Readonly<Record<MergeTier, number>> = {
   1: 0x8fa6c8,
   2: 0x6de7ff,
-  3: 0xffd76a
+  3: 0xffd76a,
+  4: 0xff78d7,
+  5: 0xf8f2ff
 };
-const TIER_IMAGE_SIZE: Readonly<Record<BoardUnit['level'], number>> = {
-  1: 132,
-  2: 144,
-  3: 154
+const TIER_IMAGE_SIZE: Readonly<Record<MergeTier, number>> = {
+  1: 128,
+  2: 138,
+  3: 146,
+  4: 154,
+  5: 160
 };
 
 interface UnitViewMeta { readonly slot: number; readonly unitId: string; }
@@ -224,7 +228,7 @@ export class BoardView {
     const label = fullBoardPair
       ? 'BOARD FULL • MERGE THE GLOWING PAIR'
       : active.length > 0
-        ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier)}`).join('  •  ')
+        ? active.map((entry) => `${entry.definition.shortLabel} ${this.roman(entry.tier as MergeTier)}`).join('  •  ')
         : 'MATCH SAME CREATURE + SAME LEVEL';
     const signature = fullBoardPair
       ? `full:${fullBoardPair[0]}-${fullBoardPair[1]}`
@@ -301,22 +305,42 @@ export class BoardView {
 
   private createUnitView(slot: number, unit: BoardUnit): Phaser.GameObjects.Container {
     const position = this.slotPosition(slot);
-    const creature = getCreature(unit.family, unit.level);
+    const creature = getMergeTierCreature(unit.family, unit.level);
     const mutation = getMutationDefinition(unit.mutation);
     const tierColor = TIER_COLORS[unit.level];
     const tierFrame = this.scene.add.graphics();
-    tierFrame.fillStyle(tierColor, unit.level === 1 ? 0.055 : unit.level === 2 ? 0.09 : 0.13);
+    const frameAlpha = unit.level === 1 ? 0.05 : unit.level === 2 ? 0.08 : unit.level === 3 ? 0.12 : unit.level === 4 ? 0.17 : 0.23;
+    const frameWidth = unit.level === 1 ? 3 : unit.level === 2 ? 4 : unit.level === 3 ? 6 : unit.level === 4 ? 7 : 9;
+    tierFrame.fillStyle(tierColor, frameAlpha);
     tierFrame.fillRoundedRect(-78, -78, 156, 156, 34);
-    tierFrame.lineStyle(unit.level === 1 ? 3 : unit.level === 2 ? 5 : 7, tierColor, unit.level === 1 ? 0.38 : unit.level === 2 ? 0.76 : 0.96);
+    tierFrame.lineStyle(frameWidth, tierColor, unit.level === 1 ? 0.38 : unit.level === 2 ? 0.72 : 0.96);
     tierFrame.strokeRoundedRect(-78, -78, 156, 156, 34);
     if (unit.level >= 2) {
-      tierFrame.lineStyle(2, 0xffffff, unit.level === 2 ? 0.34 : 0.56);
+      tierFrame.lineStyle(2, 0xffffff, unit.level === 2 ? 0.30 : unit.level === 3 ? 0.40 : 0.62);
       tierFrame.strokeRoundedRect(-70, -70, 140, 140, 28);
     }
-    if (unit.level === 3) {
-      tierFrame.lineStyle(4, 0xff8ecf, 0.46);
+    if (unit.level >= 3) {
+      const railColor = unit.level === 3 ? 0xffd76a : unit.level === 4 ? 0xff78d7 : 0xffe29a;
+      tierFrame.lineStyle(unit.level >= 4 ? 4 : 3, railColor, unit.level === 5 ? 0.9 : 0.58);
       tierFrame.lineBetween(-50, -72, -10, -72);
       tierFrame.lineBetween(10, -72, 50, -72);
+    }
+
+    let prestigeAura: Phaser.GameObjects.Graphics | null = null;
+    if (unit.level >= 4) {
+      prestigeAura = this.scene.add.graphics();
+      prestigeAura.lineStyle(unit.level === 5 ? 5 : 3, tierColor, unit.level === 5 ? 0.64 : 0.42);
+      prestigeAura.strokeCircle(0, 1, unit.level === 5 ? 76 : 73);
+      const accent = unit.level === 5 ? 0xffd76a : 0xff9fe4;
+      prestigeAura.lineStyle(2, accent, unit.level === 5 ? 0.82 : 0.52);
+      for (let index = 0; index < unit.level; index += 1) {
+        const angle = (Math.PI * 2 * index) / unit.level - Math.PI / 2;
+        const x1 = Math.cos(angle) * 68;
+        const y1 = Math.sin(angle) * 68;
+        const x2 = Math.cos(angle) * 81;
+        const y2 = Math.sin(angle) * 81;
+        prestigeAura.lineBetween(x1, y1, x2, y2);
+      }
     }
 
     const tierMarkers = this.scene.add.graphics();
@@ -330,9 +354,11 @@ export class BoardView {
     }
 
     const imageSize = TIER_IMAGE_SIZE[unit.level];
-    const image = this.scene.add.image(0, unit.level === 3 ? 0 : 3, creature.texture).setDisplaySize(imageSize, imageSize);
+    const image = this.scene.add.image(0, unit.level >= 4 ? -1 : unit.level === 3 ? 0 : 3, creature.texture).setDisplaySize(imageSize, imageSize);
     const shadow = this.scene.add.ellipse(0, 60, 106 + unit.level * 5, 25 + unit.level * 2, 0x030919, 0.28).setDepth(-1);
-    const children: Phaser.GameObjects.GameObject[] = [tierFrame, shadow, tierMarkers];
+    const children: Phaser.GameObjects.GameObject[] = [tierFrame, shadow];
+    if (prestigeAura) children.push(prestigeAura);
+    children.push(tierMarkers);
 
     let mutationAura: Phaser.GameObjects.Graphics | null = null;
     let mutationArt: Phaser.GameObjects.Image | null = null;
@@ -355,13 +381,14 @@ export class BoardView {
 
     children.push(image);
     const badge = this.scene.add.graphics();
+    const badgeRadius = unit.level === 5 ? 29 : unit.level === 4 ? 27 : unit.level === 3 ? 26 : unit.level === 2 ? 24 : 22;
     badge.fillStyle(mutation.rank > 0 ? mutation.accentColor : tierColor, 1);
-    badge.fillCircle(55, -55, unit.level === 3 ? 27 : unit.level === 2 ? 25 : 23);
-    badge.lineStyle(unit.level === 3 ? 4 : 3, 0xffffff, unit.level === 1 ? 0.62 : 0.86);
-    badge.strokeCircle(55, -55, unit.level === 3 ? 27 : unit.level === 2 ? 25 : 23);
+    badge.fillCircle(55, -55, badgeRadius);
+    badge.lineStyle(unit.level >= 4 ? 4 : 3, 0xffffff, unit.level === 1 ? 0.62 : 0.88);
+    badge.strokeCircle(55, -55, badgeRadius);
     const level = this.scene.add.text(55, -56, this.roman(unit.level), {
       fontFamily: 'Arial Black, system-ui, sans-serif',
-      fontSize: unit.level === 3 ? '16px' : '18px',
+      fontSize: unit.level >= 4 ? '15px' : '18px',
       color: '#10213a'
     }).setOrigin(0.5);
     children.push(badge, level);
@@ -383,9 +410,20 @@ export class BoardView {
 
     this.scene.time.delayedCall(Phaser.Math.Between(0, 450), () => {
       if (!view.active) return;
-      this.scene.tweens.add({ targets: image, y: unit.level === 3 ? -5 : -3, scaleX: image.scaleX * 1.018, scaleY: image.scaleY * 0.982, duration: 1050 + Phaser.Math.Between(-120, 160), yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-      if (unit.level === 3) {
-        this.scene.tweens.add({ targets: tierFrame, alpha: 0.68, duration: 820, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      this.scene.tweens.add({ targets: image, y: unit.level >= 4 ? -6 : unit.level === 3 ? -5 : -3, scaleX: image.scaleX * 1.018, scaleY: image.scaleY * 0.982, duration: 1050 + Phaser.Math.Between(-120, 160), yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      if (unit.level >= 3) {
+        this.scene.tweens.add({ targets: tierFrame, alpha: unit.level === 5 ? 0.52 : 0.68, duration: unit.level >= 4 ? 680 : 820, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      }
+      if (prestigeAura) {
+        this.scene.tweens.add({
+          targets: prestigeAura,
+          angle: unit.level === 5 ? 360 : 8,
+          alpha: unit.level === 5 ? 0.72 : 0.48,
+          duration: unit.level === 5 ? 5200 : 900,
+          yoyo: unit.level === 4,
+          repeat: -1,
+          ease: unit.level === 5 ? 'Linear' : 'Sine.InOut'
+        });
       }
       if (mutationAura) {
         this.scene.tweens.add({ targets: mutationAura, alpha: 0.58, duration: 720 + mutation.rank * 120, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
@@ -422,8 +460,12 @@ export class BoardView {
     return view;
   }
 
-  private roman(tier: 1 | 2 | 3): string {
-    return tier === 1 ? 'I' : tier === 2 ? 'II' : 'III';
+  private roman(tier: MergeTier): string {
+    if (tier === 1) return 'I';
+    if (tier === 2) return 'II';
+    if (tier === 3) return 'III';
+    if (tier === 4) return 'IV';
+    return 'V';
   }
 
   private pulse(view: Phaser.GameObjects.Container): void { view.setScale(0.45); this.scene.tweens.add({ targets: view, scaleX: 1.08, scaleY: 1.08, duration: 230, ease: 'Back.Out', onComplete: () => this.scene.tweens.add({ targets: view, scaleX: 1, scaleY: 1, duration: 130, ease: 'Sine.Out' }) }); }
