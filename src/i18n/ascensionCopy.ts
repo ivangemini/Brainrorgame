@@ -28,7 +28,7 @@ const EN: AscensionCopy = {
   nodes: {
     'merge-seed-cache': { name: 'SEED CACHE', description: 'Start each new Ascension with 2 Recruit credits.' },
     'merge-echo': { name: 'MERGE ECHO', description: 'Every 8th merge returns 1 Recruit credit.' },
-    'merge-catalyst': { name: 'MUTATION CATALYST', description: 'The first tier-3 merge each chapter gains a mutation boost.' },
+    'merge-catalyst': { name: 'MUTATION CATALYST', description: 'The first tier-5 merge each chapter gains a mutation boost.' },
     'combat-last-stand': { name: 'LAST STAND', description: 'Once per Ascension, lethal fortress damage leaves 1 HP.' },
     'combat-boss-window': { name: 'BOSS WINDOW', description: 'Bosses delay their opening attack by 1.5 seconds.' },
     'combat-victory-repair': { name: 'VICTORY REPAIR', description: 'Boss defeats repair 20% of fortress maximum HP.' },
@@ -52,7 +52,7 @@ const RU: AscensionCopy = {
   nodes: {
     'merge-seed-cache': { name: 'СТАРТОВЫЙ ЗАПАС', description: 'Каждое Вознесение начинается с 2 бесплатных Recruit.' },
     'merge-echo': { name: 'ЭХО СЛИЯНИЯ', description: 'Каждое 8-е слияние возвращает 1 Recruit.' },
-    'merge-catalyst': { name: 'КАТАЛИЗАТОР МУТАЦИИ', description: 'Первое слияние 3-го уровня в главе получает усиление мутации.' },
+    'merge-catalyst': { name: 'КАТАЛИЗАТОР МУТАЦИИ', description: 'Первое слияние 5-го уровня в главе получает усиление мутации.' },
     'combat-last-stand': { name: 'ПОСЛЕДНИЙ РУБЕЖ', description: 'Раз за Вознесение смертельный удар оставляет крепости 1 HP.' },
     'combat-boss-window': { name: 'ОКНО БОССА', description: 'Босс задерживает первую атаку на 1,5 секунды.' },
     'combat-victory-repair': { name: 'РЕМОНТ ПОСЛЕ ПОБЕДЫ', description: 'Победа над боссом восстанавливает 20% максимального HP крепости.' },
