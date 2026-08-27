@@ -1,14 +1,14 @@
-import type { CreatureLevel } from '../content/creatures';
 import {
   canBoardUnitsMerge,
   isBoardDeadlocked,
   type BoardState,
   type BoardUnit
 } from '../systems/board';
+import { discoverCreature } from '../systems/collectionProgression';
 import {
-  discoverCreature,
-  type CollectionKey
-} from '../systems/collectionProgression';
+  collectionKeyForMergeTier,
+  type MergeTier
+} from '../systems/mergeTiers';
 import { discoverMutationAlbumEntry } from '../systems/mutationAlbum';
 import type { GameSave } from './save';
 
@@ -22,7 +22,7 @@ export interface BoardSafetyRepairResult {
 interface RescuePair {
   readonly lowerSlot: number;
   readonly higherSlot: number;
-  readonly targetLevel: CreatureLevel;
+  readonly targetLevel: MergeTier;
   readonly gap: number;
 }
 
@@ -62,7 +62,7 @@ export function repairDeadlockedGameSave(
     return { save, repaired: false, promotedSlot: null, partnerSlot: null };
   }
 
-  const collectionKey = `${promoted.family}-${promoted.level}` as CollectionKey;
+  const collectionKey = collectionKeyForMergeTier(promoted.family, promoted.level);
   const collection = discoverCreature(save.collection, collectionKey);
   const mutationAlbum = discoverMutationAlbumEntry(
     save.mutationAlbum,
@@ -98,7 +98,7 @@ function findBestRescuePair(board: BoardState): RescuePair | null {
       const aLower = a.level < b.level;
       const lowerSlot = aLower ? first : second;
       const higherSlot = aLower ? second : first;
-      const targetLevel = Math.max(a.level, b.level) as CreatureLevel;
+      const targetLevel = Math.max(a.level, b.level) as MergeTier;
       const gap = Math.abs(a.level - b.level);
       const candidate: RescuePair = { lowerSlot, higherSlot, targetLevel, gap };
 
