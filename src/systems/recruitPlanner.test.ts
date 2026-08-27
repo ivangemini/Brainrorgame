@@ -48,16 +48,28 @@ describe('recruit planner', () => {
   it('strongly favors a family where the next recruit creates an immediate pair', () => {
     const board: BoardState = [
       unit('p1', 'pinguino', 1),
-      unit('t3', 'toastodilo', 3),
+      unit('t5', 'toastodilo', 5),
       ...Array.from({ length: BOARD_SIZE - 2 }, () => null)
+    ];
+    expect(recruitFamilyWeight(board, 'pinguino')).toBeGreaterThan(recruitFamilyWeight(board, 'toastodilo'));
+  });
+
+  it('favors a recruit that can trigger a multi-tier merge cascade', () => {
+    const board: BoardState = [
+      unit('p1', 'pinguino', 1),
+      unit('p2', 'pinguino', 2),
+      unit('p3', 'pinguino', 3),
+      unit('p4', 'pinguino', 4),
+      unit('t1', 'toastodilo', 1),
+      ...Array.from({ length: BOARD_SIZE - 5 }, () => null)
     ];
     expect(recruitFamilyWeight(board, 'pinguino')).toBeGreaterThan(recruitFamilyWeight(board, 'toastodilo'));
   });
 
   it('downweights a family represented only by max-tier creatures without banning it', () => {
     const board: BoardState = [
-      unit('p3a', 'pinguino', 3),
-      unit('p3b', 'pinguino', 3),
+      unit('p5a', 'pinguino', 5),
+      unit('p5b', 'pinguino', 5),
       unit('t1', 'toastodilo', 1),
       ...Array.from({ length: BOARD_SIZE - 3 }, () => null)
     ];
@@ -73,13 +85,13 @@ describe('recruit planner', () => {
       unit('t2', 'toastodilo', 2),
       unit('l3', 'lampalotl', 3),
       unit('d2', 'dishnail', 2),
-      unit('m3', 'mochimoth', 3),
+      unit('m4', 'mochimoth', 4),
       unit('r2', 'routeraptor', 2),
-      unit('v3', 'vendinguana', 3),
+      unit('v5', 'vendinguana', 5),
       unit('u2', 'umbrellama', 2),
-      unit('o3', 'mopossum', 3),
+      unit('o4', 'mopossum', 4),
       unit('f2', 'fanthom', 2),
-      unit('s3', 'socktopus', 3),
+      unit('s5', 'socktopus', 5),
       null, null, null, null
     ];
     expect(recruitFamilyWeight(board, 'pinguino')).toBeGreaterThan(recruitFamilyWeight(board, 'microwhale'));
@@ -117,23 +129,23 @@ describe('recruit planner', () => {
     expect(hasMergeablePair(next)).toBe(true);
   });
 
-  it('can protect the final slot with a tier-two twin when no tier-one rescue is available', () => {
+  it('can protect the final slot with a tier-four twin when no lower rescue is available', () => {
     const board: BoardState = [
-      unit('p2', 'pinguino', 2), unit('t2', 'toastodilo', 2), unit('l2', 'lampalotl', 2),
-      unit('d2', 'dishnail', 2), unit('m2', 'mochimoth', 2), unit('r2', 'routeraptor', 2),
-      unit('v2', 'vendinguana', 2), unit('u2', 'umbrellama', 2), unit('o2', 'mopossum', 2),
-      unit('f2', 'fanthom', 2), unit('s2', 'socktopus', 2), unit('w2', 'microwhale', 2),
-      unit('p3', 'pinguino', 3), unit('t3', 'toastodilo', 3), null
+      unit('p4', 'pinguino', 4), unit('t4', 'toastodilo', 4), unit('l4', 'lampalotl', 4),
+      unit('d4', 'dishnail', 4), unit('m4', 'mochimoth', 4), unit('r4', 'routeraptor', 4),
+      unit('v4', 'vendinguana', 4), unit('u4', 'umbrellama', 4), unit('o4', 'mopossum', 4),
+      unit('f4', 'fanthom', 4), unit('s4', 'socktopus', 4), unit('w4', 'microwhale', 4),
+      unit('p5', 'pinguino', 5), unit('t5', 'toastodilo', 5), null
     ];
     const plan = planRecruit(board, ALL_FAMILIES, 0.4);
-    expect(plan).toMatchObject({ level: 2, protectedPair: true });
+    expect(plan).toMatchObject({ level: 4, protectedPair: true });
   });
 
   it('recognizes that a crowded max-tier board already has a legal same-family consolidation', () => {
     const board: BoardState = [
-      ...ALL_FAMILIES.map((family, index) => ({ id: `t3-${index}`, family, level: 3 as const, mutation: 'crowned' as const })),
-      { id: 'p3b', family: 'pinguino', level: 3, mutation: 'prismatic' },
-      { id: 't3b', family: 'toastodilo', level: 3, mutation: 'charged' },
+      ...ALL_FAMILIES.map((family, index) => ({ id: `t5-${index}`, family, level: 5 as const, mutation: 'crowned' as const })),
+      { id: 'p5b', family: 'pinguino', level: 5, mutation: 'prismatic' },
+      { id: 't5b', family: 'toastodilo', level: 5, mutation: 'charged' },
       null
     ];
     expect(hasMergeablePair(board)).toBe(true);
@@ -141,7 +153,7 @@ describe('recruit planner', () => {
   });
 
   it('does not plan a recruit when the board is already full', () => {
-    const board = oneEmptyWithoutMerge().map((slot, index) => slot ?? unit(`fill-${index}`, 'dishnail', 3));
+    const board = oneEmptyWithoutMerge().map((slot, index) => slot ?? unit(`fill-${index}`, 'dishnail', 5));
     expect(planRecruit(board, ['pinguino', 'toastodilo'], 0.2)).toBeNull();
   });
 });
