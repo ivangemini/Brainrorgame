@@ -5,6 +5,7 @@ import {
   type AscensionEffects,
   type AscensionProgress
 } from './ascension';
+import { MAX_MERGE_TIER, type MergeTier } from './mergeTiers';
 
 let currentAscensionProgress: AscensionProgress = createDefaultAscensionProgress();
 let currentChapter = 1;
@@ -48,7 +49,7 @@ export function beginAscensionRunRuntime(): void {
 }
 
 export function recordAscensionMerge(
-  resultingLevel: 1 | 2 | 3,
+  resultingLevel: MergeTier,
   mutation: MutationId,
   catalystEligible = true
 ): {
@@ -67,7 +68,7 @@ export function recordAscensionMerge(
   const catalystApplied = Boolean(
     catalystEligible
     && effects.tierThreeMutationBoost
-    && resultingLevel === 3
+    && resultingLevel === MAX_MERGE_TIER
     && mutationCatalystChapter !== currentChapter
   );
   if (catalystApplied) mutationCatalystChapter = currentChapter;
