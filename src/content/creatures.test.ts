@@ -2,11 +2,22 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { CREATURE_FAMILIES, getAllCreatures, getCreature, getCreatureFamilyProgression, getRecruitableFamilies, isCreatureFamily, resetRecruitProgressChapter, syncRecruitProgressChapter } from './creatures';
 afterEach(() => resetRecruitProgressChapter());
 describe('creature roster', () => {
-  it('contains twelve complete three-tier families', () => {
+  it('contains twelve complete three-form authored families', () => {
     expect(CREATURE_FAMILIES).toHaveLength(12);
     expect(CREATURE_FAMILIES).toEqual(['pinguino','toastodilo','lampalotl','dishnail','mochimoth','routeraptor','vendinguana','umbrellama','mopossum','fanthom','socktopus','microwhale']);
     expect(getAllCreatures()).toHaveLength(36);
     for (const family of CREATURE_FAMILIES) expect([1,2,3].map((level) => getCreature(family, level).level)).toEqual([1,2,3]);
+  });
+  it('reuses the authored T3 silhouette for T4/T5 while scaling prestige combat stats', () => {
+    const t3 = getCreature('pinguino', 3);
+    const t4 = getCreature('pinguino', 4);
+    const t5 = getCreature('pinguino', 5);
+    expect(t4.texture).toBe(t3.texture);
+    expect(t5.texture).toBe(t3.texture);
+    expect(t4.damage).toBeGreaterThan(t3.damage * 2);
+    expect(t5.damage).toBeGreaterThan(t4.damage * 2);
+    expect(t4.attackMs).toBeLessThan(t3.attackMs);
+    expect(t5.attackMs).toBeLessThan(t4.attackMs);
   });
   it('unlocks launch-candidate families progressively into endless chapters', () => {
     expect(getRecruitableFamilies(1)).toEqual(['pinguino','toastodilo','lampalotl','dishnail']);
