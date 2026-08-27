@@ -74,13 +74,13 @@ describe('Ascension runtime bridge', () => {
     expect(getAscensionRecruitCredits()).toBe(1);
   });
 
-  it('applies Mutation Catalyst once per chapter and never exceeds Crowned', () => {
+  it('applies Mutation Catalyst once per chapter at tier five and never exceeds Crowned', () => {
     own(['merge-seed-cache', 'merge-echo', 'merge-catalyst']);
     syncAscensionRuntimeChapter(7);
-    expect(recordAscensionMerge(3, 'none')).toMatchObject({ mutation: 'charged', catalystApplied: true });
-    expect(recordAscensionMerge(3, 'charged')).toMatchObject({ mutation: 'charged', catalystApplied: false });
+    expect(recordAscensionMerge(5, 'none')).toMatchObject({ mutation: 'charged', catalystApplied: true });
+    expect(recordAscensionMerge(5, 'charged')).toMatchObject({ mutation: 'charged', catalystApplied: false });
     syncAscensionRuntimeChapter(8);
-    expect(recordAscensionMerge(3, 'prismatic')).toMatchObject({ mutation: 'crowned', catalystApplied: true });
+    expect(recordAscensionMerge(5, 'prismatic')).toMatchObject({ mutation: 'crowned', catalystApplied: true });
   });
 
   it('banks 25% Chaos Energy only across chapter transitions', () => {
